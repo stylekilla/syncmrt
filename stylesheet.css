@@ -1,0 +1,10 @@
+QTreeView {
+    /*alternate-background-color: #f6fafb;*/
+    /*background: #e8f4fc;*/
+}
+
+QTreeView::Item {
+    /*border: 0.5px;*/
+    /*border-style: solid;*/
+    border-color: darkgray;
+}
