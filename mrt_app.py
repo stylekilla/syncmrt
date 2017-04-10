@@ -13,8 +13,8 @@ from PyQt5 import QtCore, QtGui, QtWidgets, uic
 # SyncMRT Tools.
 from syncmrt import fileHandler, imageGuidance, treatment, widgets, tools
 # Select Qt5 user interface.
-qtCreatorFile = "python/mrt_app/main.ui"
-qtStyleSheet = open("python/mrt_app/stylesheet.css")
+qtCreatorFile = "main.ui"
+qtStyleSheet = open("stylesheet.css")
 Ui_MainWindow, QtBaseClass = uic.loadUiType(qtCreatorFile)
 
 '''
