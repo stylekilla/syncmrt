@@ -296,11 +296,19 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 			except:
 				pass
 		elif origin == self.toolSelect.imageWindow['pbApply']:
+			'''When push apply window button, check for mode type and amount of windows.'''
+			if self.toolSelect.imageWindow['rbMax'].isChecked():
+				mode = 'max'
+			else:
+				mode = 'sum'
+
 			windows = self.toolSelect.getWindows(self.ct.rescaleSlope,self.ct.rescaleIntercept)
 			if self.ct.plotEnvironment:
+				self.ct.plotEnvironment.setRadiographMode(mode)
 				self.ct.plotEnvironment.setWindows(windows)
 			if self.rtp.plotEnvironment:
 				for i in range(len(self.rtp.beam)):
+					self.rtp.beam[i].plotEnvironment.setRadiographMode(mode)
 					self.rtp.beam[i].plotEnvironment.setWindows(windows)
 
 		else:

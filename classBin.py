@@ -231,6 +231,8 @@ class toolSelector:
 			windowGroup.setTitle('Hounsfield Unit Windowing')
 			header = QtWidgets.QLabel('No. Windows:')
 			self.imageWindow['numWindows'] = QtWidgets.QSpinBox()
+			self.imageWindow['rbMax'] = QtWidgets.QRadioButton('Max')
+			self.imageWindow['rbSum'] = QtWidgets.QRadioButton('Sum')
 			self.imageWindow['pbApply'] = QtWidgets.QPushButton('Apply')
 			self.imageWindow['pbReset'] = QtWidgets.QPushButton('Reset')
 			self.imageWindow['window'] = {}
@@ -243,6 +245,7 @@ class toolSelector:
 			self.imageWindow['layout'].addRow(header,self.imageWindow['numWindows'])
 			self.imageWindow['layout'].addRow(lower,upper)
 			self.imageWindow['layout'].addRow(self.imageWindow['window'][0],self.imageWindow['window'][1])
+			self.imageWindow['layout'].addRow(self.imageWindow['rbMax'],self.imageWindow['rbSum'])
 			self.imageWindow['layout'].addRow(self.imageWindow['pbApply'],self.imageWindow['pbReset'])
 			# Defaults
 			self.imageWindow['numWindows'].setMinimum(1)
@@ -250,6 +253,7 @@ class toolSelector:
 			self.imageWindow['numWindows'].setValue(1)
 			self.imageWindow['numWindows'].setSingleStep(1)
 			self.imageWindow['window'][1].setValue(5000)
+			self.imageWindow['rbSum'].setChecked(True)
 			# Signals and Slots
 			self.imageWindow['numWindows'].valueChanged.connect(self.addWindows)
 
@@ -322,7 +326,7 @@ class toolSelector:
 				self.imageWindow['window'][length+i*2] = HUSpinBox()
 				self.imageWindow['window'][length+i*2+1] = HUSpinBox()
 				self.imageWindow['window'][length+i*2+1].setValue(5000)
-				self.imageWindow['layout'].insertRow(self.imageWindow['layout'].rowCount()-1,
+				self.imageWindow['layout'].insertRow(self.imageWindow['layout'].rowCount()-2,
 					self.imageWindow['window'][length+i],self.imageWindow['window'][length+i*2+1])
 
 		# If number less than, remove windows.
@@ -494,6 +498,11 @@ class plotEnvironment:
 		'''Set windows for all plots. Take windows as list of lists with upper and lower limits per window [[upper,lower],].'''
 		self.plot0.imageWindow(windows)
 		self.plot90.imageWindow(windows)
+
+	def setRadiographMode(self,mode):
+		'''Set radiograph mode to 'sum' or 'max.''' 
+		self.plot0._radiographMode = mode
+		self.plot90._radiographMode = mode
 
 	def settings(self,setting,value):
 		if setting == 'maxMarkers':
@@ -896,35 +905,3 @@ def widgetToggle(widget):
 	'''Set state to opposite of current visibility state.'''
 	state = widget.isVisible()
 	widget.setVisible(not state)
-
-
-
-
-'''
-IMAGE SETTING DIALOG
-- 
-'''
-class imageSettingsDialog(QtWidgets.QDialog):
-	''' Controls for Window and Level of selected MPL canvas window. '''
-	def __init__(self):
-		super().__init__()
-		self.setModal(0)
-
-		layout = QtWidgets.QFormLayout()
-		label1 = QtWidgets.QLabel('Adjust HU Window')
-		label2 = QtWidgets.QLabel('Select number of windows:')
-		numWindows = QtWidgets.QSpinBox()
-		numWindows.setMinimum(1)
-
-		layout.addWidget(label1)
-		layout.addWidget(label2)
-		layout.addWidget(numWindows)
-
-		self.setLayout(layout)
-
-	def numberOfWindows(self):
-		pass
-
-		# Works on currently activated mpl canvases (x2 views in tab).
-		# Apply to all button (CT/RTP only)
-		# Reset button
