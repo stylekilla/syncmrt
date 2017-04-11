@@ -7,7 +7,7 @@ import matplotlib as mpl
 mpl.use('Qt5Agg')
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT
 
-resourceFilepath = "python/mrt_app/resources/"
+resourceFilepath = "resources/"
 
 
 '''

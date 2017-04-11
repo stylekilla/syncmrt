@@ -301,15 +301,16 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 				mode = 'max'
 			else:
 				mode = 'sum'
-
-			windows = self.toolSelect.getWindows(self.ct.rescaleSlope,self.ct.rescaleIntercept)
 			if self.ct.plotEnvironment:
+				# ADD: If ct ticked, then do.
+				windows = self.toolSelect.getWindows(self.ct.rescaleSlope,self.ct.rescaleIntercept)
 				self.ct.plotEnvironment.setRadiographMode(mode)
 				self.ct.plotEnvironment.setWindows(windows)
-			if self.rtp.plotEnvironment:
-				for i in range(len(self.rtp.beam)):
-					self.rtp.beam[i].plotEnvironment.setRadiographMode(mode)
-					self.rtp.beam[i].plotEnvironment.setWindows(windows)
+				# ADD: If rtp ticked, then do.
+				if self.rtp.beam[0]:
+					for i in range(len(self.rtp.beam)):
+						self.rtp.beam[i].plotEnvironment.setRadiographMode(mode)
+						self.rtp.beam[i].plotEnvironment.setWindows(windows)
 
 		else:
 			# If not from an existing widget, it then must originate from the table.
