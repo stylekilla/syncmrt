@@ -62,7 +62,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		# Hide table until alignment is clicked...
 		self.property.addVariable('Alignment',['Rotation','x','y','z'],[0,0,0])
 		self.property.addVariable('Alignment',['Translation','x','y','z'],[0,0,0])
-		self.property.addVariable('Alignment','Theta',0)
+		self.property.addVariable('Alignment','Scale',0)
 		
 
 		# Connect buttons and widgets.
@@ -331,6 +331,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 
 	def alignPatient(self,treatmentIndex=-1):
 		'''Send coordinates to algorithm and align.'''
+		success = False
 
 		# Do some check to see if Ly and Ry are the same/within a given tolerance?
 		# Left is ct
@@ -338,72 +339,78 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		# TESTING
 		if treatmentIndex == -1:
 			# Comes from alignment between xray and ct.
-			left = np.array(([63.6,25.2,53.7],
-				[53.2,43.5,87.7],
-				[44.1,65.1,75.8],
-				[69.2,65.8,62.6]))
-			right = np.array(([82.7,38.3,57.7],
-				[81.0,57.4,94.4],
-				[69.2,79.9,84.4],
-				[90.9,79.4,65.3]))
-			self.xray.plotEnvironment.plot0.pointsX = right[:,0]
-			self.xray.plotEnvironment.plot0.pointsY = right[:,1]
-			self.xray.plotEnvironment.plot90.pointsX = right[:,2]
-			self.xray.plotEnvironment.plot90.pointsY = right[:,1]
-			self.ct.plotEnvironment.plot0.pointsX = left[:,0]
-			self.ct.plotEnvironment.plot0.pointsY = left[:,1]
-			self.ct.plotEnvironment.plot90.pointsX = left[:,2]
-			self.ct.plotEnvironment.plot90.pointsY = left[:,1]
+			# left = np.array(([63.6,25.2,53.7],
+			# 	[53.2,43.5,87.7],
+			# 	[44.1,65.1,75.8],
+			# 	[69.2,65.8,62.6]))
+			# right = np.array(([82.7,38.3,57.7],
+			# 	[81.0,57.4,94.4],
+			# 	[69.2,79.9,84.4],
+			# 	[90.9,79.4,65.3]))
+			# self.xray.plotEnvironment.plot0.pointsX = right[:,0]
+			# self.xray.plotEnvironment.plot0.pointsY = right[:,1]
+			# self.xray.plotEnvironment.plot90.pointsX = right[:,2]
+			# self.xray.plotEnvironment.plot90.pointsY = right[:,1]
+			# self.ct.plotEnvironment.plot0.pointsX = left[:,0]
+			# self.ct.plotEnvironment.plot0.pointsY = left[:,1]
+			# self.ct.plotEnvironment.plot90.pointsX = left[:,2]
+			# self.ct.plotEnvironment.plot90.pointsY = left[:,1]
 
-			# Optimise Points
-			if self.toolSelect.alignment['optimise'].isEnabled():
-				self.xray.plotEnvironment.plot0.markerOptimise(self.toolSelect.alignment['markerSize'].value())
-				self.xray.plotEnvironment.plot90.markerOptimise(self.toolSelect.alignment['markerSize'].value())
-				self.ct.plotEnvironment.plot0.markerOptimise(self.toolSelect.alignment['markerSize'].value())
-				self.ct.plotEnvironment.plot90.markerOptimise(self.toolSelect.alignment['markerSize'].value())
-				log(self.logFile,"Successfully optimised points.","event")
+			if len(self.xray.plotEnvironment.plot0.pointsX)>0:
+				# Optimise Points
+				if self.toolSelect.alignment['optimise'].isEnabled():
+					self.xray.plotEnvironment.plot0.markerOptimise(self.toolSelect.alignment['markerSize'].value())
+					self.xray.plotEnvironment.plot90.markerOptimise(self.toolSelect.alignment['markerSize'].value())
+					self.ct.plotEnvironment.plot0.markerOptimise(self.toolSelect.alignment['markerSize'].value())
+					self.ct.plotEnvironment.plot90.markerOptimise(self.toolSelect.alignment['markerSize'].value())
+					log(self.logFile,"Successfully optimised points.","event")
 
-			# Collect points.
-			left = np.zeros((self.toolSelect.alignment['maxMarkers'].value(),3))
-			right = np.zeros((self.toolSelect.alignment['maxMarkers'].value(),3))
-			left[:,0] = self.ct.plotEnvironment.plot0.pointsX
-			left[:,1] = self.ct.plotEnvironment.plot0.pointsY
-			left[:,2] = self.ct.plotEnvironment.plot90.pointsX
-			right[:,0] = self.xray.plotEnvironment.plot0.pointsX
-			right[:,1] = self.xray.plotEnvironment.plot0.pointsY
-			right[:,2] = self.xray.plotEnvironment.plot90.pointsX
+				# Collect points.
+				left = np.zeros((self.toolSelect.alignment['maxMarkers'].value(),3))
+				right = np.zeros((self.toolSelect.alignment['maxMarkers'].value(),3))
+				left[:,0] = self.ct.plotEnvironment.plot0.pointsX
+				left[:,1] = self.ct.plotEnvironment.plot0.pointsY
+				left[:,2] = self.ct.plotEnvironment.plot90.pointsX
+				right[:,0] = self.xray.plotEnvironment.plot0.pointsX
+				right[:,1] = self.xray.plotEnvironment.plot0.pointsY
+				right[:,2] = self.xray.plotEnvironment.plot90.pointsX
+
+				success = True
 
 		if treatmentIndex != -1:
 			# Is a treatment plan.
-			print('Success!', treatmentIndex)
-			# Optimise Points
-			if self.toolSelect.alignment['optimise'].isEnabled():
-				self.xray.plotEnvironment.plot0.markerOptimise(self.toolSelect.alignment['markerSize'].value())
-				self.xray.plotEnvironment.plot90.markerOptimise(self.toolSelect.alignment['markerSize'].value())
-				self.rtp.beam[treatmentIndex].plotEnvironment.plot0.markerOptimise(self.toolSelect.alignment['markerSize'].value())
-				self.rtp.beam[treatmentIndex].plotEnvironment.plot90.markerOptimise(self.toolSelect.alignment['markerSize'].value())
-				log(self.logFile,"Successfully optimised points.","event")
+			if len(self.rtp.beam[treatmentIndex].plotEnvironment.plot0.pointsX)>0:
+				# Optimise Points
+				if self.toolSelect.alignment['optimise'].isEnabled():
+					self.xray.plotEnvironment.plot0.markerOptimise(self.toolSelect.alignment['markerSize'].value())
+					self.xray.plotEnvironment.plot90.markerOptimise(self.toolSelect.alignment['markerSize'].value())
+					self.rtp.beam[treatmentIndex].plotEnvironment.plot0.markerOptimise(self.toolSelect.alignment['markerSize'].value())
+					self.rtp.beam[treatmentIndex].plotEnvironment.plot90.markerOptimise(self.toolSelect.alignment['markerSize'].value())
+					log(self.logFile,"Successfully optimised points.","event")
 
-			# Collect points.
-			left = np.zeros((self.toolSelect.alignment['maxMarkers'].value(),3))
-			right = np.zeros((self.toolSelect.alignment['maxMarkers'].value(),3))
-			left[:,0] = self.rtp.beam[treatmentIndex].plotEnvironment.plot0.pointsX
-			left[:,1] = self.rtp.beam[treatmentIndex].plotEnvironment.plot0.pointsY
-			left[:,2] = self.rtp.beam[treatmentIndex].plotEnvironment.plot90.pointsX
-			right[:,0] = self.xray.plotEnvironment.plot0.pointsX
-			right[:,1] = self.xray.plotEnvironment.plot0.pointsY
-			right[:,2] = self.xray.plotEnvironment.plot90.pointsX			
+				# Collect points.
+				left = np.zeros((self.toolSelect.alignment['maxMarkers'].value(),3))
+				right = np.zeros((self.toolSelect.alignment['maxMarkers'].value(),3))
+				left[:,0] = self.rtp.beam[treatmentIndex].plotEnvironment.plot0.pointsX
+				left[:,1] = self.rtp.beam[treatmentIndex].plotEnvironment.plot0.pointsY
+				left[:,2] = self.rtp.beam[treatmentIndex].plotEnvironment.plot90.pointsX
+				right[:,0] = self.xray.plotEnvironment.plot0.pointsX
+				right[:,1] = self.xray.plotEnvironment.plot0.pointsY
+				right[:,2] = self.xray.plotEnvironment.plot90.pointsX	
+
+				success = True
 
 		# Calcualte alignment requirement
-		self.alignmentSolution = imageGuidance.affineTransform(left,right,
-			self.rtp.beam[treatmentIndex].isocenter,
-			self.ct.userOrigin,
-			self.xray.alignmentIsoc)
+		if success:
+			self.alignmentSolution = imageGuidance.affineTransform(left,right,
+				self.rtp.beam[treatmentIndex].isocenter,
+				self.ct.userOrigin,
+				self.xray.alignmentIsoc)
 
-		# If table already exists, update information...
-		self.property.updateVariable('Alignment',['Rotation','x','y','z'],[float(self.alignmentSolution.theta),float(self.alignmentSolution.phi),float(self.alignmentSolution.gamma)])
-		self.property.updateVariable('Alignment',['Translation','x','y','z'],self.alignmentSolution.translation.tolist())
-		self.property.updateVariable('Alignment','Scale',float(self.alignmentSolution.scale))
+			# If table already exists, update information...
+			self.property.updateVariable('Alignment',['Rotation','x','y','z'],[float(self.alignmentSolution.theta),float(self.alignmentSolution.phi),float(self.alignmentSolution.gamma)])
+			self.property.updateVariable('Alignment',['Translation','x','y','z'],self.alignmentSolution.translation.tolist())
+			self.property.updateVariable('Alignment','Scale',float(self.alignmentSolution.scale))
 
 		# print(self.alignmentSolution.theta)
 		# print(type(self.alignmentSolution.theta))
