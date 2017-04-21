@@ -408,6 +408,36 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 
 				success = True
 
+				# Added shit.
+				from math import sin, cos
+				
+				i = treatmentIndex
+				if self.rtp.beam[i].patientSupportAngle == 0:
+					rotation = np.deg2rad(np.array((-self.rtp.beam[i].pitchAngle,-self.rtp.beam[i].gantryAngle,-self.rtp.beam[i].rollAngle))).astype(np.float32)
+				
+				elif self.rtp.beam[i].patientSupportAngle == 270:
+					rotation = np.deg2rad(np.array((-self.rtp.beam[i].gantryAngle,-self.rtp.beam[i].pitchAngle,-self.rtp.beam[i].rollAngle))).astype(np.float32)
+
+				else:
+					rotation = np.deg2rad(np.array((-self.rtp.beam[i].pitchAngle,-self.rtp.beam[i].gantryAngle,-self.rtp.beam[i].rollAngle))).astype(np.float32)
+
+				# Rotate left points before they get sent to solution.
+
+				# Get 3D rotation vector, R.
+				R = np.array([[cos(rotation[1])*cos(rotation[2]), 
+					cos(rotation[1])*sin(rotation[2]), 
+					-sin(rotation[1])],
+					[sin(rotation[0])*sin(rotation[1])*cos(rotation[2])-cos(rotation[0])*sin(rotation[2]), 
+					sin(rotation[0])*sin(rotation[1])*sin(rotation[2])+cos(rotation[0])*cos(rotation[2]), 
+					sin(rotation[0])*cos(rotation[1])],
+					[cos(rotation[0])*sin(rotation[1])*cos(rotation[2])+sin(rotation[0])*sin(rotation[2]), 
+					cos(rotation[0])*sin(rotation[1])*sin(rotation[2])-sin(rotation[0])*cos(rotation[2]), 
+					cos(rotation[0])*cos(rotation[1])]])
+
+				for j in range(left.shape[1]):
+					left[:,j] = np.dot(R, left[:,j])
+					print('Rtoated points: ',left[:,j])
+
 		# Calcualte alignment requirement
 		if success:
 			self.alignmentSolution = imageGuidance.affineTransform(left,right,

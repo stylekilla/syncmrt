@@ -380,7 +380,7 @@ class toolSelector:
 				# Add to dict, add to layout.
 				self.xrayWindow['window'][length+i*2] = XraySpinBox()
 				self.xrayWindow['window'][length+i*2+1] = XraySpinBox()
-				self.xrayWindow['window'][length+i*2+1].setValue(5000)
+				self.xrayWindow['window'][length+i*2+1].setValue(10000)
 				self.xrayWindow['layout'].insertRow(self.xrayWindow['layout'].rowCount()-1,
 					self.xrayWindow['window'][length+i],self.xrayWindow['window'][length+i*2+1])
 
@@ -448,7 +448,7 @@ class XraySpinBox(QtWidgets.QSpinBox):
 	def __init__(self):
 		super().__init__()
 		self.setRange(0,10000)
-		self.setSingleStep(1000)
+		self.setSingleStep(100)
 		self.setValue(0)
 
 '''
