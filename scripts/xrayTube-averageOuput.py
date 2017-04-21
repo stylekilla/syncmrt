@@ -52,7 +52,8 @@ x_peaks = np.where(np.diff(binary_intens))[0]
 x1, x2 = x_peaks[0], x_peaks[-1]
 
 
-image = np.sum(stack[:,:,x1:x2+1], axis=2)
+# image = np.sum(stack[:,:,x1:x2+1], axis=2)
+image = np.mean(stack[:,:,x1:x2+1], axis=2)
 
 #remove some of the dark pixels
 image[:,519] = image[:,518]
@@ -65,12 +66,19 @@ image[178,:] = image[177,:]
 image[179,:] = image[180,:]
 image[39,:] = image[38,:]
 
+'''THIS SECTION IS TO FIX THE IMAGE CONTRAST PRE-ALIGNMENT PROGRAM.'''
+# windowMin = 0 
+# windowMax = 800
+
+# image[image>windowMax] = windowMax
+
 outputPretext = "{:%y%m%d-%Hh%Mm%Ss}".format(datetime.datetime.now())
 outputFolder = '/mnt/imbl-imaging-data/mrt/xray'+slash
 np.save(outputFolder+outputPretext,image.astype('float32'))
+tif.imsave(outputFolder+outputPretext+'.tif',image.astype('float32'))
 
 # os.remove(fol)
 
 from matplotlib import pyplot as plt
-plt.imshow(image,cmap='bone')
+plt.imshow(image,cmap='bone_r')
 plt.show()

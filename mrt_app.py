@@ -78,8 +78,10 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 			self.toolSelect.stackPage['ImageProperties']
 		except KeyError:
 			self.toolSelect.addTool('ImageProperties')
-			self.toolSelect.imageWindow['pbApply'].clicked.connect(partial(self.updateSettings,self.toolSelect.imageWindow['pbApply']))
-			self.toolSelect.imageWindow['pbReset'].clicked.connect(partial(self.updateSettings,self.toolSelect.imageWindow['pbReset']))
+			self.toolSelect.ctWindow['pbApply'].clicked.connect(partial(self.updateSettings,self.toolSelect.ctWindow['pbApply']))
+			self.toolSelect.ctWindow['pbReset'].clicked.connect(partial(self.updateSettings,self.toolSelect.ctWindow['pbReset']))
+			self.toolSelect.xrayWindow['pbApply'].clicked.connect(partial(self.updateSettings,self.toolSelect.xrayWindow['pbApply']))
+			self.toolSelect.xrayWindow['pbReset'].clicked.connect(partial(self.updateSettings,self.toolSelect.xrayWindow['pbReset']))
 
 		# We don't do any importing of pixel data in here; that is left up to the plotter by sending the filepath.
 		if modality == 'ct':
@@ -142,7 +144,8 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 
 	def openXray(self,files):
 		'''Open Xray modality files.'''
-		self.workEnvironment.addWorkspace('X-RAY')
+		if settings.xrayIsLoaded == False:
+			self.workEnvironment.addWorkspace('X-RAY')
 		if len(files) != 2:
 			self.toolSelect.alignment['checkXray'].setStyleSheet("color: red")
 			log(self.logFile,"Please select 2 Xray images; these should be orthogonal images.","error")
@@ -158,26 +161,36 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		self.xray.patientOrientation = settings.chairOrientation
 		self.xray.alignmentIsoc = settings.hamamatsuAlignmentIsoc
 
-		self.property.addSection('X-Ray')
-		self.property.addVariable('X-Ray',['Pixel Size','x','y'],self.xray.arrayNormalPixelSize.tolist())
-		self.property.addVariable('X-Ray','Patient Orientation',self.xray.patientOrientation)
-		self.property.addVariable('X-Ray',['Alignment Isocenter','x','y'],self.xray.alignmentIsoc[-2:].tolist())
+		if settings.xrayIsLoaded == False:
+			self.property.addSection('X-Ray')
+			self.property.addVariable('X-Ray',['Pixel Size','x','y'],self.xray.arrayNormalPixelSize.tolist())
+			self.property.addVariable('X-Ray','Patient Orientation',self.xray.patientOrientation)
+			self.property.addVariable('X-Ray',['Alignment Isocenter','x','y'],self.xray.alignmentIsoc[-2:].tolist())
 
-		self.property.itemChanged.connect(self.updateSettings)
+			self.property.itemChanged.connect(self.updateSettings)
 
-		imageFiles = fileHandler.importImage(self.xray.fp,'xray','npy')
-		self.xray.arrayNormal = self.xray.ds[0]
-		self.xray.arrayOrthogonal = self.xray.ds[1]
+			imageFiles = fileHandler.importImage(self.xray.fp,'xray','npy')
+			self.xray.arrayNormal = imageFiles[0]
+			self.xray.arrayOrthogonal = imageFiles[1]
 
-		self.xray.plotEnvironment = plotEnvironment(self.workEnvironment.stackPage['X-RAY'])
-		self.xray.plotEnvironment.settings('maxMarkers',settings.markerQuantity)
-		self.xray.plotEnvironment.plot0.imageLoad(self.xray.arrayNormal,self.xray.arrayNormalPixelSize,self.xray.patientOrientation,imageIndex=1)
-		self.xray.plotEnvironment.plot90.imageLoad(self.xray.arrayOrthogonal,self.xray.arrayOrthogonalPixelSize,self.xray.patientOrientation,imageIndex=2)
+			self.xray.plotEnvironment = plotEnvironment(self.workEnvironment.stackPage['X-RAY'])
+			self.xray.plotEnvironment.settings('maxMarkers',settings.markerQuantity)
+			self.xray.plotEnvironment.plot0.imageLoad(self.xray.arrayNormal,self.xray.arrayNormalPixelSize,self.xray.patientOrientation,imageIndex=1)
+			self.xray.plotEnvironment.plot90.imageLoad(self.xray.arrayOrthogonal,self.xray.arrayOrthogonalPixelSize,self.xray.patientOrientation,imageIndex=2)
 
-		item = self.toolSelect.toolList.findItems('ImageProperties',QtCore.Qt.MatchExactly)[0]
-		self.xray.plotEnvironment.nav0.actionImageSettings.triggered.connect(partial(self.toolSelect.showToolExternalTrigger,item))
+			item = self.toolSelect.toolList.findItems('ImageProperties',QtCore.Qt.MatchExactly)[0]
+			self.xray.plotEnvironment.nav0.actionImageSettings.triggered.connect(partial(self.toolSelect.showToolExternalTrigger,item))
 
-		self.toolSelect.alignment['checkXray'].setStyleSheet("color: green")
+			self.toolSelect.alignment['checkXray'].setStyleSheet("color: green")
+			settings.xrayIsLoaded = True
+
+		elif settings.xrayIsLoaded == True:
+			imageFiles = fileHandler.importImage(self.xray.fp,'xray','npy')
+			self.xray.arrayNormal = imageFiles[0]
+			self.xray.arrayOrthogonal = imageFiles[1]
+			self.xray.plotEnvironment.plot0.imageLoad(self.xray.arrayNormal,self.xray.arrayNormalPixelSize,self.xray.patientOrientation,imageIndex=1)
+			self.xray.plotEnvironment.plot90.imageLoad(self.xray.arrayOrthogonal,self.xray.arrayOrthogonalPixelSize,self.xray.patientOrientation,imageIndex=2)
+
 		self.workEnvironment.button['X-RAY'].clicked.emit()
 
 	def openCT(self,files):
@@ -295,15 +308,15 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 					self.rtp.beam[i].plotEnvironment.settings('maxMarkers',value)
 			except:
 				pass
-		elif origin == self.toolSelect.imageWindow['pbApply']:
+		elif origin == self.toolSelect.ctWindow['pbApply']:
 			'''When push apply window button, check for mode type and amount of windows.'''
-			if self.toolSelect.imageWindow['rbMax'].isChecked():
+			if self.toolSelect.ctWindow['rbMax'].isChecked():
 				mode = 'max'
 			else:
 				mode = 'sum'
 			if self.ct.plotEnvironment:
 				# ADD: If ct ticked, then do.
-				windows = self.toolSelect.getWindows(self.ct.rescaleSlope,self.ct.rescaleIntercept)
+				windows = self.toolSelect.getCTWindows(self.ct.rescaleSlope,self.ct.rescaleIntercept)
 				self.ct.plotEnvironment.setRadiographMode(mode)
 				self.ct.plotEnvironment.setWindows(windows)
 				# ADD: If rtp ticked, then do.
@@ -311,6 +324,13 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 					for i in range(len(self.rtp.beam)):
 						self.rtp.beam[i].plotEnvironment.setRadiographMode(mode)
 						self.rtp.beam[i].plotEnvironment.setWindows(windows)
+		elif origin == self.toolSelect.xrayWindow['pbApply']:
+			'''When push apply window button, check for mode type and amount of windows.'''
+			mode = 'radiograph'
+			if self.xray.plotEnvironment:
+				windows = self.toolSelect.getXrayWindows()
+				self.xray.plotEnvironment.setRadiographMode(mode)
+				self.xray.plotEnvironment.setWindows(windows)
 
 		else:
 			# If not from an existing widget, it then must originate from the table.
@@ -338,27 +358,9 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		# Right is xr 
 		# TESTING
 		if treatmentIndex == -1:
-			# Comes from alignment between xray and ct.
-			# left = np.array(([63.6,25.2,53.7],
-			# 	[53.2,43.5,87.7],
-			# 	[44.1,65.1,75.8],
-			# 	[69.2,65.8,62.6]))
-			# right = np.array(([82.7,38.3,57.7],
-			# 	[81.0,57.4,94.4],
-			# 	[69.2,79.9,84.4],
-			# 	[90.9,79.4,65.3]))
-			# self.xray.plotEnvironment.plot0.pointsX = right[:,0]
-			# self.xray.plotEnvironment.plot0.pointsY = right[:,1]
-			# self.xray.plotEnvironment.plot90.pointsX = right[:,2]
-			# self.xray.plotEnvironment.plot90.pointsY = right[:,1]
-			# self.ct.plotEnvironment.plot0.pointsX = left[:,0]
-			# self.ct.plotEnvironment.plot0.pointsY = left[:,1]
-			# self.ct.plotEnvironment.plot90.pointsX = left[:,2]
-			# self.ct.plotEnvironment.plot90.pointsY = left[:,1]
-
 			if len(self.xray.plotEnvironment.plot0.pointsX)>0:
 				# Optimise Points
-				if self.toolSelect.alignment['optimise'].isEnabled():
+				if self.toolSelect.alignment['optimise'].isChecked():
 					self.xray.plotEnvironment.plot0.markerOptimise(self.toolSelect.alignment['markerSize'].value())
 					self.xray.plotEnvironment.plot90.markerOptimise(self.toolSelect.alignment['markerSize'].value())
 					self.ct.plotEnvironment.plot0.markerOptimise(self.toolSelect.alignment['markerSize'].value())
@@ -374,6 +376,12 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 				right[:,0] = self.xray.plotEnvironment.plot0.pointsX
 				right[:,1] = self.xray.plotEnvironment.plot0.pointsY
 				right[:,2] = self.xray.plotEnvironment.plot90.pointsX
+				# left[:,0] = self.ct.plotEnvironment.plot0.pointsX
+				# left[:,2] = -self.ct.plotEnvironment.plot0.pointsY
+				# left[:,1] = self.ct.plotEnvironment.plot90.pointsX
+				# right[:,0] = self.xray.plotEnvironment.plot0.pointsX
+				# right[:,1] = self.xray.plotEnvironment.plot0.pointsY
+				# right[:,2] = self.xray.plotEnvironment.plot90.pointsX
 
 				success = True
 

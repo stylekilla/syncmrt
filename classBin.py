@@ -222,44 +222,74 @@ class toolSelector:
 			page.setLayout(layout)
 
 		elif name == 'ImageProperties':
-			self.imageWindow = {}
+			self.ctWindow = {}
+			self.xrayWindow = {}
 			page = self.stackPage[name]
 			layout = QtWidgets.QVBoxLayout()
 
 			# Group 1: HU Window
-			windowGroup = QtWidgets.QGroupBox()
-			windowGroup.setTitle('Hounsfield Unit Windowing')
+			ctWindowGroup = QtWidgets.QGroupBox()
+			ctWindowGroup.setTitle('Hounsfield Unit Windowing')
 			header = QtWidgets.QLabel('No. Windows:')
-			self.imageWindow['numWindows'] = QtWidgets.QSpinBox()
-			self.imageWindow['rbMax'] = QtWidgets.QRadioButton('Max')
-			self.imageWindow['rbSum'] = QtWidgets.QRadioButton('Sum')
-			self.imageWindow['pbApply'] = QtWidgets.QPushButton('Apply')
-			self.imageWindow['pbReset'] = QtWidgets.QPushButton('Reset')
-			self.imageWindow['window'] = {}
+			self.ctWindow['numWindows'] = QtWidgets.QSpinBox()
+			self.ctWindow['rbMax'] = QtWidgets.QRadioButton('Max')
+			self.ctWindow['rbSum'] = QtWidgets.QRadioButton('Sum')
+			self.ctWindow['pbApply'] = QtWidgets.QPushButton('Apply')
+			self.ctWindow['pbReset'] = QtWidgets.QPushButton('Reset')
+			self.ctWindow['window'] = {}
 			lower = QtWidgets.QLabel('Lower HU') 
 			upper = QtWidgets.QLabel('Upper HU')
-			self.imageWindow['window'][0] = HUSpinBox()
-			self.imageWindow['window'][1] = HUSpinBox()
+			self.ctWindow['window'][0] = HUSpinBox()
+			self.ctWindow['window'][1] = HUSpinBox()
 			# Layout
-			self.imageWindow['layout'] = QtWidgets.QFormLayout()
-			self.imageWindow['layout'].addRow(header,self.imageWindow['numWindows'])
-			self.imageWindow['layout'].addRow(lower,upper)
-			self.imageWindow['layout'].addRow(self.imageWindow['window'][0],self.imageWindow['window'][1])
-			self.imageWindow['layout'].addRow(self.imageWindow['rbMax'],self.imageWindow['rbSum'])
-			self.imageWindow['layout'].addRow(self.imageWindow['pbApply'],self.imageWindow['pbReset'])
+			self.ctWindow['layout'] = QtWidgets.QFormLayout()
+			self.ctWindow['layout'].addRow(header,self.ctWindow['numWindows'])
+			self.ctWindow['layout'].addRow(lower,upper)
+			self.ctWindow['layout'].addRow(self.ctWindow['window'][0],self.ctWindow['window'][1])
+			self.ctWindow['layout'].addRow(self.ctWindow['rbMax'],self.ctWindow['rbSum'])
+			self.ctWindow['layout'].addRow(self.ctWindow['pbApply'],self.ctWindow['pbReset'])
 			# Defaults
-			self.imageWindow['numWindows'].setMinimum(1)
-			self.imageWindow['numWindows'].setMaximum(10)
-			self.imageWindow['numWindows'].setValue(1)
-			self.imageWindow['numWindows'].setSingleStep(1)
-			self.imageWindow['window'][1].setValue(5000)
-			self.imageWindow['rbSum'].setChecked(True)
+			self.ctWindow['numWindows'].setMinimum(1)
+			self.ctWindow['numWindows'].setMaximum(10)
+			self.ctWindow['numWindows'].setValue(1)
+			self.ctWindow['numWindows'].setSingleStep(1)
+			self.ctWindow['window'][1].setValue(5000)
+			self.ctWindow['rbSum'].setChecked(True)
 			# Signals and Slots
-			self.imageWindow['numWindows'].valueChanged.connect(self.addWindows)
+			self.ctWindow['numWindows'].valueChanged.connect(self.addCTWindows)
+
+			# Group 2: X-ray Window
+			xrayWindowGroup = QtWidgets.QGroupBox()
+			xrayWindowGroup.setTitle('X-ray Windowing')
+			header = QtWidgets.QLabel('No. Windows:')
+			self.xrayWindow['numWindows'] = QtWidgets.QSpinBox()
+			self.xrayWindow['pbApply'] = QtWidgets.QPushButton('Apply')
+			self.xrayWindow['pbReset'] = QtWidgets.QPushButton('Reset')
+			self.xrayWindow['window'] = {}
+			lower = QtWidgets.QLabel('Lower Limit') 
+			upper = QtWidgets.QLabel('Upper Limit')
+			self.xrayWindow['window'][1] = XraySpinBox()
+			self.xrayWindow['window'][0] = XraySpinBox()
+			# Layout
+			self.xrayWindow['layout'] = QtWidgets.QFormLayout()
+			self.xrayWindow['layout'].addRow(header,self.xrayWindow['numWindows'])
+			self.xrayWindow['layout'].addRow(lower,upper)
+			self.xrayWindow['layout'].addRow(self.xrayWindow['window'][0],self.xrayWindow['window'][1])
+			self.xrayWindow['layout'].addRow(self.xrayWindow['pbApply'],self.xrayWindow['pbReset'])
+			# Defaults
+			self.xrayWindow['numWindows'].setMinimum(1)
+			self.xrayWindow['numWindows'].setMaximum(10)
+			self.xrayWindow['numWindows'].setValue(1)
+			self.xrayWindow['numWindows'].setSingleStep(1)
+			self.xrayWindow['window'][1].setValue(10000)
+			# Signals and Slots
+			self.xrayWindow['numWindows'].valueChanged.connect(self.addXrayWindows)
 
 			# Add Sections
-			windowGroup.setLayout(self.imageWindow['layout'])
-			layout.addWidget(windowGroup)
+			ctWindowGroup.setLayout(self.ctWindow['layout'])
+			layout.addWidget(ctWindowGroup)
+			xrayWindowGroup.setLayout(self.xrayWindow['layout'])
+			layout.addWidget(xrayWindowGroup)
 			# Finish page.
 			layout.addStretch(1)
 			page.setLayout(layout)
@@ -314,37 +344,72 @@ class toolSelector:
 			# Signals and Slots
 			self.treatment['beam'][i]['interlock'].stateChanged.connect(partial(self.treatmentInterlock,i))
 
-	def addWindows(self):
+	def addCTWindows(self):
 		'''Add or remove windowing fields as required.'''
-		difference = int(self.imageWindow['numWindows'].value() - len(self.imageWindow['window'])/2)
+		difference = int(self.ctWindow['numWindows'].value() - len(self.ctWindow['window'])/2)
 
 		# If number greater than, then add windows.
 		if difference > 0:
-			length = len(self.imageWindow['window'])
+			length = len(self.ctWindow['window'])
 			for i in range(difference):
 				# Add to dict, add to layout.
-				self.imageWindow['window'][length+i*2] = HUSpinBox()
-				self.imageWindow['window'][length+i*2+1] = HUSpinBox()
-				self.imageWindow['window'][length+i*2+1].setValue(5000)
-				self.imageWindow['layout'].insertRow(self.imageWindow['layout'].rowCount()-2,
-					self.imageWindow['window'][length+i],self.imageWindow['window'][length+i*2+1])
+				self.ctWindow['window'][length+i*2] = HUSpinBox()
+				self.ctWindow['window'][length+i*2+1] = HUSpinBox()
+				self.ctWindow['window'][length+i*2+1].setValue(5000)
+				self.ctWindow['layout'].insertRow(self.ctWindow['layout'].rowCount()-2,
+					self.ctWindow['window'][length+i],self.ctWindow['window'][length+i*2+1])
 
 		# If number less than, remove windows.
 		if difference < 0:
-			length = len(self.imageWindow['window'])
+			length = len(self.ctWindow['window'])
 			for i in range(abs(difference)):
 				# Remove from layout, remove from dict.
-				self.imageWindow['window'][length-i*2-1].deleteLater()
-				self.imageWindow['window'][length-i*2-2].deleteLater()
-				del self.imageWindow['window'][length-i*2-1]
-				del self.imageWindow['window'][length-i*2-2]
+				self.ctWindow['window'][length-i*2-1].deleteLater()
+				self.ctWindow['window'][length-i*2-2].deleteLater()
+				del self.ctWindow['window'][length-i*2-1]
+				del self.ctWindow['window'][length-i*2-2]
 
-	def getWindows(self,slope,intercept):
+	def addXrayWindows(self):
+		'''Add or remove windowing fields as required.'''
+		difference = int(self.xrayWindow['numWindows'].value() - len(self.xrayWindow['window'])/2)
+
+		# If number greater than, then add windows.
+		if difference > 0:
+			length = len(self.xrayWindow['window'])
+			for i in range(difference):
+				# Add to dict, add to layout.
+				self.xrayWindow['window'][length+i*2] = XraySpinBox()
+				self.xrayWindow['window'][length+i*2+1] = XraySpinBox()
+				self.xrayWindow['window'][length+i*2+1].setValue(5000)
+				self.xrayWindow['layout'].insertRow(self.xrayWindow['layout'].rowCount()-1,
+					self.xrayWindow['window'][length+i],self.xrayWindow['window'][length+i*2+1])
+
+		# If number less than, remove windows.
+		if difference < 0:
+			length = len(self.xrayWindow['window'])
+			for i in range(abs(difference)):
+				# Remove from layout, remove from dict.
+				self.xrayWindow['window'][length-i*2-1].deleteLater()
+				self.xrayWindow['window'][length-i*2-2].deleteLater()
+				del self.xrayWindow['window'][length-i*2-1]
+				del self.xrayWindow['window'][length-i*2-2]
+
+	def getCTWindows(self,slope,intercept):
 		'''Get window values as list of lists. Need scale slope and intercept.'''
 		windows = []
 
-		for i in range(int(len(self.imageWindow['window'])/2)):
-			window = [self.imageWindow['window'][i*2].value()*slope-intercept,self.imageWindow['window'][i*2+1].value()*slope-intercept]
+		for i in range(int(len(self.ctWindow['window'])/2)):
+			window = [self.ctWindow['window'][i*2].value()*slope-intercept,self.ctWindow['window'][i*2+1].value()*slope-intercept]
+			windows.append(window)
+
+		return windows
+
+	def getXrayWindows(self):
+		'''Get window values as list of lists. Need scale slope and intercept.'''
+		windows = []
+
+		for i in range(int(len(self.xrayWindow['window'])/2)):
+			window = [self.xrayWindow['window'][i*2].value(),self.xrayWindow['window'][i*2+1].value()]
 			windows.append(window)
 
 		return windows
@@ -378,6 +443,13 @@ class HUSpinBox(QtWidgets.QSpinBox):
 		self.setRange(-1000,5000)
 		self.setSingleStep(100)
 		self.setValue(-1000)
+
+class XraySpinBox(QtWidgets.QSpinBox):
+	def __init__(self):
+		super().__init__()
+		self.setRange(0,10000)
+		self.setSingleStep(1000)
+		self.setValue(0)
 
 '''
 PLOTTING
