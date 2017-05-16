@@ -147,27 +147,37 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 	def openXray(self,files):
 		'''Open Xray modality files.'''
 		if settings.xrayIsLoaded == False:
+			# Add the x-ray workspace if no x-ray has been opened.
 			self.workEnvironment.addWorkspace('X-RAY')
 		if len(files) != 2:
+			# Force the user to select two files (being orthogonal x-rays).
 			self.toolSelect.alignment['checkXray'].setStyleSheet("color: red")
 			log(self.logFile,"Please select 2 Xray images; these should be orthogonal images.","error")
 			return
 
-		log(self.logFile,"Loading Xray images...","event")
-
 		self.xray.ds = files
 		self.xray.fp = os.path.dirname(self.xray.ds[0])
 
-		self.xray.arrayNormalPixelSize = np.array([settings.hamamatsuPixelSize,settings.hamamatsuPixelSize])
-		self.xray.arrayOrthogonalPixelSize = np.array([settings.hamamatsuPixelSize,settings.hamamatsuPixelSize])
+		# self.xray.arrayNormalPixelSize = np.array([settings.hamamatsuPixelSize,settings.hamamatsuPixelSize])
+		# self.xray.arrayOrthogonalPixelSize = np.array([settings.hamamatsuPixelSize,settings.hamamatsuPixelSize])
 		self.xray.patientOrientation = settings.chairOrientation
 		self.xray.alignmentIsoc = settings.hamamatsuAlignmentIsoc
+		self.xray.imagePixelSize = np.array([settings.hamamatsuPixelSize,settings.hamamatsuPixelSize])
+		self.xray.imageSize = settings.hamamatsuImageSize
+
+		# Set extent for plotting. This is essentially the IMBL coordinate system according to the detector.
+		left = -self.xray.alignmentIsoc[0]*self.xray.imagePixelSize[0]
+		right = (self.xray.imageSize[0]-self.xray.alignmentIsoc[0])*self.xray.imagePixelSize[0]
+		bottom = -(self.xray.imageSize[1]-self.xray.alignmentIsoc[1])*self.xray.imagePixelSize[0]
+		top = self.xray.alignmentIsoc[1]*self.xray.imagePixelSize[0]
+		self.xray.arrayNormalExtent = np.array([left,right,bottom,top])
+		self.xray.arrayOrthogonalExtent = np.array([left,right,bottom,top])
 
 		if settings.xrayIsLoaded == False:
 			self.property.addSection('X-Ray')
-			self.property.addVariable('X-Ray',['Pixel Size','x','y'],self.xray.arrayNormalPixelSize.tolist())
+			self.property.addVariable('X-Ray',['Pixel Size','x','y'],self.xray.imagePixelSize.tolist())
 			self.property.addVariable('X-Ray','Patient Orientation',self.xray.patientOrientation)
-			self.property.addVariable('X-Ray',['Alignment Isocenter','x','y'],self.xray.alignmentIsoc[-2:].tolist())
+			self.property.addVariable('X-Ray',['Alignment Isocenter (pixels)','x','y'],self.xray.alignmentIsoc[-2:].tolist())
 
 			self.property.itemChanged.connect(self.updateSettings)
 
@@ -177,8 +187,8 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 
 			self.xray.plotEnvironment = plotEnvironment(self.workEnvironment.stackPage['X-RAY'])
 			self.xray.plotEnvironment.settings('maxMarkers',settings.markerQuantity)
-			self.xray.plotEnvironment.plot0.imageLoad(self.xray.arrayNormal,self.xray.arrayNormalPixelSize,self.xray.patientOrientation,imageIndex=1)
-			self.xray.plotEnvironment.plot90.imageLoad(self.xray.arrayOrthogonal,self.xray.arrayOrthogonalPixelSize,self.xray.patientOrientation,imageIndex=2)
+			self.xray.plotEnvironment.plot0.imageLoad(self.xray.arrayNormal,extent=self.xray.arrayNormalExtent,imageOrientation=self.xray.patientOrientation,imageIndex=0)
+			self.xray.plotEnvironment.plot90.imageLoad(self.xray.arrayOrthogonal,extent=self.xray.arrayOrthogonalExtent,imageOrientation=self.xray.patientOrientation,imageIndex=1)
 
 			item = self.toolSelect.toolList.findItems('ImageProperties',QtCore.Qt.MatchExactly)[0]
 			self.xray.plotEnvironment.nav0.actionImageSettings.triggered.connect(partial(self.toolSelect.showToolExternalTrigger,item))
@@ -190,8 +200,8 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 			imageFiles = fileHandler.importImage(self.xray.fp,'xray','npy')
 			self.xray.arrayNormal = imageFiles[0]
 			self.xray.arrayOrthogonal = imageFiles[1]
-			self.xray.plotEnvironment.plot0.imageLoad(self.xray.arrayNormal,self.xray.arrayNormalPixelSize,self.xray.patientOrientation,imageIndex=1)
-			self.xray.plotEnvironment.plot90.imageLoad(self.xray.arrayOrthogonal,self.xray.arrayOrthogonalPixelSize,self.xray.patientOrientation,imageIndex=2)
+			self.xray.plotEnvironment.plot0.imageLoad(self.xray.arrayNormal,extent=self.xray.arrayNormalExtent,imageOrientation=self.xray.patientOrientation,imageIndex=0)
+			self.xray.plotEnvironment.plot90.imageLoad(self.xray.arrayOrthogonal,extent=self.xray.arrayOrthogonalExtent,imageOrientation=self.xray.patientOrientation,imageIndex=1)
 
 		self.workEnvironment.button['X-RAY'].clicked.emit()
 
@@ -220,6 +230,10 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		self.ct.userOrigin = np.array(dicomData.userOrigin)
 		self.ct.rescaleIntercept = dicomData.rescaleIntercept
 		self.ct.rescaleSlope = dicomData.rescaleSlope
+		# self.ct.imageOrientationPatient = dicomData.imageOrientationPatient
+		# self.ct.imagePositionPatient = dicomData.imagePositionPatient
+		self.ct.arrayNormalExtent = dicomData.normalExtent
+		self.ct.arrayOrthogonalExtent = dicomData.orthogonalExtent
 
 		self.property.addSection('CT')
 		self.property.addVariable('CT',['Pixel Size','x','y'],self.ct.pixelSize[:2].tolist())
@@ -234,8 +248,9 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 
 		self.ct.plotEnvironment = plotEnvironment(self.workEnvironment.stackPage['CT'])
 		self.ct.plotEnvironment.settings('maxMarkers',settings.markerQuantity)
-		self.ct.plotEnvironment.plot0.imageLoad(self.ct.arrayNormal,self.ct.arrayNormalPixelSize,self.ct.patientOrientation,imageIndex=1)
-		self.ct.plotEnvironment.plot90.imageLoad(self.ct.arrayOrthogonal,self.ct.arrayOrthogonalPixelSize,self.ct.patientOrientation,imageIndex=2)
+		# self.ct.plotEnvironment.plot0.imageLoad(self.ct.arrayNormal,self.ct.arrayNormalPixelSize,self.ct.patientOrientation,imageIndex=1)
+		self.ct.plotEnvironment.plot0.imageLoad(self.ct.arrayNormal,extent=self.ct.arrayNormalExtent,imageOrientation=self.ct.patientOrientation,imageIndex=0)
+		self.ct.plotEnvironment.plot90.imageLoad(self.ct.arrayOrthogonal,extent=self.ct.arrayOrthogonalExtent,imageOrientation=self.ct.patientOrientation,imageIndex=1)
 
 		self.toolSelect.alignment['checkDicom'].setStyleSheet("color: green")
 		self.workEnvironment.button['CT'].clicked.emit()
@@ -385,7 +400,8 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 
 		# Do some check to see if Ly and Ry are the same/within a given tolerance?
 		# Left is ct
-		# Right is xr 
+		# Right is xr
+
 		left = np.zeros((self.toolSelect.alignment['maxMarkers'].value(),3))
 		right = np.zeros((self.toolSelect.alignment['maxMarkers'].value(),3))
 		if treatmentIndex == -1:
@@ -440,39 +456,39 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 					left[:,2] = self.rtp.beam[treatmentIndex].plotEnvironment.plot90.pointsX
 					right[:,0] = self.xray.plotEnvironment.plot0.pointsX
 					right[:,1] = self.xray.plotEnvironment.plot0.pointsY
-					right[:,2] = self.xray.plotEnvironment.plot90.pointsX	
+					right[:,2] = self.xray.plotEnvironment.plot90.pointsX
 
 				success = True
 
-				# Added shit.
-				from math import sin, cos
+				# # Added shit.
+				# from math import sin, cos
 				
-				i = treatmentIndex
-				if self.rtp.beam[i].patientSupportAngle == 0:
-					rotation = np.deg2rad(np.array((-self.rtp.beam[i].pitchAngle,-self.rtp.beam[i].gantryAngle,-self.rtp.beam[i].rollAngle))).astype(np.float32)
+				# i = treatmentIndex
+				# if self.rtp.beam[i].patientSupportAngle == 0:
+				# 	rotation = np.deg2rad(np.array((-self.rtp.beam[i].pitchAngle,-self.rtp.beam[i].gantryAngle,-self.rtp.beam[i].rollAngle))).astype(np.float32)
 				
-				elif self.rtp.beam[i].patientSupportAngle == 270:
-					rotation = np.deg2rad(np.array((-self.rtp.beam[i].gantryAngle,-self.rtp.beam[i].pitchAngle,-self.rtp.beam[i].rollAngle))).astype(np.float32)
+				# elif self.rtp.beam[i].patientSupportAngle == 270:
+				# 	rotation = np.deg2rad(np.array((-self.rtp.beam[i].gantryAngle,-self.rtp.beam[i].pitchAngle,-self.rtp.beam[i].rollAngle))).astype(np.float32)
 
-				else:
-					rotation = np.deg2rad(np.array((-self.rtp.beam[i].pitchAngle,-self.rtp.beam[i].gantryAngle,-self.rtp.beam[i].rollAngle))).astype(np.float32)
+				# else:
+				# 	rotation = np.deg2rad(np.array((-self.rtp.beam[i].pitchAngle,-self.rtp.beam[i].gantryAngle,-self.rtp.beam[i].rollAngle))).astype(np.float32)
 
-				# Rotate left points before they get sent to solution.
+				# # Rotate left points before they get sent to solution.
 
-				# Get 3D rotation vector, R.
-				R = np.array([[cos(rotation[1])*cos(rotation[2]), 
-					cos(rotation[1])*sin(rotation[2]), 
-					-sin(rotation[1])],
-					[sin(rotation[0])*sin(rotation[1])*cos(rotation[2])-cos(rotation[0])*sin(rotation[2]), 
-					sin(rotation[0])*sin(rotation[1])*sin(rotation[2])+cos(rotation[0])*cos(rotation[2]), 
-					sin(rotation[0])*cos(rotation[1])],
-					[cos(rotation[0])*sin(rotation[1])*cos(rotation[2])+sin(rotation[0])*sin(rotation[2]), 
-					cos(rotation[0])*sin(rotation[1])*sin(rotation[2])-sin(rotation[0])*cos(rotation[2]), 
-					cos(rotation[0])*cos(rotation[1])]])
+				# # Get 3D rotation vector, R.
+				# R = np.array([[cos(rotation[1])*cos(rotation[2]), 
+				# 	cos(rotation[1])*sin(rotation[2]), 
+				# 	-sin(rotation[1])],
+				# 	[sin(rotation[0])*sin(rotation[1])*cos(rotation[2])-cos(rotation[0])*sin(rotation[2]), 
+				# 	sin(rotation[0])*sin(rotation[1])*sin(rotation[2])+cos(rotation[0])*cos(rotation[2]), 
+				# 	sin(rotation[0])*cos(rotation[1])],
+				# 	[cos(rotation[0])*sin(rotation[1])*cos(rotation[2])+sin(rotation[0])*sin(rotation[2]), 
+				# 	cos(rotation[0])*sin(rotation[1])*sin(rotation[2])-sin(rotation[0])*cos(rotation[2]), 
+				# 	cos(rotation[0])*cos(rotation[1])]])
 
-				for j in range(left.shape[1]):
-					left[:,j] = np.dot(R, left[:,j])
-					print('Rtoated points: ',left[:,j])
+				# for j in range(left.shape[1]):
+				# 	left[:,j] = np.dot(R, left[:,j])
+				# 	print('Rtoated points: ',left[:,j])
 
 		# Calcualte alignment requirement
 		if success:

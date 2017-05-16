@@ -121,3 +121,94 @@
 30509  2017-04-20_21:18:41 python3 mrt_app.py
 30509  2017-04-20_21:18:41 python3 mrt_app.py
 30495  2017-04-21_12:06:23 git status
+30496  2017-04-21_12:06:26 git add .
+30496  2017-04-21_12:10:21 git branch
+30497  2017-04-21_12:11:21 git commit -m "Work in progress - mid beam time."
+30498  2017-04-21_12:11:39 git mrtapp push imbl
+30497  2017-04-21_12:11:47 git push mrtapp imbl
+30497  2017-04-21_12:12:09 git status
+30552  2017-04-21_12:13:23 cd /usr/local/lib/python3.5/dist-packages/syncmrt/
+30497  2017-04-21_12:12:09 git status
+30498  2017-04-21_16:31:08 git pull mrtapp imbl
+30498  2017-04-21_16:32:26 python3 mrt_app.py
+30498  2017-04-21_16:32:26 python3 mrt_app.py
+30504  2017-04-20_21:21:58 python3
+30504  2017-04-21_16:46:24 reset
+30504  2017-04-21_16:46:24 reset
+30504  2017-04-21_16:46:24 reset
+30504  2017-04-21_16:46:24 reset
+30504  2017-04-21_16:46:24 reset
+30504  2017-04-21_16:46:24 reset
+30504  2017-04-21_16:46:24 reset
+30504  2017-04-21_16:46:24 reset
+30504  2017-04-21_16:46:24 reset
+30504  2017-04-21_16:46:24 reset
+30504  2017-04-21_16:46:24 reset
+30498  2017-04-21_16:32:26 python3 mrt_app.py
+30498  2017-04-21_16:32:26 python3 mrt_app.py
+29899  2017-05-16_11:23:28 git status
+29900  2017-05-16_11:23:42 git diff settings.py
+29901  2017-05-16_11:24:56 git add settings.py
+29901  2017-05-16_11:24:58 git status
+29902  2017-05-16_11:25:08 git commit -m "Update hamamatsu isoc."
+29902  2017-05-16_11:25:13 git push mrtapp
+29900  2017-05-16_11:26:28 git branch
+29901  2017-05-16_11:27:30 git push mrtapp imbl --force
+29901  2017-05-16_11:28:54 git pull mrtapp imbl
+29901  2017-05-16_11:42:29 git status
+29901  2017-05-16_11:42:36 git pull mrtapp imbl
+30599  2017-05-16_11:46:44 cd /usr/local/lib/python3.5/dist-packages/syncmrt/
+30606  2017-05-16_11:47:27 python mrt_app.py 
+29937  2017-05-16_11:47:42 ls
+29935  2017-05-16_11:47:49 python mrt_app.py
+29935  2017-05-16_11:47:49 python mrt_app.py
+29935  2017-05-16_11:47:49 python mrt_app.py
+29933  2017-05-16_11:49:15 which python
+29932  2017-05-16_11:50:19 python -v
+29913  2017-05-16_11:50:35 python3 mrt_app.py
+29914  2017-05-16_11:50:45 pip3 install pyepics
+29914  2017-05-16_11:50:49 python3 mrt_app.py
+29914  2017-05-16_11:50:49 python3 mrt_app.py
+29914  2017-05-16_11:50:49 python3 mrt_app.py
+29914  2017-05-16_11:50:49 python3 mrt_app.py
+29896  2017-05-16_14:02:53 reset
+29896  2017-05-16_14:02:53 reset
+29896  2017-05-16_14:24:22 python3 mrt_app.py
+30614  2017-05-16_15:55:18 python
+30593  2017-05-16_15:55:21 python3
+29896  2017-05-16_14:24:22 python3 mrt_app.py
+29896  2017-05-16_14:24:22 python3 mrt_app.py
+29896  2017-05-16_14:24:22 python3 mrt_app.py
+29896  2017-05-16_14:24:22 python3 mrt_app.py
+29896  2017-05-16_14:24:22 python3 mrt_app.py
+29896  2017-05-16_14:24:22 python3 mrt_app.py
+29896  2017-05-16_14:24:22 python3 mrt_app.py
+29896  2017-05-16_14:24:22 python3 mrt_app.py
+29896  2017-05-16_14:24:22 python3 mrt_app.py
+29896  2017-05-16_14:24:22 python3 mrt_app.py
+29896  2017-05-16_14:24:22 python3 mrt_app.py
+29896  2017-05-16_14:24:22 python3 mrt_app.py
+29896  2017-05-16_14:24:22 python3 mrt_app.py
+29896  2017-05-16_14:24:22 python3 mrt_app.py
+29896  2017-05-16_14:24:22 python3 mrt_app.py
+29874  2017-05-16_17:51:58 git status
+29875  2017-05-16_17:52:28 git branch dev
+29872  2017-05-16_17:52:32 git branch
+29873  2017-05-16_17:52:37 git checkout dev
+29874  2017-05-16_17:53:27 git mergetool
+29874  2017-05-16_17:53:27 git mergetool
+29874  2017-05-16_17:57:31 git diff settings.py
+29874  2017-05-16_17:59:02 git branch
+29874  2017-05-16_17:59:06 git checkout dev
+29874  2017-05-16_17:59:15 git add settings.py
+29875  2017-05-16_17:59:33 git commit -m "Fixing conflicts."
+29875  2017-05-16_17:59:40 git status
+29875  2017-05-16_17:59:52 git checkout dev
+29876  2017-05-16_18:00:17 git commit mrt_app.py
+29877  2017-05-16_18:01:45 git commit mrt_app.py -m "Dev stuff."
+29877  2017-05-16_18:01:56 git status
+29877  2017-05-16_18:02:03 git add mrt_app.py
+29877  2017-05-16_18:02:46 git status
+29878  2017-05-16_18:02:54 git commit .
+29878  2017-05-16_18:03:09 git branch
+30629  2017-05-16_18:04:05 git status
