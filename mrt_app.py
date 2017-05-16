@@ -36,7 +36,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		self.toolSelect.addTool('Alignment')
 		self.toolSelect.alignment['maxMarkers'].setValue(3)
 		self.toolSelect.alignment['maxMarkers'].valueChanged.connect(partial(self.updateSettings,self.toolSelect.alignment['maxMarkers']))
-		self.toolSelect.alignment['align'].clicked.connect(partial(self.alignPatient,treatmentIndex=-1))
+		self.toolSelect.alignment['align'].clicked.connect(partial(self.patientCalculateAlignment,treatmentIndex=-1))
 		self.toolSelect.alignment['optimise'].toggled.connect(partial(self.toggleOptimise))
 		self.toolSelect.addTool('Treatment')
 		self.toolSelect.addTool('Setup')
@@ -64,7 +64,8 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		self.property.addVariable('Alignment',['Rotation','x','y','z'],[0,0,0])
 		self.property.addVariable('Alignment',['Translation','x','y','z'],[0,0,0])
 		self.property.addVariable('Alignment','Scale',0)
-		
+		# Get zero alignment solution result.
+		self.alignmentSolution = imageGuidance.affineTransform(0,0,0,0,0)
 
 		# Connect buttons and widgets.
 		self.menuFileOpenCT.triggered.connect(partial(self.openFiles,'ct'))
@@ -277,7 +278,8 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 			values = [self.rtp.beam[i].gantryAngle,self.rtp.beam[i].pitchAngle,self.rtp.beam[i].rollAngle]
 			self.property.addVariable('RTPLAN DICOM',labels,values)
 
-			self.toolSelect.treatment['beam'][i]['align'].clicked.connect(partial(self.alignPatient,treatmentIndex=i))
+			self.toolSelect.treatment['beam'][i]['calculate'].clicked.connect(partial(self.patientCalculateAlignment,treatmentIndex=i))
+			self.toolSelect.treatment['beam'][i]['align'].clicked.connect(self.patientApplyAlignment)
 
 		self.workEnvironment.button['RTPLAN'].clicked.emit()
 
@@ -377,7 +379,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 				pass
 
 
-	def alignPatient(self,treatmentIndex=-1):
+	def patientCalculateAlignment(self,treatmentIndex=-1):
 		'''Send coordinates to algorithm and align.'''
 		success = False
 
@@ -490,6 +492,14 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		# print(self.alignmentSolution.gamma)
 		# print(self.alignmentSolution.translation)
 		# print(self.alignmentSolution.scale)
+
+	def patientApplyAlignment(self):
+		'''Connect to motors and apply alignment'''
+		patientPosition = imageGuidance.patientPositioningSystems.DynMRT()
+		patientPosition.write('tx',self.alignmentSolution.translation[0])
+		patientPosition.write('ty',self.alignmentSolution.translation[1])
+		patientPosition.write('tz',self.alignmentSolution.translation[2])
+		patientPosition.write('ry',self.alignmentSolution.phi)
 
 	# def eventFilter(self, source, event):
 	# 	# Update ct and xr points in the table as the widget is clicked.
