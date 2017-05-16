@@ -36,7 +36,8 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		self.toolSelect.addTool('Alignment')
 		self.toolSelect.alignment['maxMarkers'].setValue(3)
 		self.toolSelect.alignment['maxMarkers'].valueChanged.connect(partial(self.updateSettings,self.toolSelect.alignment['maxMarkers']))
-		self.toolSelect.alignment['align'].clicked.connect(partial(self.alignPatient,treatmentIndex=-1))
+		self.toolSelect.alignment['align'].clicked.connect(partial(self.patientCalculateAlignment,treatmentIndex=-1))
+		self.toolSelect.alignment['optimise'].toggled.connect(partial(self.toggleOptimise))
 		self.toolSelect.addTool('Treatment')
 		self.toolSelect.addTool('Setup')
 		self.toolSelect.setup['alignIsocX'].setText(str(settings.hamamatsuAlignmentIsoc[1]))
@@ -63,7 +64,8 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		self.property.addVariable('Alignment',['Rotation','x','y','z'],[0,0,0])
 		self.property.addVariable('Alignment',['Translation','x','y','z'],[0,0,0])
 		self.property.addVariable('Alignment','Scale',0)
-		
+		# Get zero alignment solution result.
+		self.alignmentSolution = imageGuidance.affineTransform(0,0,0,0,0)
 
 		# Connect buttons and widgets.
 		self.menuFileOpenCT.triggered.connect(partial(self.openFiles,'ct'))
@@ -276,7 +278,8 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 			values = [self.rtp.beam[i].gantryAngle,self.rtp.beam[i].pitchAngle,self.rtp.beam[i].rollAngle]
 			self.property.addVariable('RTPLAN DICOM',labels,values)
 
-			self.toolSelect.treatment['beam'][i]['align'].clicked.connect(partial(self.alignPatient,treatmentIndex=i))
+			self.toolSelect.treatment['beam'][i]['calculate'].clicked.connect(partial(self.patientCalculateAlignment,treatmentIndex=i))
+			self.toolSelect.treatment['beam'][i]['align'].clicked.connect(self.patientApplyAlignment)
 
 		self.workEnvironment.button['RTPLAN'].clicked.emit()
 
@@ -348,63 +351,96 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 			except:
 				pass
 
+	def toggleOptimise(self,state):
+		'''State(bool) tells you whether you should clear the optimisation plots or not.'''
+		print('Executed toggleOptimise with state,',state)
+		if state == True:
+			pass
+		elif state == False:
+			print('Attempting to remove optimisation parameters.')
+			try:
+				'''Remove X-ray optimised points.'''
+				self.xray.plotEnvironment.plot0.markerRemove(marker=-2)
+				self.xray.plotEnvironment.plot90.markerRemove(marker=-2)
+			except:
+				pass
+			try:
+				'''Remove X-ray optimised points.'''
+				self.ct.plotEnvironment.plot0.markerRemove(marker=-2)
+				self.ct.plotEnvironment.plot90.markerRemove(marker=-2)
+			except:
+				pass
+			try:
+				'''Remove X-ray optimised points.'''
+				for i in range(len(self.rtp.beam)):
+					self.rtp.beam[i].plotEnvironment.plot0.markerRemove(marker=-2)
+					self.rtp.beam[i].plotEnvironment.plot90.markerRemove(marker=-2)
+			except:
+				pass
 
-	def alignPatient(self,treatmentIndex=-1):
+
+	def patientCalculateAlignment(self,treatmentIndex=-1):
 		'''Send coordinates to algorithm and align.'''
 		success = False
 
 		# Do some check to see if Ly and Ry are the same/within a given tolerance?
 		# Left is ct
 		# Right is xr 
-		# TESTING
+		left = np.zeros((self.toolSelect.alignment['maxMarkers'].value(),3))
+		right = np.zeros((self.toolSelect.alignment['maxMarkers'].value(),3))
 		if treatmentIndex == -1:
+			'''Align to CT'''
 			if len(self.xray.plotEnvironment.plot0.pointsX)>0:
-				# Optimise Points
 				if self.toolSelect.alignment['optimise'].isChecked():
+					'''Optimise points.'''
 					self.xray.plotEnvironment.plot0.markerOptimise(self.toolSelect.alignment['markerSize'].value())
 					self.xray.plotEnvironment.plot90.markerOptimise(self.toolSelect.alignment['markerSize'].value())
 					self.ct.plotEnvironment.plot0.markerOptimise(self.toolSelect.alignment['markerSize'].value())
 					self.ct.plotEnvironment.plot90.markerOptimise(self.toolSelect.alignment['markerSize'].value())
 					log(self.logFile,"Successfully optimised points.","event")
-
-				# Collect points.
-				left = np.zeros((self.toolSelect.alignment['maxMarkers'].value(),3))
-				right = np.zeros((self.toolSelect.alignment['maxMarkers'].value(),3))
-				left[:,0] = self.ct.plotEnvironment.plot0.pointsX
-				left[:,1] = self.ct.plotEnvironment.plot0.pointsY
-				left[:,2] = self.ct.plotEnvironment.plot90.pointsX
-				right[:,0] = self.xray.plotEnvironment.plot0.pointsX
-				right[:,1] = self.xray.plotEnvironment.plot0.pointsY
-				right[:,2] = self.xray.plotEnvironment.plot90.pointsX
-				# left[:,0] = self.ct.plotEnvironment.plot0.pointsX
-				# left[:,2] = -self.ct.plotEnvironment.plot0.pointsY
-				# left[:,1] = self.ct.plotEnvironment.plot90.pointsX
-				# right[:,0] = self.xray.plotEnvironment.plot0.pointsX
-				# right[:,1] = self.xray.plotEnvironment.plot0.pointsY
-				# right[:,2] = self.xray.plotEnvironment.plot90.pointsX
+					# Collect points.
+					left[:,0] = self.ct.plotEnvironment.plot0.pointsXoptimised
+					left[:,1] = self.ct.plotEnvironment.plot0.pointsYoptimised
+					left[:,2] = self.ct.plotEnvironment.plot90.pointsXoptimised
+					right[:,0] = self.xray.plotEnvironment.plot0.pointsXoptimised
+					right[:,1] = self.xray.plotEnvironment.plot0.pointsYoptimised
+					right[:,2] = self.xray.plotEnvironment.plot90.pointsXoptimised
+				else:
+					'''Do not optimise anything.'''
+					left[:,0] = self.ct.plotEnvironment.plot0.pointsX
+					left[:,1] = self.ct.plotEnvironment.plot0.pointsY
+					left[:,2] = self.ct.plotEnvironment.plot90.pointsX
+					right[:,0] = self.xray.plotEnvironment.plot0.pointsX
+					right[:,1] = self.xray.plotEnvironment.plot0.pointsY
+					right[:,2] = self.xray.plotEnvironment.plot90.pointsX
 
 				success = True
 
 		if treatmentIndex != -1:
-			# Is a treatment plan.
+			'''Align to RTPLAN[index]'''
 			if len(self.rtp.beam[treatmentIndex].plotEnvironment.plot0.pointsX)>0:
 				# Optimise Points
-				if self.toolSelect.alignment['optimise'].isEnabled():
+				if self.toolSelect.alignment['optimise'].isChecked():
 					self.xray.plotEnvironment.plot0.markerOptimise(self.toolSelect.alignment['markerSize'].value())
 					self.xray.plotEnvironment.plot90.markerOptimise(self.toolSelect.alignment['markerSize'].value())
 					self.rtp.beam[treatmentIndex].plotEnvironment.plot0.markerOptimise(self.toolSelect.alignment['markerSize'].value())
 					self.rtp.beam[treatmentIndex].plotEnvironment.plot90.markerOptimise(self.toolSelect.alignment['markerSize'].value())
 					log(self.logFile,"Successfully optimised points.","event")
-
-				# Collect points.
-				left = np.zeros((self.toolSelect.alignment['maxMarkers'].value(),3))
-				right = np.zeros((self.toolSelect.alignment['maxMarkers'].value(),3))
-				left[:,0] = self.rtp.beam[treatmentIndex].plotEnvironment.plot0.pointsX
-				left[:,1] = self.rtp.beam[treatmentIndex].plotEnvironment.plot0.pointsY
-				left[:,2] = self.rtp.beam[treatmentIndex].plotEnvironment.plot90.pointsX
-				right[:,0] = self.xray.plotEnvironment.plot0.pointsX
-				right[:,1] = self.xray.plotEnvironment.plot0.pointsY
-				right[:,2] = self.xray.plotEnvironment.plot90.pointsX	
+					# Collect points.
+					left[:,0] = self.rtp.beam[treatmentIndex].plotEnvironment.plot0.pointsXoptimised
+					left[:,1] = self.rtp.beam[treatmentIndex].plotEnvironment.plot0.pointsYoptimised
+					left[:,2] = self.rtp.beam[treatmentIndex].plotEnvironment.plot90.pointsXoptimised
+					right[:,0] = self.xray.plotEnvironment.plot0.pointsXoptimised
+					right[:,1] = self.xray.plotEnvironment.plot0.pointsYoptimised
+					right[:,2] = self.xray.plotEnvironment.plot90.pointsXoptimised
+				else:
+					'''Do not optimise anyting.'''
+					left[:,0] = self.rtp.beam[treatmentIndex].plotEnvironment.plot0.pointsX
+					left[:,1] = self.rtp.beam[treatmentIndex].plotEnvironment.plot0.pointsY
+					left[:,2] = self.rtp.beam[treatmentIndex].plotEnvironment.plot90.pointsX
+					right[:,0] = self.xray.plotEnvironment.plot0.pointsX
+					right[:,1] = self.xray.plotEnvironment.plot0.pointsY
+					right[:,2] = self.xray.plotEnvironment.plot90.pointsX	
 
 				success = True
 
@@ -457,6 +493,14 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		# print(self.alignmentSolution.translation)
 		# print(self.alignmentSolution.scale)
 
+	def patientApplyAlignment(self):
+		'''Connect to motors and apply alignment'''
+		patientPosition = imageGuidance.patientPositioningSystems.DynMRT()
+		patientPosition.write('tx',self.alignmentSolution.translation[0])
+		patientPosition.write('ty',self.alignmentSolution.translation[1])
+		patientPosition.write('tz',self.alignmentSolution.translation[2])
+		patientPosition.write('ry',self.alignmentSolution.phi)
+
 	# def eventFilter(self, source, event):
 	# 	# Update ct and xr points in the table as the widget is clicked.
 	# 	if event.type() == QtCore.QEvent.MouseButtonRelease:
@@ -465,58 +509,6 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 	# 		pass
 
 	# 	return QtWidgets.QMainWindow.eventFilter(self, source, event)
-
-	# def solve(self):
-	# 	self.logFile.append('Attempting to solve transformation.')
-	# 	# If fiducial mode then refine marker positions is true.
-	# 	if len(ct.im0.x) == ct.im0.max_markers:
-	# 		if self.sel_fiducial.isChecked() and self.opt_optimise.isChecked():
-	# 			pts = imageGuidance.optimiseFiducials(np.column_stack((ct.im0.x,ct.im0.y)),ct.im0.image.get_array(),ct.PixelSize[[0,2]],ct.MarkersSize)
-	# 			ct.im0.x = pts[:,0].tolist()
-	# 			ct.im0.y = pts[:,1].tolist()
-	# 			pts = imageGuidance.optimiseFiducials(np.column_stack((ct.im90.x,ct.im90.y)),ct.im90.image.get_array(),ct.PixelSize[[1,2]],ct.MarkersSize)
-	# 			ct.im90.x = pts[:,0].tolist()
-	# 			ct.im90.y = pts[:,1].tolist()
-	# 			pts = imageGuidance.optimiseFiducials(np.column_stack((xr.im0.x,xr.im0.y)),xr.im0.image.get_array(),xr.PixelSize[[0,2]],xr.MarkersSize)
-	# 			xr.im0.x = pts[:,0].tolist()
-	# 			xr.im0.y = pts[:,1].tolist()
-	# 			pts = imageGuidance.optimiseFiducials(np.column_stack((xr.im90.x,xr.im90.y)),xr.im90.image.get_array(),xr.PixelSize[[1,2]],xr.MarkersSize)
-	# 			xr.im90.x = pts[:,0].tolist()
-	# 			xr.im90.y = pts[:,1].tolist()
-	# 			# Re-plot markers.
-	# 			ct.im0.markerUpdate()
-	# 			ct.im90.markerUpdate()
-	# 			xr.im0.markerUpdate()
-	# 			xr.im90.markerUpdate()
-	# 			self.logFile.append('Successfully optimised marker points.')
-	# 	else:
-	# 		self.logFile.append('FAILED: Please ensure the same amount of markers is selected in each image.')
-
-
-	# 	# Zero the markers into shape.
-	# 	ct.Markers = np.zeros((self.num_markers.value(),3))
-	# 	xr.Markers = np.zeros((self.num_markers.value(),3))
-	# 	# Take markers directly from scatter plot pts (y,x,z).
-	# 	ct.Markers = np.column_stack((ct.im90.x,ct.im0.x,ct.im0.y))
-	# 	xr.Markers = np.column_stack((xr.im90.x,xr.im0.x,xr.im0.y))
-
-	# 	# Are all the points there?
-	# 	if len(ct.Markers) == len(xr.Markers) == ct.im0.max_markers:
-	# 		# Send L and R points
-	# 		self.solution = imageGuidance.affineTransform(ct.Markers,xr.Markers,ct.ImageDimensions,xr.ImageDimensions,ct.PatientIsoc,ct.UserOrigin,xr.AlignmentIsoc)
-	# 		# Print Results
-	# 		print(self.solution.translation[0])
-	# 		self.tbl_results.setItem(0,1,QtWidgets.QTableWidgetItem(str(self.solution.translation[0])))
-	# 		self.tbl_results.setItem(1,1,QtWidgets.QTableWidgetItem(str(self.solution.translation[1])))
-	# 		self.tbl_results.setItem(2,1,QtWidgets.QTableWidgetItem(str(self.solution.translation[2])))
-	# 		self.tbl_results.setItem(3,1,QtWidgets.QTableWidgetItem(str(self.solution.theta)))
-	# 		self.tbl_results.setItem(4,1,QtWidgets.QTableWidgetItem(str(self.solution.phi)))
-	# 		self.tbl_results.setItem(5,1,QtWidgets.QTableWidgetItem(str(self.solution.gamma)))
-	# 		self.tbl_results.setItem(6,1,QtWidgets.QTableWidgetItem(str(self.solution.scale)))
-	# 		self.logFile.append('Successfully computed transformation with '+str(self.solution.scale)+' accuracy.')
-	# 	else:
-	# 		self.logFile.append('FAILED: Please ensure the same amount of markers is selected in each image.')
-
 
 if __name__ == "__main__":
 	# QApp 

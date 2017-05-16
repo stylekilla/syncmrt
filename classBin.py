@@ -329,13 +329,16 @@ class toolSelector:
 		for i in range(int(self.treatment['quantity'].text())):	
 			self.treatment['beam'][i] = {}
 			label = QtWidgets.QLabel(str('Beam %i'%(i+1)))
-			self.treatment['beam'][i]['interlock'] = QtWidgets.QCheckBox('Interlock')
+			self.treatment['beam'][i]['calculate'] = QtWidgets.QPushButton('Calculate')
 			self.treatment['beam'][i]['align'] = QtWidgets.QPushButton('Align')
+			# self.treatment['beam'][i]['hline'] = HLine()
+			self.treatment['beam'][i]['interlock'] = QtWidgets.QCheckBox('Interlock')
 			self.treatment['beam'][i]['deliver'] = QtWidgets.QPushButton('Deliver')
 			# Layout
 			self.treatment['deliveryGroup'].addRow(label)
-			self.treatment['deliveryGroup'].addRow(self.treatment['beam'][i]['interlock'])
-			self.treatment['deliveryGroup'].addRow(self.treatment['beam'][i]['align'],self.treatment['beam'][i]['deliver'])
+			self.treatment['deliveryGroup'].addRow(self.treatment['beam'][i]['calculate'],self.treatment['beam'][i]['align'])
+			self.treatment['deliveryGroup'].addRow(HLine())
+			self.treatment['deliveryGroup'].addRow(self.treatment['beam'][i]['interlock'],self.treatment['beam'][i]['deliver'])
 			# Defaults
 			self.treatment['beam'][i]['alignmentComplete'] = False
 			self.treatment['beam'][i]['interlock'].setChecked(True)
@@ -438,6 +441,7 @@ class toolListWidget(QtWidgets.QListWidget):
 
 
 class HUSpinBox(QtWidgets.QSpinBox):
+	'''CT HU windowing spinbox'''
 	def __init__(self):
 		super().__init__()
 		self.setRange(-1000,5000)
@@ -445,11 +449,19 @@ class HUSpinBox(QtWidgets.QSpinBox):
 		self.setValue(-1000)
 
 class XraySpinBox(QtWidgets.QSpinBox):
+	'''Xray windowing spin box'''
 	def __init__(self):
 		super().__init__()
 		self.setRange(0,10000)
 		self.setSingleStep(100)
 		self.setValue(0)
+
+class HLine(QtWidgets.QFrame):
+	'''Horizontal line.'''
+	def __init__(self):
+		super().__init__()
+		self.setFrameShape(QtWidgets.QFrame.HLine)
+		self.setFrameShadow(QtWidgets.QFrame.Sunken)
 
 '''
 PLOTTING
