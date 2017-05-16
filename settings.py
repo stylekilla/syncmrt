@@ -8,7 +8,7 @@ class settings():
 		self.chairOrientation = '-ap-hf'
 
 		self.hamamatsuPixelSize = 0.16145
-		self.hamamatsuAlignmentIsoc = np.array([637.5,239.5,637.5])*self.hamamatsuPixelSize
+		self.hamamatsuAlignmentIsoc = np.array([637.5,238.5,637.5])*self.hamamatsuPixelSize
 		# rename to imagingIsoc?
 
 		self.xrayIsLoaded = False
