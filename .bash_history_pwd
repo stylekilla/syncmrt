@@ -1,214 +1,62 @@
-29635  2017-04-07_15:52:48 git init
-29636  2017-04-07_15:54:06 git remote add mrtapp https://github.com/stylekilla/SynchrotronMRT
-29637  2017-04-07_15:54:12 git remote -v
-29638  2017-04-07_15:54:21 git pull mrtapp
-29638  2017-04-07_15:54:44 git status
-29639  2017-04-07_15:55:08 git pull mrtapp master
-29639  2017-04-07_15:55:27 ls
-29639  2017-04-07_15:55:31 git status
-30289  2017-04-07_15:55:48 cd .
-30290  2017-04-07_15:55:57 cd /usr/local/
-29639  2017-04-07_16:01:35 ls
-29640  2017-04-07_16:01:44 subl mrt_app.py
-29632  2017-04-07_16:02:08 python3 mrt_app.py
-29632  2017-04-07_16:02:08 python3 mrt_app.py
-29623  2017-04-07_16:17:59 python3
-29624  2017-04-07_16:21:35 pip3 install cycler
-29624  2017-04-07_16:21:40 python3 mrt_app.py
-29604  2017-04-07_16:22:14 python
-29604  2017-04-07_16:22:31 python3
-29605  2017-04-07_16:25:16 pycuda._driver.RuntimeError: cuInit failed: no CUDA-capable device is detected
-29605  2017-04-07_16:25:16 pycuda._driver.RuntimeError: cuInit failed: no CUDA-capable device is detected
-29606  2017-04-07_16:25:38 lspci | grep -i nvidia
-29607  2017-04-07_16:27:32 nvidia-smi -a
-29608  2017-04-07_16:29:52 nvidia-smi
-29609  2017-04-07_16:31:16 sudo find / -name 'libnvidia-ml*'
-29609  2017-04-07_17:10:10 reset
-29610  2017-04-07_17:10:16 cd /usr/local/cuda-8.0/targets/x86_64-linux/lib/stubs/
-29734  2017-04-10_11:22:28 ls
-29733  2017-04-10_11:22:34 python mrt_app.py
-30383  2017-04-10_12:12:41 python3
-30375  2017-04-10_12:24:49 reset
-30372  2017-04-10_12:25:09 cd ~
-29723  2017-04-10_11:22:45 python3 mrt_app.py
-29723  2017-04-10_11:22:45 python3 mrt_app.py
-30409  2017-04-10_14:11:02 python3 mrt_app.py
-30422  2017-04-10_15:32:41 python3 /mnt/imbl-imaging-data/IMBLstaff/Micah/scripts/170410-12h39m50s.npy 
-29767  2017-04-10_15:32:56 ls
-29417  2017-04-10_15:32:58 cd ..
-30405  2017-04-10_17:11:28 git status
-30406  2017-04-10_17:11:59 git add scripts
-30406  2017-04-10_17:12:01 git status
-30407  2017-04-10_17:12:08 git commit
-30407  2017-04-10_17:12:08 git commit
-30405  2017-04-10_17:14:08 git remote -v
-30406  2017-04-10_17:14:18 git push mrtapp
-30406  2017-04-10_17:15:23 git status
-30407  2017-04-10_17:16:33 cd /usr/local/lib/python3.5/dist-packages/syncmrt/
-30414  2017-04-10_17:22:24 git
-30414  2017-04-10_17:22:27 git status
-30414  2017-04-10_17:22:42 git checkout -b imbl
-30415  2017-04-10_17:22:50 git add mrt_app.py
-30415  2017-04-10_17:22:52 git status
-30415  2017-04-10_17:23:06 git remote -v
-30416  2017-04-10_17:23:13 git push mrtapp imbl
-30416  2017-04-10_17:23:32 git commit
-30416  2017-04-10_17:24:07 git push mrtapp imbl
-30487  2017-04-18_11:13:55 git status
-30487  2017-04-18_11:14:06 git pull mrtapp master
-30508  2017-04-18_11:15:02 cd /mnt/imbl-imaging-data/mrt/xray/cache/
-30507  2017-04-18_11:15:17 cd scripts/
-29492  2017-04-18_14:08:45 cd ..
-30488  2017-04-18_14:12:35 python3 mrt_app.py 
-30488  2017-04-18_14:12:35 python3 mrt_app.py 
-30476  2017-04-18_15:46:11 python3 mrt_app.py
-30476  2017-04-18_15:46:11 python3 mrt_app.py
-30476  2017-04-18_15:46:11 python3 mrt_app.py
-30476  2017-04-18_15:46:11 python3 mrt_app.py
-30476  2017-04-18_15:46:11 python3 mrt_app.py
-30476  2017-04-18_15:46:11 python3 mrt_app.py
-30476  2017-04-18_15:46:11 python3 mrt_app.py
-30476  2017-04-18_15:46:11 python3 mrt_app.py
-30174  2017-04-18_16:46:30 python3 mrt_app.py 
-30174  2017-04-18_16:46:30 python3 mrt_app.py 
-30174  2017-04-18_16:46:30 python3 mrt_app.py 
-30174  2017-04-18_16:46:30 python3 mrt_app.py 
-30174  2017-04-18_16:46:30 python3 mrt_app.py 
-30174  2017-04-18_16:46:30 python3 mrt_app.py 
-30533  2017-04-18_16:46:30 python3 mrt_app.py 
-30533  2017-04-18_16:46:30 python3 mrt_app.py 
-30533  2017-04-18_16:46:30 python3 mrt_app.py 
-30533  2017-04-18_16:46:30 python3 mrt_app.py 
-30533  2017-04-18_16:46:30 python3 mrt_app.py 
-30533  2017-04-18_16:46:30 python3 mrt_app.py 
-30533  2017-04-18_16:46:30 python3 mrt_app.py 
-30533  2017-04-18_16:46:30 python3 mrt_app.py 
-30533  2017-04-18_16:46:30 python3 mrt_app.py 
-30533  2017-04-18_16:46:30 python3 mrt_app.py 
-30533  2017-04-18_16:46:30 python3 mrt_app.py 
-30522  2017-04-19_14:36:42 reset
-30509  2017-04-19_14:36:46 python3 mrt_app.py
-30509  2017-04-19_14:36:46 python3 mrt_app.py
-30509  2017-04-19_14:36:46 python3 mrt_app.py
-30509  2017-04-19_15:20:10 reset
-30509  2017-04-19_15:20:14 python3 mrt_app.py
-30509  2017-04-19_15:20:14 python3 mrt_app.py
-30509  2017-04-19_15:20:14 python3 mrt_app.py
-30509  2017-04-19_15:20:14 python3 mrt_app.py
-30509  2017-04-19_15:20:14 python3 mrt_app.py
-30509  2017-04-19_15:20:14 python3 mrt_app.py
-30509  2017-04-19_15:20:14 python3 mrt_app.py
-30509  2017-04-20_09:41:07 reset
-30509  2017-04-20_09:41:10 python3 mrt_app.py
-30509  2017-04-20_09:41:10 python3 mrt_app.py
-30509  2017-04-20_09:41:10 python3 mrt_app.py
-30509  2017-04-20_09:41:10 python3 mrt_app.py
-30509  2017-04-20_09:41:10 python3 mrt_app.py
-30509  2017-04-20_09:41:10 python3 mrt_app.py
-30509  2017-04-20_09:41:10 python3 mrt_app.py
-30509  2017-04-20_13:12:11 reset
-30509  2017-04-20_13:12:19 python3 mrt_app.py
-30509  2017-04-20_13:12:19 python3 mrt_app.py
-30509  2017-04-20_13:12:19 python3 mrt_app.py
-30509  2017-04-20_13:12:19 python3 mrt_app.py
-30509  2017-04-20_13:12:19 python3 mrt_app.py
-30509  2017-04-20_13:12:19 python3 mrt_app.py
-30509  2017-04-20_21:18:38 reset
-30509  2017-04-20_21:18:41 python3 mrt_app.py
-30515  2017-04-18_16:57:39 python3
-30504  2017-04-20_21:21:55 reset
-30509  2017-04-20_21:18:41 python3 mrt_app.py
-30509  2017-04-20_21:18:41 python3 mrt_app.py
-30509  2017-04-20_21:18:41 python3 mrt_app.py
-30495  2017-04-21_12:06:23 git status
-30496  2017-04-21_12:06:26 git add .
-30496  2017-04-21_12:10:21 git branch
-30497  2017-04-21_12:11:21 git commit -m "Work in progress - mid beam time."
-30498  2017-04-21_12:11:39 git mrtapp push imbl
-30497  2017-04-21_12:11:47 git push mrtapp imbl
-30497  2017-04-21_12:12:09 git status
-30552  2017-04-21_12:13:23 cd /usr/local/lib/python3.5/dist-packages/syncmrt/
-30497  2017-04-21_12:12:09 git status
-30498  2017-04-21_16:31:08 git pull mrtapp imbl
-30498  2017-04-21_16:32:26 python3 mrt_app.py
-30498  2017-04-21_16:32:26 python3 mrt_app.py
-30504  2017-04-20_21:21:58 python3
-30504  2017-04-21_16:46:24 reset
-30504  2017-04-21_16:46:24 reset
-30504  2017-04-21_16:46:24 reset
-30504  2017-04-21_16:46:24 reset
-30504  2017-04-21_16:46:24 reset
-30504  2017-04-21_16:46:24 reset
-30504  2017-04-21_16:46:24 reset
-30504  2017-04-21_16:46:24 reset
-30504  2017-04-21_16:46:24 reset
-30504  2017-04-21_16:46:24 reset
-30504  2017-04-21_16:46:24 reset
-30498  2017-04-21_16:32:26 python3 mrt_app.py
-30498  2017-04-21_16:32:26 python3 mrt_app.py
-29899  2017-05-16_11:23:28 git status
-29900  2017-05-16_11:23:42 git diff settings.py
-29901  2017-05-16_11:24:56 git add settings.py
-29901  2017-05-16_11:24:58 git status
-29902  2017-05-16_11:25:08 git commit -m "Update hamamatsu isoc."
-29902  2017-05-16_11:25:13 git push mrtapp
-29900  2017-05-16_11:26:28 git branch
-29901  2017-05-16_11:27:30 git push mrtapp imbl --force
-29901  2017-05-16_11:28:54 git pull mrtapp imbl
-29901  2017-05-16_11:42:29 git status
-29901  2017-05-16_11:42:36 git pull mrtapp imbl
-30599  2017-05-16_11:46:44 cd /usr/local/lib/python3.5/dist-packages/syncmrt/
-30606  2017-05-16_11:47:27 python mrt_app.py 
-29937  2017-05-16_11:47:42 ls
-29935  2017-05-16_11:47:49 python mrt_app.py
-29935  2017-05-16_11:47:49 python mrt_app.py
-29935  2017-05-16_11:47:49 python mrt_app.py
-29933  2017-05-16_11:49:15 which python
-29932  2017-05-16_11:50:19 python -v
-29913  2017-05-16_11:50:35 python3 mrt_app.py
-29914  2017-05-16_11:50:45 pip3 install pyepics
-29914  2017-05-16_11:50:49 python3 mrt_app.py
-29914  2017-05-16_11:50:49 python3 mrt_app.py
-29914  2017-05-16_11:50:49 python3 mrt_app.py
-29914  2017-05-16_11:50:49 python3 mrt_app.py
-29896  2017-05-16_14:02:53 reset
-29896  2017-05-16_14:02:53 reset
-29896  2017-05-16_14:24:22 python3 mrt_app.py
-30614  2017-05-16_15:55:18 python
-30593  2017-05-16_15:55:21 python3
-29896  2017-05-16_14:24:22 python3 mrt_app.py
-29896  2017-05-16_14:24:22 python3 mrt_app.py
-29896  2017-05-16_14:24:22 python3 mrt_app.py
-29896  2017-05-16_14:24:22 python3 mrt_app.py
-29896  2017-05-16_14:24:22 python3 mrt_app.py
-29896  2017-05-16_14:24:22 python3 mrt_app.py
-29896  2017-05-16_14:24:22 python3 mrt_app.py
-29896  2017-05-16_14:24:22 python3 mrt_app.py
-29896  2017-05-16_14:24:22 python3 mrt_app.py
-29896  2017-05-16_14:24:22 python3 mrt_app.py
-29896  2017-05-16_14:24:22 python3 mrt_app.py
-29896  2017-05-16_14:24:22 python3 mrt_app.py
-29896  2017-05-16_14:24:22 python3 mrt_app.py
-29896  2017-05-16_14:24:22 python3 mrt_app.py
-29896  2017-05-16_14:24:22 python3 mrt_app.py
-29874  2017-05-16_17:51:58 git status
-29875  2017-05-16_17:52:28 git branch dev
-29872  2017-05-16_17:52:32 git branch
-29873  2017-05-16_17:52:37 git checkout dev
-29874  2017-05-16_17:53:27 git mergetool
-29874  2017-05-16_17:53:27 git mergetool
-29874  2017-05-16_17:57:31 git diff settings.py
-29874  2017-05-16_17:59:02 git branch
-29874  2017-05-16_17:59:06 git checkout dev
-29874  2017-05-16_17:59:15 git add settings.py
-29875  2017-05-16_17:59:33 git commit -m "Fixing conflicts."
-29875  2017-05-16_17:59:40 git status
-29875  2017-05-16_17:59:52 git checkout dev
-29876  2017-05-16_18:00:17 git commit mrt_app.py
-29877  2017-05-16_18:01:45 git commit mrt_app.py -m "Dev stuff."
-29877  2017-05-16_18:01:56 git status
-29877  2017-05-16_18:02:03 git add mrt_app.py
-29877  2017-05-16_18:02:46 git status
-29878  2017-05-16_18:02:54 git commit .
-29878  2017-05-16_18:03:09 git branch
-30629  2017-05-16_18:04:05 git status
+30693  2017-05-17_10:19:36 python3 mrt_app.py 
+30693  2017-05-17_10:19:36 python3 mrt_app.py 
+30693  2017-05-17_10:19:36 python3 mrt_app.py 
+30693  2017-05-17_10:19:36 python3 mrt_app.py 
+30693  2017-05-17_10:19:36 python3 mrt_app.py 
+30693  2017-05-17_10:19:36 python3 mrt_app.py 
+30693  2017-05-17_10:19:36 python3 mrt_app.py 
+30693  2017-05-17_10:19:36 python3 mrt_app.py 
+30693  2017-05-17_10:19:36 python3 mrt_app.py 
+30693  2017-05-17_10:19:36 python3 mrt_app.py 
+30693  2017-05-17_10:19:36 python3 mrt_app.py 
+30693  2017-05-17_10:19:36 python3 mrt_app.py 
+30673  2017-05-17_14:47:10 reset
+30673  2017-05-17_14:47:10 reset
+30673  2017-05-17_14:47:10 reset
+30673  2017-05-17_14:47:10 reset
+30673  2017-05-17_14:47:10 reset
+30673  2017-05-17_14:47:13 python3 mrt_app.py 
+30673  2017-05-17_14:47:13 python3 mrt_app.py 
+30673  2017-05-17_14:47:13 python3 mrt_app.py 
+30673  2017-05-17_14:47:13 python3 mrt_app.py 
+30673  2017-05-17_14:47:13 python3 mrt_app.py 
+30673  2017-05-17_14:47:13 python3 mrt_app.py 
+30673  2017-05-17_14:47:13 python3 mrt_app.py 
+30673  2017-05-17_14:47:13 python3 mrt_app.py 
+30673  2017-05-17_14:47:13 python3 mrt_app.py 
+30673  2017-05-17_14:47:13 python3 mrt_app.py 
+30673  2017-05-17_14:47:13 python3 mrt_app.py 
+30673  2017-05-17_14:47:13 python3 mrt_app.py 
+30673  2017-05-17_14:47:13 python3 mrt_app.py 
+30673  2017-05-17_14:47:13 python3 mrt_app.py 
+30673  2017-05-17_14:47:13 python3 mrt_app.py 
+30673  2017-05-17_14:47:13 python3 mrt_app.py 
+30673  2017-05-17_14:47:13 python3 mrt_app.py 
+30673  2017-05-17_14:47:13 python3 mrt_app.py 
+30673  2017-05-17_14:47:13 python3 mrt_app.py 
+30673  2017-05-17_14:47:13 python3 mrt_app.py 
+30673  2017-05-17_14:47:13 python3 mrt_app.py 
+30673  2017-05-17_14:47:13 python3 mrt_app.py 
+30673  2017-05-17_14:47:13 python3 mrt_app.py 
+30673  2017-05-17_14:47:13 python3 mrt_app.py 
+30673  2017-05-17_14:47:13 python3 mrt_app.py 
+30673  2017-05-17_14:47:13 python3 mrt_app.py 
+30673  2017-05-17_14:47:13 python3 mrt_app.py 
+30673  2017-05-17_14:47:13 python3 mrt_app.py 
+30673  2017-05-17_14:47:13 python3 mrt_app.py 
+30673  2017-05-17_14:47:13 python3 mrt_app.py 
+30673  2017-05-17_14:47:13 python3 mrt_app.py 
+30673  2017-05-17_14:47:13 python3 mrt_app.py 
+30673  2017-05-17_14:47:13 python3 mrt_app.py 
+30673  2017-05-17_14:47:13 python3 mrt_app.py 
+30673  2017-05-17_14:47:13 python3 mrt_app.py 
+30673  2017-05-17_14:47:13 python3 mrt_app.py 
+30673  2017-05-17_14:47:13 python3 mrt_app.py 
+30673  2017-05-17_14:47:13 python3 mrt_app.py 
+30673  2017-05-17_14:47:13 python3 mrt_app.py 
+30673  2017-05-17_14:47:13 python3 mrt_app.py 
+30673  2017-05-17_14:47:13 python3 mrt_app.py 
+30673  2017-05-17_14:47:13 python3 mrt_app.py 
+30673  2017-05-17_14:47:13 python3 mrt_app.py 
+30673  2017-05-17_14:47:13 python3 mrt_app.py 
+30670  2017-05-17_18:30:03 git status

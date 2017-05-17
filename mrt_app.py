@@ -286,11 +286,11 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 			self.workEnvironment.addWorkspace('BEV%i'%(i+1))
 			self.rtp.beam[i].plotEnvironment = plotEnvironment(self.workEnvironment.stackPage['BEV%i'%(i+1)])
 			self.rtp.beam[i].plotEnvironment.settings('maxMarkers',settings.markerQuantity)
-			self.rtp.beam[i].plotEnvironment.plot0.imageLoad(self.rtp.beam[i].arrayNormal,self.rtp.beam[i].arrayNormalPixelSize,imageIndex=1)
-			self.rtp.beam[i].plotEnvironment.plot90.imageLoad(self.rtp.beam[i].arrayOrthogonal,self.rtp.beam[i].arrayOrthogonalPixelSize,imageIndex=2)
+			self.rtp.beam[i].plotEnvironment.plot0.imageLoad(self.rtp.beam[i].arrayNormal,imageIndex=1)
+			self.rtp.beam[i].plotEnvironment.plot90.imageLoad(self.rtp.beam[i].arrayOrthogonal,imageIndex=2)
 
-			labels = ['BEV%i'%(i+1),'Gantry Angle','Pitch Angle','Roll Angle']
-			values = [self.rtp.beam[i].gantryAngle,self.rtp.beam[i].pitchAngle,self.rtp.beam[i].rollAngle]
+			labels = ['BEV%i'%(i+1),'Gantry Angle','Patient Support Angle','Collimator Angle']
+			values = [self.rtp.beam[i].gantryAngle,self.rtp.beam[i].patientSupportAngle,self.rtp.beam[i].collimatorAngle]
 			self.property.addVariable('RTPLAN DICOM',labels,values)
 
 			self.toolSelect.treatment['beam'][i]['calculate'].clicked.connect(partial(self.patientCalculateAlignment,treatmentIndex=i))
@@ -430,7 +430,11 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 					right[:,1] = self.xray.plotEnvironment.plot0.pointsY
 					right[:,2] = self.xray.plotEnvironment.plot90.pointsX
 
-				success = True
+				# Align to the CT assuming that the rtp isoc is zero.
+				self.alignmentSolution = imageGuidance.affineTransform(left,right,
+					np.array([0,0,0]),
+					self.ct.userOrigin,
+					self.xray.alignmentIsoc)
 
 		if treatmentIndex != -1:
 			'''Align to RTPLAN[index]'''
