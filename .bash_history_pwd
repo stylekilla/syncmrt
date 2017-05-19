@@ -60,3 +60,46 @@
 30673  2017-05-17_14:47:13 python3 mrt_app.py 
 30673  2017-05-17_14:47:13 python3 mrt_app.py 
 30670  2017-05-17_18:30:03 git status
+30667  2017-05-17_18:30:12 git add .
+30668  2017-05-17_18:30:19 git commit -m "Work in progress."
+30665  2017-05-17_18:30:28 git push mrtapp imbl
+30666  2017-05-17_18:30:48 cd /usr/local
+30749  2017-05-19_15:02:59 python3 mrt_app.py 
+30716  2017-05-19_15:07:45 git status
+30753  2017-05-19_15:08:12 cd /usr/local/lib/python3.5/dist-packages/syncmrt/
+30714  2017-05-19_15:11:25 git pull mrtapp imbl
+30713  2017-05-19_15:11:45 subl
+30764  2017-05-19_15:20:06 htop
+30765  2017-05-19_15:20:20 sudo apt install htop
+30765  2017-05-19_15:20:29 htop
+30713  2017-05-19_15:11:59 python3 mrt_app.py 
+30765  2017-05-19_15:20:29 htop
+30713  2017-05-19_15:11:59 python3 mrt_app.py 
+30713  2017-05-19_15:11:59 python3 mrt_app.py 
+30713  2017-05-19_15:11:59 python3 mrt_app.py 
+30713  2017-05-19_15:11:59 python3 mrt_app.py 
+30713  2017-05-19_15:11:59 python3 mrt_app.py 
+30713  2017-05-19_15:11:59 python3 mrt_app.py 
+30713  2017-05-19_15:11:59 python3 mrt_app.py 
+30713  2017-05-19_15:11:59 python3 mrt_app.py 
+30765  2017-05-19_15:20:29 htop
+30714  2017-05-19_15:29:17 OPENBLAS_MAIN_FREE=1 python3 mrt_app.py 
+30714  2017-05-19_15:29:17 OPENBLAS_MAIN_FREE=1 python3 mrt_app.py 
+30714  2017-05-19_15:38:21 python3 mrt_app.py 
+30714  2017-05-19_15:38:21 python3 mrt_app.py 
+30714  2017-05-19_15:38:21 python3 mrt_app.py 
+30714  2017-05-19_15:38:21 python3 mrt_app.py 
+30714  2017-05-19_15:38:21 python3 mrt_app.py 
+30714  2017-05-19_15:38:21 python3 mrt_app.py 
+30714  2017-05-19_15:38:21 python3 mrt_app.py 
+30714  2017-05-19_15:38:21 python3 mrt_app.py 
+30714  2017-05-19_15:38:21 python3 mrt_app.py 
+30714  2017-05-19_15:38:21 python3 mrt_app.py 
+30714  2017-05-19_15:38:21 python3 mrt_app.py 
+30714  2017-05-19_15:38:21 python3 mrt_app.py 
+30714  2017-05-19_15:38:21 python3 mrt_app.py 
+30714  2017-05-19_15:38:21 python3 mrt_app.py 
+30714  2017-05-19_15:38:21 python3 mrt_app.py 
+30714  2017-05-19_15:38:21 python3 mrt_app.py 
+30714  2017-05-19_15:38:21 python3 mrt_app.py 
+30714  2017-05-19_15:38:21 python3 mrt_app.py 
