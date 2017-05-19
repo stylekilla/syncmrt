@@ -223,8 +223,8 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 
 		dicomData = fileHandler.dicom.importCT(self.ct.ds, arrayFormat="npy")
 		self.ct.pixelSize = dicomData.pixelSize
-		self.ct.arrayNormalPixelSize = dicomData.pix0
-		self.ct.arrayOrthogonalPixelSize = dicomData.pix90
+		self.ct.arrayNormalAxes = dicomData.normalAxes
+		self.ct.arrayOrthogonalAxes = dicomData.orthogonalAxes
 		self.ct.arrayDimensions = dicomData.dims
 		self.ct.patientOrientation = dicomData.orientation
 		self.ct.userOrigin = np.array(dicomData.userOrigin)
@@ -233,7 +233,9 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		# self.ct.imageOrientationPatient = dicomData.imageOrientationPatient
 		# self.ct.imagePositionPatient = dicomData.imagePositionPatient
 		self.ct.arrayNormalExtent = dicomData.normalExtent
+		self.ct.arrayNormalPosition = dicomData.normalPosition
 		self.ct.arrayOrthogonalExtent = dicomData.orthogonalExtent
+		self.ct.arrayOrthogonalPosition = dicomData.orthogonalPosition
 
 		self.property.addSection('CT')
 		self.property.addVariable('CT',['Pixel Size','x','y'],self.ct.pixelSize[:2].tolist())
@@ -270,7 +272,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 
 		self.rtp.fp = os.path.dirname(self.rtp.ds[0])
 		dicomData = fileHandler.dicom.importRTP(self.rtp.ds)
-		dicomData.extractTreatmentBeams(self.ct.arrayNormal,self.ct.arrayNormalPixelSize)
+		dicomData.extractTreatmentBeams(self.ct.arrayNormal,self.ct.arrayNormalAxes,self.ct.arrayNormalPosition)
 
 		# Assume single fraction.
 		self.rtp.beam = dicomData.beam
@@ -286,8 +288,11 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 			self.workEnvironment.addWorkspace('BEV%i'%(i+1))
 			self.rtp.beam[i].plotEnvironment = plotEnvironment(self.workEnvironment.stackPage['BEV%i'%(i+1)])
 			self.rtp.beam[i].plotEnvironment.settings('maxMarkers',settings.markerQuantity)
-			self.rtp.beam[i].plotEnvironment.plot0.imageLoad(self.rtp.beam[i].arrayNormal,imageIndex=1)
-			self.rtp.beam[i].plotEnvironment.plot90.imageLoad(self.rtp.beam[i].arrayOrthogonal,imageIndex=2)
+			self.rtp.beam[i].arrayNormalExtent = dicomData.beam[i].normalExtent
+			self.rtp.beam[i].arrayOrthogonalExtent = dicomData.beam[i].orthogonalExtent
+
+			self.rtp.beam[i].plotEnvironment.plot0.imageLoad(self.rtp.beam[i].arrayNormal,extent=self.rtp.beam[i].arrayNormalExtent,imageIndex=0)
+			self.rtp.beam[i].plotEnvironment.plot90.imageLoad(self.rtp.beam[i].arrayOrthogonal,extent=self.rtp.beam[i].arrayOrthogonalExtent,imageIndex=1)
 
 			labels = ['BEV%i'%(i+1),'Gantry Angle','Patient Support Angle','Collimator Angle']
 			values = [self.rtp.beam[i].gantryAngle,self.rtp.beam[i].patientSupportAngle,self.rtp.beam[i].collimatorAngle]
