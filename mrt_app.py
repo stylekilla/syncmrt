@@ -210,6 +210,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		self.ct.ds = fileHandler.dicom.importDicom(files,'CT')
 		self.workEnvironment.addWorkspace('CT')
 
+		# Get dicom file list.
 		if len(self.ct.ds) == 0:
 			self.toolSelect.alignment['checkDicom'].setStyleSheet("color: red")
 			log(self.logFile,"No CT files were found.","warning")
@@ -218,42 +219,38 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		# Continue as normal.
 		log(self.logFile,"Loading %d CT files..." %len(self.ct.ds),"event")
 
+		# Get dicom file list.
 		self.ct.ref = self.ct.ds[0]
 		self.ct.fp = os.path.dirname(self.ct.ref)
 
+		# Import dicom files.
 		dicomData = fileHandler.dicom.importCT(self.ct.ds, arrayFormat="npy")
 		self.ct.pixelSize = dicomData.pixelSize
-		self.ct.arrayNormalAxes = dicomData.normalAxes
-		self.ct.arrayOrthogonalAxes = dicomData.orthogonalAxes
-		self.ct.arrayDimensions = dicomData.dims
-		self.ct.patientOrientation = dicomData.orientation
-		self.ct.userOrigin = np.array(dicomData.userOrigin)
+		self.ct.patientPosition = dicomData.patientPosition
 		self.ct.rescaleIntercept = dicomData.rescaleIntercept
 		self.ct.rescaleSlope = dicomData.rescaleSlope
-		# self.ct.imageOrientationPatient = dicomData.imageOrientationPatient
-		# self.ct.imagePositionPatient = dicomData.imagePositionPatient
-		self.ct.arrayNormalExtent = dicomData.normalExtent
-		self.ct.arrayNormalPosition = dicomData.normalPosition
-		self.ct.arrayOrthogonalExtent = dicomData.orthogonalExtent
-		self.ct.arrayOrthogonalPosition = dicomData.orthogonalPosition
+		self.ct.imageOrientationPatient = dicomData.imageOrientationPatient
+		self.ct.imagePositionPatient = dicomData.imagePositionPatient
+		self.ct.arrayExtent = dicomData.arrayExtent
 
+		# Update property table.
 		self.property.addSection('CT')
 		self.property.addVariable('CT',['Pixel Size','x','y'],self.ct.pixelSize[:2].tolist())
 		self.property.addVariable('CT','Slice Thickness',float(self.ct.pixelSize[2]))
-		self.property.addVariable('CT','Patient Orientation',self.ct.patientOrientation)
-		self.property.addVariable('CT',['User Origin','x','y','z'],self.ct.userOrigin.tolist())
+		self.property.addVariable('CT','Patient Position',self.ct.patientPosition)
 
+		# Import numpy files.
 		imageFiles = fileHandler.importImage(self.ct.fp,'ct','npy')
-		self.ct.array3d = imageFiles[0]
-		self.ct.arrayNormal = imageFiles[1]
-		self.ct.arrayOrthogonal = imageFiles[2]
+		self.ct.arrayDicom = imageFiles[0]
+		self.ct.array = imageFiles[1]
 
+		# Plot data.
 		self.ct.plotEnvironment = plotEnvironment(self.workEnvironment.stackPage['CT'])
 		self.ct.plotEnvironment.settings('maxMarkers',settings.markerQuantity)
-		# self.ct.plotEnvironment.plot0.imageLoad(self.ct.arrayNormal,self.ct.arrayNormalPixelSize,self.ct.patientOrientation,imageIndex=1)
-		self.ct.plotEnvironment.plot0.imageLoad(self.ct.arrayNormal,extent=self.ct.arrayNormalExtent,imageOrientation=self.ct.patientOrientation,imageIndex=0)
-		self.ct.plotEnvironment.plot90.imageLoad(self.ct.arrayOrthogonal,extent=self.ct.arrayOrthogonalExtent,imageOrientation=self.ct.patientOrientation,imageIndex=1)
+		self.ct.plotEnvironment.plot0.imageLoad(self.ct.array,extent=self.ct.arrayExtent,imageIndex=0)
+		self.ct.plotEnvironment.plot90.imageLoad(self.ct.array,extent=self.ct.arrayExtent,imageIndex=1)
 
+		# Last checklist items.
 		self.toolSelect.alignment['checkDicom'].setStyleSheet("color: green")
 		self.workEnvironment.button['CT'].clicked.emit()
 
@@ -272,7 +269,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 
 		self.rtp.fp = os.path.dirname(self.rtp.ds[0])
 		dicomData = fileHandler.dicom.importRTP(self.rtp.ds)
-		dicomData.extractTreatmentBeams(self.ct.arrayNormal,self.ct.arrayNormalAxes,self.ct.arrayNormalPosition)
+		dicomData.extractTreatmentBeams(self.ct)
 
 		# Assume single fraction.
 		self.rtp.beam = dicomData.beam
@@ -288,16 +285,18 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 			self.workEnvironment.addWorkspace('BEV%i'%(i+1))
 			self.rtp.beam[i].plotEnvironment = plotEnvironment(self.workEnvironment.stackPage['BEV%i'%(i+1)])
 			self.rtp.beam[i].plotEnvironment.settings('maxMarkers',settings.markerQuantity)
-			self.rtp.beam[i].arrayNormalExtent = dicomData.beam[i].normalExtent
-			self.rtp.beam[i].arrayOrthogonalExtent = dicomData.beam[i].orthogonalExtent
+			self.rtp.beam[i].arrayExtent = dicomData.beam[i].arrayExtent
 
-			self.rtp.beam[i].plotEnvironment.plot0.imageLoad(self.rtp.beam[i].arrayNormal,extent=self.rtp.beam[i].arrayNormalExtent,imageIndex=0)
-			self.rtp.beam[i].plotEnvironment.plot90.imageLoad(self.rtp.beam[i].arrayOrthogonal,extent=self.rtp.beam[i].arrayOrthogonalExtent,imageIndex=1)
+			# Plot.
+			self.rtp.beam[i].plotEnvironment.plot0.imageLoad(self.rtp.beam[i].array,extent=self.rtp.beam[i].arrayExtent,imageIndex=0)
+			self.rtp.beam[i].plotEnvironment.plot90.imageLoad(self.rtp.beam[i].array,extent=self.rtp.beam[i].arrayExtent,imageIndex=1)
 
+			# Update property table.
 			labels = ['BEV%i'%(i+1),'Gantry Angle','Patient Support Angle','Collimator Angle']
 			values = [self.rtp.beam[i].gantryAngle,self.rtp.beam[i].patientSupportAngle,self.rtp.beam[i].collimatorAngle]
 			self.property.addVariable('RTPLAN DICOM',labels,values)
 
+			# Button connections.
 			self.toolSelect.treatment['beam'][i]['calculate'].clicked.connect(partial(self.patientCalculateAlignment,treatmentIndex=i))
 			self.toolSelect.treatment['beam'][i]['align'].clicked.connect(self.patientApplyAlignment)
 

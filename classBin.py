@@ -439,7 +439,6 @@ class toolListWidget(QtWidgets.QListWidget):
 
 		self.insertItem(index,item)
 
-
 class HUSpinBox(QtWidgets.QSpinBox):
 	'''CT HU windowing spinbox'''
 	def __init__(self):
@@ -720,11 +719,6 @@ class customNavigationToolbar(NavigationToolbar2QT):
 		self.press(event)
 		self.release(event)
 
-
-
-
-
-
 '''
 PROPERTY MANAGER
 - class: propertyManager (QTreeView)
@@ -846,7 +840,6 @@ class propertyModel(QtGui.QStandardItemModel):
 			# Single Entry
 			itemValue = self.itemFromIndex(self.index[name][variable])
 			itemValue.setData(value,QtCore.Qt.DisplayRole)
-
 
 class variablePane:
 	'''
@@ -976,10 +969,6 @@ def log(window,message,rank):
 	else:
 		window.setTextColor(QtCore.Qt.gray)
 		window.append(message)
-
-
-
-
 
 '''
 WIDGET TOGGLES
