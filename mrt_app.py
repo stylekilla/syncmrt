@@ -190,6 +190,8 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 			self.xray.plotEnvironment.plot0.imageLoad(self.xray.arrayNormal,extent=self.xray.arrayNormalExtent,imageOrientation=self.xray.patientOrientation,imageIndex=0)
 			self.xray.plotEnvironment.plot90.imageLoad(self.xray.arrayOrthogonal,extent=self.xray.arrayOrthogonalExtent,imageOrientation=self.xray.patientOrientation,imageIndex=1)
 
+			self.xray.plotEnvironment.plot0.overlayIsocenter(state=True)
+
 			item = self.toolSelect.toolList.findItems('ImageProperties',QtCore.Qt.MatchExactly)[0]
 			self.xray.plotEnvironment.nav0.actionImageSettings.triggered.connect(partial(self.toolSelect.showToolExternalTrigger,item))
 
@@ -294,6 +296,9 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 			# Update property table.
 			labels = ['BEV%i'%(i+1),'Gantry Angle','Patient Support Angle','Collimator Angle']
 			values = [self.rtp.beam[i].gantryAngle,self.rtp.beam[i].patientSupportAngle,self.rtp.beam[i].collimatorAngle]
+			self.property.addVariable('RTPLAN DICOM',labels,values)
+			labels = ['BEV%i Isocenter (adjusted)'%(i+1),'x','y','z']
+			values = np.round(self.rtp.beam[i].isocenter,decimals=2).tolist()
 			self.property.addVariable('RTPLAN DICOM',labels,values)
 
 			# Button connections.
@@ -440,7 +445,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 					self.ct.userOrigin,
 					self.xray.alignmentIsoc)
 
-		if treatmentIndex != -1:
+		elif treatmentIndex != -1:
 			'''Align to RTPLAN[index]'''
 			if len(self.rtp.beam[treatmentIndex].plotEnvironment.plot0.pointsX)>0:
 				# Optimise Points
@@ -468,54 +473,20 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 
 				success = True
 
-				# # Added shit.
-				# from math import sin, cos
-				
-				# i = treatmentIndex
-				# if self.rtp.beam[i].patientSupportAngle == 0:
-				# 	rotation = np.deg2rad(np.array((-self.rtp.beam[i].pitchAngle,-self.rtp.beam[i].gantryAngle,-self.rtp.beam[i].rollAngle))).astype(np.float32)
-				
-				# elif self.rtp.beam[i].patientSupportAngle == 270:
-				# 	rotation = np.deg2rad(np.array((-self.rtp.beam[i].gantryAngle,-self.rtp.beam[i].pitchAngle,-self.rtp.beam[i].rollAngle))).astype(np.float32)
+			# Calcualte alignment requirement
+			if success:
+				self.alignmentSolution = imageGuidance.affineTransform(left,right,
+					self.rtp.beam[treatmentIndex].isocenter,
+					self.ct.userOrigin,
+					self.xray.alignmentIsoc)
 
-				# else:
-				# 	rotation = np.deg2rad(np.array((-self.rtp.beam[i].pitchAngle,-self.rtp.beam[i].gantryAngle,-self.rtp.beam[i].rollAngle))).astype(np.float32)
+		else:
+			pass
 
-				# # Rotate left points before they get sent to solution.
-
-				# # Get 3D rotation vector, R.
-				# R = np.array([[cos(rotation[1])*cos(rotation[2]), 
-				# 	cos(rotation[1])*sin(rotation[2]), 
-				# 	-sin(rotation[1])],
-				# 	[sin(rotation[0])*sin(rotation[1])*cos(rotation[2])-cos(rotation[0])*sin(rotation[2]), 
-				# 	sin(rotation[0])*sin(rotation[1])*sin(rotation[2])+cos(rotation[0])*cos(rotation[2]), 
-				# 	sin(rotation[0])*cos(rotation[1])],
-				# 	[cos(rotation[0])*sin(rotation[1])*cos(rotation[2])+sin(rotation[0])*sin(rotation[2]), 
-				# 	cos(rotation[0])*sin(rotation[1])*sin(rotation[2])-sin(rotation[0])*cos(rotation[2]), 
-				# 	cos(rotation[0])*cos(rotation[1])]])
-
-				# for j in range(left.shape[1]):
-				# 	left[:,j] = np.dot(R, left[:,j])
-				# 	print('Rtoated points: ',left[:,j])
-
-		# Calcualte alignment requirement
-		if success:
-			self.alignmentSolution = imageGuidance.affineTransform(left,right,
-				self.rtp.beam[treatmentIndex].isocenter,
-				self.ct.userOrigin,
-				self.xray.alignmentIsoc)
-
-			# If table already exists, update information...
-			self.property.updateVariable('Alignment',['Rotation','x','y','z'],[float(self.alignmentSolution.theta),float(self.alignmentSolution.phi),float(self.alignmentSolution.gamma)])
-			self.property.updateVariable('Alignment',['Translation','x','y','z'],self.alignmentSolution.translation.tolist())
-			self.property.updateVariable('Alignment','Scale',float(self.alignmentSolution.scale))
-
-		# print(self.alignmentSolution.theta)
-		# print(type(self.alignmentSolution.theta))
-		# print(self.alignmentSolution.phi)
-		# print(self.alignmentSolution.gamma)
-		# print(self.alignmentSolution.translation)
-		# print(self.alignmentSolution.scale)
+		# If table already exists, update information...
+		self.property.updateVariable('Alignment',['Rotation','x','y','z'],[float(self.alignmentSolution.theta),float(self.alignmentSolution.phi),float(self.alignmentSolution.gamma)])
+		self.property.updateVariable('Alignment',['Translation','x','y','z'],self.alignmentSolution.translation.tolist())
+		self.property.updateVariable('Alignment','Scale',float(self.alignmentSolution.scale))
 
 	def patientApplyAlignment(self):
 		'''Connect to motors and apply alignment'''
