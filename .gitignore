@@ -36,6 +36,11 @@
 *.sql
 *.sqlite
 
+# Git files #
+######################
+.fuse*
+.bash_history*
+
 # OS generated files #
 ######################
 .DS_Store
