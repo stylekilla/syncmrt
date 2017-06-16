@@ -215,11 +215,11 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		# Get dicom file list.
 		if len(self.ct.ds) == 0:
 			self.toolSelect.alignment['checkDicom'].setStyleSheet("color: red")
-			log(self.logFile,"No CT files were found.","warning")
+			# log(self.logFile,"No CT files were found.","warning")
 			return
 
 		# Continue as normal.
-		log(self.logFile,"Loading %d CT files..." %len(self.ct.ds),"event")
+		# log(self.logFile,"Loading %d CT files..." %len(self.ct.ds),"event")
 
 		# Get dicom file list.
 		self.ct.ref = self.ct.ds[0]
@@ -263,11 +263,11 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 
 		if len(self.rtp.ds) == 0:
 			self.toolSelect.alignment['checkRTP'].setStyleSheet("color: red")
-			log(self.logFile,"No RTP files were found.","warning")
+			# log(self.logFile,"No RTP files were found.","warning")
 			return
 
 		# Continue as normal.
-		log(self.logFile,"Loading %d Radiation Treatment Plan files..." %len(self.rtp.ds),"event")
+		# log(self.logFile,"Loading %d Radiation Treatment Plan files..." %len(self.rtp.ds),"event")
 
 		self.rtp.fp = os.path.dirname(self.rtp.ds[0])
 		dicomData = fileHandler.dicom.importRTP(self.rtp.ds)
@@ -422,7 +422,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 					self.xray.plotEnvironment.plot90.markerOptimise(self.toolSelect.alignment['markerSize'].value())
 					self.ct.plotEnvironment.plot0.markerOptimise(self.toolSelect.alignment['markerSize'].value())
 					self.ct.plotEnvironment.plot90.markerOptimise(self.toolSelect.alignment['markerSize'].value())
-					log(self.logFile,"Successfully optimised points.","event")
+					# log(self.logFile,"Successfully optimised points.","event")
 					# Collect points.
 					left[:,0] = self.ct.plotEnvironment.plot0.pointsXoptimised
 					left[:,1] = self.ct.plotEnvironment.plot0.pointsYoptimised
@@ -454,7 +454,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 					self.xray.plotEnvironment.plot90.markerOptimise(self.toolSelect.alignment['markerSize'].value())
 					self.rtp.beam[treatmentIndex].plotEnvironment.plot0.markerOptimise(self.toolSelect.alignment['markerSize'].value())
 					self.rtp.beam[treatmentIndex].plotEnvironment.plot90.markerOptimise(self.toolSelect.alignment['markerSize'].value())
-					log(self.logFile,"Successfully optimised points.","event")
+					# log(self.logFile,"Successfully optimised points.","event")
 					# Collect points.
 					left[:,0] = self.rtp.beam[treatmentIndex].plotEnvironment.plot0.pointsXoptimised
 					left[:,1] = self.rtp.beam[treatmentIndex].plotEnvironment.plot0.pointsYoptimised
