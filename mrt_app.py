@@ -347,7 +347,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 				self.ct.plotEnvironment.setRadiographMode(mode)
 				self.ct.plotEnvironment.setWindows(windows)
 				# ADD: If rtp ticked, then do.
-				if self.rtp.beam[0]:
+				if type(self.rtp.beam)!=bool:
 					for i in range(len(self.rtp.beam)):
 						self.rtp.beam[i].plotEnvironment.setRadiographMode(mode)
 						self.rtp.beam[i].plotEnvironment.setWindows(windows)
