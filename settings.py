@@ -1,6 +1,6 @@
 import numpy as np
 
-class settings():
+class globalVariables():
 	def __init__(self):
 		self.markerQuantity = 3
 		self.markerSize = 2.00
@@ -12,6 +12,3 @@ class settings():
 		self.hamamatsuAlignmentIsoc = np.array([637.5,238.5,637.5])
 
 		# rename to imagingIsoc?
-
-		self.xrayIsLoaded = False
-		self.ctIsLoaded = False

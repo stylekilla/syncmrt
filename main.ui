@@ -67,7 +67,7 @@
      <number>0</number>
     </property>
     <item row="0" column="0" rowspan="3">
-     <widget class="QFrame" name="toolSelectFrame">
+     <widget class="QFrame" name="frameSidebarList">
       <property name="sizePolicy">
        <sizepolicy hsizetype="Fixed" vsizetype="MinimumExpanding">
         <horstretch>0</horstretch>
@@ -95,7 +95,7 @@
      </widget>
     </item>
     <item row="0" column="1" rowspan="3">
-     <widget class="QStackedWidget" name="toolStack">
+     <widget class="QFrame" name="frameSidebarStack">
       <property name="sizePolicy">
        <sizepolicy hsizetype="Fixed" vsizetype="MinimumExpanding">
         <horstretch>0</horstretch>
@@ -110,12 +110,15 @@
       </property>
       <property name="maximumSize">
        <size>
-        <width>200</width>
+        <width>225</width>
         <height>16777215</height>
        </size>
       </property>
-      <property name="currentIndex">
-       <number>-1</number>
+      <property name="frameShape">
+       <enum>QFrame::StyledPanel</enum>
+      </property>
+      <property name="frameShadow">
+       <enum>QFrame::Raised</enum>
       </property>
      </widget>
     </item>

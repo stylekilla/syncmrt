@@ -15,429 +15,519 @@ TOOL PANEL
 - class: toolSelector
 - class: toolListWidget
 '''
-class toolSelector:
-	'''
-	Combo of list and stackedwidget for having a toggle-able tool frame.
-	'''
-	def __init__(self,listFrame,stack):
-		self.toolList = toolListWidget(listFrame)
-		self.stack = stack
-		self.stackPage = {}
-		self.index = 0
-		self.stack.setVisible(False)
-		self._previousItem = False
 
-		# Connects selection to stacked widget page.
-		self.toolList.currentItemChanged.connect(self.previousTool)
-		self.toolList.itemPressed.connect(self.showTool)
-
-	# def insertTool(self,name,index-after-before?)
-
-	def addTool(self,name):
-		'''Add tool and increase index by 1.'''
-		self.toolList.addCategory(name,self.index)
-		page = QtWidgets.QWidget()
-		self.stackPage[name] = page
-		self.populateCategory(name)
-		self.stack.addWidget(page)
-
-		self.index += 1
-		self._previousItem = self.toolList.item(self.index)
-
-	def previousTool(self,current,previous):
-		self._previousItem = previous
-
-	def showTool(self,item):
-		'''Change workspace based on item clicked. If the same one is clicked then toggle the view on/off.'''
-		# if not self._previousItem:
-		# 	self._previousItem = item
-
-		if self.toolList.currentItem() == self._previousItem:
-			self.stack.setVisible(not self.stack.isVisible())
-		else:
-			self.stack.setVisible(True)
-			index = self.toolList.row(item)
-			self.stack.setCurrentIndex(index)
-			self._previousItem = item
-
-	def showToolExternalTrigger(self,item):
-		'''Allow for external triggering for displaying tool panes.'''
-		self.toolList.setCurrentItem(item)
-		self.showTool(item)
-
-	def hideTool(self,name):
-		pass
-
-	def removeTool(self,name):
-		pass
-
-	def populateCategory(self,name):
-		'''Populate each category with a dictionary of tools.'''
-		if name == 'Alignment':
-			self.alignment = {}
-			page = self.stackPage[name]
-			layout = QtWidgets.QVBoxLayout()
-
-			# Group 1: Markers
-			markerGroup = QtWidgets.QGroupBox()
-			markerGroup.setTitle('Marker Options')
-			self.alignment['anatomical'] = QtWidgets.QRadioButton('Anatomical')
-			self.alignment['fiducial'] = QtWidgets.QRadioButton('Fiducial')
-			self.alignment['optimise'] = QtWidgets.QCheckBox('Optimise')
-			label1 = QtWidgets.QLabel('Number of Points:')
-			self.alignment['maxMarkers'] = QtWidgets.QSpinBox()
-			label2 = QtWidgets.QLabel('Marker Size (mm):')
-			self.alignment['markerSize'] = QtWidgets.QDoubleSpinBox()
-			# Layout
-			markerGroupLayout = QtWidgets.QFormLayout()
-			markerGroupLayout.addRow(self.alignment['anatomical'])
-			markerGroupLayout.addRow(self.alignment['fiducial'])
-			markerGroupLayout.addRow(self.alignment['optimise'])
-			markerGroupLayout.addRow(label1,self.alignment['maxMarkers'])
-			markerGroupLayout.addRow(label2,self.alignment['markerSize'])
-			markerGroup.setLayout(markerGroupLayout)
-			layout.addWidget(markerGroup)
-			# Default Positions
-			self.alignment['optimise'].setEnabled(False)
-			self.alignment['anatomical'].setChecked(True)
-			self.alignment['markerSize'].setEnabled(False)
-			self.alignment['markerSize'].setRange(0,5)
-			self.alignment['markerSize'].setSingleStep(0.25)
-			self.alignment['markerSize'].setValue(2.00)
-			self.alignment['maxMarkers'].setMinimum(1)
-			# Signals and Slots
-			self.alignment['anatomical'].toggled.connect(self.markerMode)
-			self.alignment['fiducial'].toggled.connect(self.markerMode)
-			self.alignment['optimise'].toggled.connect(self.markerMode)
-
-			# Group 2: Checklist
-			checklistGroup = QtWidgets.QGroupBox()
-			checklistGroup.setTitle('Checklist')
-			self.alignment['checkSetup'] = QtWidgets.QLabel('Alignment Setup')
-			self.alignment['checkXray'] = QtWidgets.QLabel('X-ray')
-			self.alignment['checkDicom'] = QtWidgets.QLabel('Dicom Image')
-			self.alignment['checkRTP'] = QtWidgets.QLabel('Treatment Plan')
-			self.alignment['check'] = QtWidgets.QPushButton('Check')
-			self.alignment['align'] = QtWidgets.QPushButton('Align')
-			# Layout
-			checklistGroupLayout = QtWidgets.QFormLayout()
-			checklistGroupLayout.addRow(self.alignment['checkSetup'])
-			checklistGroupLayout.addRow(self.alignment['checkXray'])
-			checklistGroupLayout.addRow(self.alignment['checkDicom'])
-			checklistGroupLayout.addRow(self.alignment['checkRTP'])
-			checklistGroupLayout.addRow(self.alignment['check'],self.alignment['align'])
-			checklistGroup.setLayout(checklistGroupLayout)
-			layout.addWidget(checklistGroup)
-			# Defaults
-			# Signals and Slots
-
-			# Finish page.
-			layout.addStretch(1)
-			page.setLayout(layout)
-
-		elif name == 'Treatment':
-			self.treatment = {}
-			page = self.stackPage[name]
-			layout = QtWidgets.QVBoxLayout()
-
-			# Group 1: Treatment Settings
-			settingsGroup = QtWidgets.QGroupBox()
-			settingsGroup.setTitle('Description')
-			label1 = QtWidgets.QLabel('Number of beams: ')
-			self.treatment['quantity'] = QtWidgets.QLabel()
-			# Layout
-			settingsGroupLayout = QtWidgets.QFormLayout()
-			settingsGroupLayout.addRow(label1,self.treatment['quantity'])
-			settingsGroup.setLayout(settingsGroupLayout)
-			layout.addWidget(settingsGroup)
-			# Defaults
-			self.treatment['quantity'].setText(str(0))
-			# Signals and Slots
-
-			# Group 2: Deliver Treatment
-			# Dict for beam plan group widgets.
-			self.treatment['beam'] = {}
-			group = QtWidgets.QGroupBox()
-			group.setTitle('Deliver Treatment')
-			# Empty Layout
-			self.treatment['deliveryGroup'] = QtWidgets.QFormLayout()
-			self.treatment['noTreatment'] = QtWidgets.QLabel('No Treatment Plan loaded.')
-			self.treatment['deliveryGroup'].addRow(self.treatment['noTreatment'])
-			group.setLayout(self.treatment['deliveryGroup'])
-			layout.addWidget(group)
-			# Defaults
-			# Signals and Slots
-
-			# Finish page.
-			layout.addStretch(1)
-			page.setLayout(layout)
-
-		elif name == 'Setup':
-			self.setup = {}
-			page = self.stackPage[name]
-			layout = QtWidgets.QVBoxLayout()
-
-			# Group 1: Alignment callibration.
-			callibrationGroup = QtWidgets.QGroupBox()
-			callibrationGroup.setTitle('Alignment Callibration')
-			label1 = QtWidgets.QLabel('Alignment Isocenter (pixels)')
-			label2 = QtWidgets.QLabel('x: ')
-			self.setup['alignIsocX'] = QtWidgets.QLineEdit()
-			label3 = QtWidgets.QLabel('y: ')
-			self.setup['alignIsocY'] = QtWidgets.QLineEdit()
-			# Layout
-			callibrationGroupLayout = QtWidgets.QFormLayout()
-			callibrationGroupLayout.addRow(label1)
-			callibrationGroupLayout.addRow(label2,self.setup['alignIsocX'])
-			callibrationGroupLayout.addRow(label3,self.setup['alignIsocY'])
-			# Defaults
-			validator = QtGui.QDoubleValidator()
-			validator.setBottom(0)
-			validator.setDecimals(4)
-			self.setup['alignIsocX'].setValidator(validator)
-			self.setup['alignIsocY'].setValidator(validator)
-			# Signals and Slots
-
-			# Group 2: Alignment
-			alignmentGroup = QtWidgets.QGroupBox()
-			alignmentGroup.setTitle('Alignment')
-			self.setup['findXrIsoc'] = QtWidgets.QPushButton('Find Xray Isocentre')
-			label2 = QtWidgets.QLabel('Correct Patient')
-			label3 = QtWidgets.QLabel('Alignment')
-			label4 = QtWidgets.QLabel('Dosimetry')
-
-			# Group 3: Dosimetry
-			dosimetryGroup = QtWidgets.QGroupBox()
-			dosimetryGroup.setTitle('Dosimetry')
-			self.treatment['check'] = QtWidgets.QPushButton('Check Treatment')
-			self.treatment['deliver'] = QtWidgets.QPushButton('Deliver Treatment')
-			# Defaults
-			# Signals and Slots
-
-			# Add Sections
-			callibrationGroup.setLayout(callibrationGroupLayout)
-			layout.addWidget(callibrationGroup)
-			# Finish page.
-			layout.addStretch(1)
-			page.setLayout(layout)
-
-		elif name == 'ImageProperties':
-			self.ctWindow = {}
-			self.xrayWindow = {}
-			page = self.stackPage[name]
-			layout = QtWidgets.QVBoxLayout()
-
-			# Group 1: HU Window
-			ctWindowGroup = QtWidgets.QGroupBox()
-			ctWindowGroup.setTitle('Hounsfield Unit Windowing')
-			header = QtWidgets.QLabel('No. Windows:')
-			self.ctWindow['numWindows'] = QtWidgets.QSpinBox()
-			self.ctWindow['rbMax'] = QtWidgets.QRadioButton('Max')
-			self.ctWindow['rbSum'] = QtWidgets.QRadioButton('Sum')
-			self.ctWindow['pbApply'] = QtWidgets.QPushButton('Apply')
-			self.ctWindow['pbReset'] = QtWidgets.QPushButton('Reset')
-			self.ctWindow['window'] = {}
-			lower = QtWidgets.QLabel('Lower HU') 
-			upper = QtWidgets.QLabel('Upper HU')
-			self.ctWindow['window'][0] = HUSpinBox()
-			self.ctWindow['window'][1] = HUSpinBox()
-			# Layout
-			self.ctWindow['layout'] = QtWidgets.QFormLayout()
-			self.ctWindow['layout'].addRow(header,self.ctWindow['numWindows'])
-			self.ctWindow['layout'].addRow(lower,upper)
-			self.ctWindow['layout'].addRow(self.ctWindow['window'][0],self.ctWindow['window'][1])
-			self.ctWindow['layout'].addRow(self.ctWindow['rbMax'],self.ctWindow['rbSum'])
-			self.ctWindow['layout'].addRow(self.ctWindow['pbApply'],self.ctWindow['pbReset'])
-			# Defaults
-			self.ctWindow['numWindows'].setMinimum(1)
-			self.ctWindow['numWindows'].setMaximum(10)
-			self.ctWindow['numWindows'].setValue(1)
-			self.ctWindow['numWindows'].setSingleStep(1)
-			self.ctWindow['window'][1].setValue(5000)
-			self.ctWindow['rbSum'].setChecked(True)
-			# Signals and Slots
-			self.ctWindow['numWindows'].valueChanged.connect(self.addCTWindows)
-
-			# Group 2: X-ray Window
-			xrayWindowGroup = QtWidgets.QGroupBox()
-			xrayWindowGroup.setTitle('X-ray Windowing')
-			header = QtWidgets.QLabel('No. Windows:')
-			self.xrayWindow['numWindows'] = QtWidgets.QSpinBox()
-			self.xrayWindow['pbApply'] = QtWidgets.QPushButton('Apply')
-			self.xrayWindow['pbReset'] = QtWidgets.QPushButton('Reset')
-			self.xrayWindow['window'] = {}
-			lower = QtWidgets.QLabel('Lower Limit') 
-			upper = QtWidgets.QLabel('Upper Limit')
-			self.xrayWindow['window'][1] = XraySpinBox()
-			self.xrayWindow['window'][0] = XraySpinBox()
-			# Layout
-			self.xrayWindow['layout'] = QtWidgets.QFormLayout()
-			self.xrayWindow['layout'].addRow(header,self.xrayWindow['numWindows'])
-			self.xrayWindow['layout'].addRow(lower,upper)
-			self.xrayWindow['layout'].addRow(self.xrayWindow['window'][0],self.xrayWindow['window'][1])
-			self.xrayWindow['layout'].addRow(self.xrayWindow['pbApply'],self.xrayWindow['pbReset'])
-			# Defaults
-			self.xrayWindow['numWindows'].setMinimum(1)
-			self.xrayWindow['numWindows'].setMaximum(10)
-			self.xrayWindow['numWindows'].setValue(1)
-			self.xrayWindow['numWindows'].setSingleStep(1)
-			self.xrayWindow['window'][1].setValue(10000)
-			# Signals and Slots
-			self.xrayWindow['numWindows'].valueChanged.connect(self.addXrayWindows)
-
-			# Add Sections
-			ctWindowGroup.setLayout(self.ctWindow['layout'])
-			layout.addWidget(ctWindowGroup)
-			xrayWindowGroup.setLayout(self.xrayWindow['layout'])
-			layout.addWidget(xrayWindowGroup)
-			# Finish page.
-			layout.addStretch(1)
-			page.setLayout(layout)
-
-	def markerMode(self):
-		'''If fiducial markers are chosen then enable optimisation checkbox and sizing.'''
-		# Enabling/toggling optimise.
-		if self.alignment['fiducial'].isChecked():
-			self.alignment['optimise'].setEnabled(True)
-		else:
-			self.alignment['optimise'].setEnabled(False)
-			self.alignment['optimise'].setChecked(False)
-			self.alignment['markerSize'].setEnabled(False)
-		# Enabling/toggling markerSize.
-		if self.alignment['optimise'].isChecked():
-			self.alignment['markerSize'].setEnabled(True)
-		else:
-			self.alignment['markerSize'].setEnabled(False)
-
-	def treatmentInterlock(self,index):
-		'''Treatment interlock stops treatment from occuring. Requires alignment to be done first.'''
-		# Enable interlock button.
-		if self.treatment['beam'][index]['alignmentComplete'] == True:
-			self.treatment['beam'][index]['interlock'].setEnabled(True)
-
-		# Enable treatment delivery button.
-		if self.treatment['beam'][index]['interlock'].isChecked():
-			self.treatment['beam'][index]['deliver'].setEnabled(False)
-		else:
-			self.treatment['beam'][index]['deliver'].setEnabled(True)
-
-	def populateTreatments(self):
-		'''Once treatment plan is loaded, add the treatments to the workflow.'''
-		self.treatment['noTreatment'].deleteLater()
-		del self.treatment['noTreatment']
-
-		for i in range(int(self.treatment['quantity'].text())):	
-			self.treatment['beam'][i] = {}
-			label = QtWidgets.QLabel(str('Beam %i'%(i+1)))
-			self.treatment['beam'][i]['calculate'] = QtWidgets.QPushButton('Calculate')
-			self.treatment['beam'][i]['align'] = QtWidgets.QPushButton('Align')
-			# self.treatment['beam'][i]['hline'] = HLine()
-			self.treatment['beam'][i]['interlock'] = QtWidgets.QCheckBox('Interlock')
-			self.treatment['beam'][i]['deliver'] = QtWidgets.QPushButton('Deliver')
-			# Layout
-			self.treatment['deliveryGroup'].addRow(label)
-			self.treatment['deliveryGroup'].addRow(self.treatment['beam'][i]['calculate'],self.treatment['beam'][i]['align'])
-			self.treatment['deliveryGroup'].addRow(HLine())
-			self.treatment['deliveryGroup'].addRow(self.treatment['beam'][i]['interlock'],self.treatment['beam'][i]['deliver'])
-			# Defaults
-			self.treatment['beam'][i]['alignmentComplete'] = False
-			self.treatment['beam'][i]['interlock'].setChecked(True)
-			self.treatment['beam'][i]['interlock'].setEnabled(False)
-			self.treatment['beam'][i]['deliver'].setEnabled(False)
-			# Signals and Slots
-			self.treatment['beam'][i]['interlock'].stateChanged.connect(partial(self.treatmentInterlock,i))
-
-	def addCTWindows(self):
-		'''Add or remove windowing fields as required.'''
-		difference = int(self.ctWindow['numWindows'].value() - len(self.ctWindow['window'])/2)
-
-		# If number greater than, then add windows.
-		if difference > 0:
-			length = len(self.ctWindow['window'])
-			for i in range(difference):
-				# Add to dict, add to layout.
-				self.ctWindow['window'][length+i*2] = HUSpinBox()
-				self.ctWindow['window'][length+i*2+1] = HUSpinBox()
-				self.ctWindow['window'][length+i*2+1].setValue(5000)
-				self.ctWindow['layout'].insertRow(self.ctWindow['layout'].rowCount()-2,
-					self.ctWindow['window'][length+i],self.ctWindow['window'][length+i*2+1])
-
-		# If number less than, remove windows.
-		if difference < 0:
-			length = len(self.ctWindow['window'])
-			for i in range(abs(difference)):
-				# Remove from layout, remove from dict.
-				self.ctWindow['window'][length-i*2-1].deleteLater()
-				self.ctWindow['window'][length-i*2-2].deleteLater()
-				del self.ctWindow['window'][length-i*2-1]
-				del self.ctWindow['window'][length-i*2-2]
-
-	def addXrayWindows(self):
-		'''Add or remove windowing fields as required.'''
-		difference = int(self.xrayWindow['numWindows'].value() - len(self.xrayWindow['window'])/2)
-
-		# If number greater than, then add windows.
-		if difference > 0:
-			length = len(self.xrayWindow['window'])
-			for i in range(difference):
-				# Add to dict, add to layout.
-				self.xrayWindow['window'][length+i*2] = XraySpinBox()
-				self.xrayWindow['window'][length+i*2+1] = XraySpinBox()
-				self.xrayWindow['window'][length+i*2+1].setValue(10000)
-				self.xrayWindow['layout'].insertRow(self.xrayWindow['layout'].rowCount()-1,
-					self.xrayWindow['window'][length+i],self.xrayWindow['window'][length+i*2+1])
-
-		# If number less than, remove windows.
-		if difference < 0:
-			length = len(self.xrayWindow['window'])
-			for i in range(abs(difference)):
-				# Remove from layout, remove from dict.
-				self.xrayWindow['window'][length-i*2-1].deleteLater()
-				self.xrayWindow['window'][length-i*2-2].deleteLater()
-				del self.xrayWindow['window'][length-i*2-1]
-				del self.xrayWindow['window'][length-i*2-2]
-
-	def getCTWindows(self,slope,intercept):
-		'''Get window values as list of lists. Need scale slope and intercept.'''
-		windows = []
-
-		for i in range(int(len(self.ctWindow['window'])/2)):
-			window = [self.ctWindow['window'][i*2].value()*slope-intercept,self.ctWindow['window'][i*2+1].value()*slope-intercept]
-			windows.append(window)
-
-		return windows
-
-	def getXrayWindows(self):
-		'''Get window values as list of lists. Need scale slope and intercept.'''
-		windows = []
-
-		for i in range(int(len(self.xrayWindow['window'])/2)):
-			window = [self.xrayWindow['window'][i*2].value(),self.xrayWindow['window'][i*2+1].value()]
-			windows.append(window)
-
-		return windows
-
-class toolListWidget(QtWidgets.QListWidget):
-	'''
-	Tool list widget for selecting pages in stacked widget. Add items as necessary.
-	'''
+class sidebarStack(QtWidgets.QStackedWidget):
 	def __init__(self,parent):
 		super().__init__(parent)
-		self.setMinimumHeight(800)
+		self.parent = parent
+		self.setMinimumHeight(500)
+		self.setFixedWidth(225)
+		sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Fixed,QtWidgets.QSizePolicy.MinimumExpanding)
+		self.setSizePolicy(sizePolicy)
+		self.parent.setVisible(False)
+		self.stackDict = {}
+
+	def addPage(self,pageName,before=None,after=None):
+		'''Before and after must be names of other pages.'''
+		self.stackDict[pageName] = QtWidgets.QWidget()
+
+		if before is not None:
+			if before == 'all':
+				index = 0
+			else:
+				index = self.indexOf(self.stackDict[before])
+
+		elif after is not None:
+			if after == 'all':
+				index = self.count()
+			else:
+				index = self.indexOf(self.stackDict[after]) + 1
+		else:
+			index = self.count()
+
+		self.insertWidget(index,self.stackDict[pageName])
+
+	def removePage(self,pageName,delete=False):
+		'''Remove page from stack, delete from memory if required.'''
+		self.removeWidget(self.stackDict[pageName])
+		if delete: del self.stackDict[pageName]
+
+class sidebarList(QtWidgets.QListWidget):
+	def __init__(self,parent):
+		# List initialisation.
+		super().__init__(parent)
+		self.setMinimumHeight(500)
 		self.setFixedWidth(60)
 		sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Fixed,QtWidgets.QSizePolicy.MinimumExpanding)
 		self.setSizePolicy(sizePolicy)
 		self.setIconSize(QtCore.QSize(50,50))
+		# A list of pageNames in the stacked widget (of pages to show and hide).
+		self.listDict = {}
 
-	def addCategory(self,name,index):
-		item = QtWidgets.QListWidgetItem()
-		item.setText(name)
-		icon = QtGui.QIcon(resourceFilepath+name+'.png')
+	def addPage(self,pageName,before=None,after=None):
+		'''Before and after must be names of other pages.'''
+		self.listDict[pageName] = QtWidgets.QListWidgetItem()
+		self.listDict[pageName].setText(pageName)
+		# Add Icon.
+		icon = QtGui.QIcon(resourceFilepath+pageName+'.png')
 		icon.pixmap(50,50)
-		item.setIcon(icon)
-		item.setSizeHint(QtCore.QSize(60,60))
+		self.listDict[pageName].setIcon(icon)
+		self.listDict[pageName].setSizeHint(QtCore.QSize(60,60))
 
-		self.insertItem(index,item)
+		if before is not None:
+			if before == 'all':
+				index = 0
+			else:
+				index = self.row(self.listDict[before]) - 1
+		elif after is not None:
+			if after == 'all':
+				index = self.count()
+			else:
+				index = self.row(self.listDict[after]) + 1
+		else:
+			index = self.count()
+
+		self.insertItem(index,self.listDict[pageName])
+
+	def removePage(self,pageName,delete=False):
+		'''Remove page from list, delete from memory if required.'''
+		self.removeItemWidget(self.listDict[pageName])
+
+		if delete:
+			del self.listDict[pageName]
+
+class sidebarSelector:
+	def __init__(self,listWidget,stackWidget):
+		self.list = sidebarList(listWidget)
+		self.stack = stackWidget
+		self._previousListItem = None
+
+		# Signal and slots connections for selecting items in list widget.
+		self.list.currentItemChanged.connect(self.previousStack)
+		self.list.itemPressed.connect(self.showStack)
+
+	def addPage(self,pageName,addStack=True,addList=True,before=None,after=None):
+		'''Before and after must be names of other pages.'''
+		if addStack: self.stack.addPage(pageName,before=before,after=after)
+		if addList: self.list.addPage(pageName,before=before,after=after)
+
+	def previousStack(self,current,previous):
+		'''Keep track of the last item pressed when an item is clicked.'''
+		self._previousListItem = previous
+		# self.showStack(current)
+
+	def showStack(self,listWidgetItem):
+		'''Show workspace based on item clicked/called item. If the active one is re-called, toggle the view on/off.'''
+		pageName = None
+
+		if type(listWidgetItem) == str:
+			# We have a pageName.
+			pass
+		else:
+			# Find pageName in dictionary that matches listWidgetItem.
+			for key, value in self.list.listDict.items():
+				if value == listWidgetItem:
+					pageName = key
+
+		if pageName is None: return
+
+		if self.list.currentItem() == self._previousListItem:
+			self.stack.parent.setVisible(not self.stack.parent.isVisible())
+		else:
+			self.stack.setCurrentWidget(self.stack.stackDict[pageName])
+			self.stack.parent.setVisible(True)
+			self._previousListItem = listWidgetItem
+
+class sbAlignment:
+	def __init__(self,parent):
+		self.parent = parent
+		self.widget = {}
+		self.layout = QtWidgets.QVBoxLayout()
+
+		# Group 1: Markers
+		markerGroup = QtWidgets.QGroupBox()
+		markerGroup.setTitle('Marker Options')
+		self.widget['anatomical'] = QtWidgets.QRadioButton('Anatomical')
+		self.widget['fiducial'] = QtWidgets.QRadioButton('Fiducial')
+		self.widget['optimise'] = QtWidgets.QCheckBox('Optimise')
+		label1 = QtWidgets.QLabel('Number of Points:')
+		self.widget['maxMarkers'] = QtWidgets.QSpinBox()
+		label2 = QtWidgets.QLabel('Marker Size (mm):')
+		self.widget['markerSize'] = QtWidgets.QDoubleSpinBox()
+		# Layout
+		markerGroupLayout = QtWidgets.QFormLayout()
+		markerGroupLayout.addRow(self.widget['anatomical'])
+		markerGroupLayout.addRow(self.widget['fiducial'])
+		markerGroupLayout.addRow(self.widget['optimise'])
+		markerGroupLayout.addRow(label1,self.widget['maxMarkers'])
+		markerGroupLayout.addRow(label2,self.widget['markerSize'])
+		markerGroup.setLayout(markerGroupLayout)
+		self.layout.addWidget(markerGroup)
+		# Default Positions
+		self.widget['optimise'].setEnabled(False)
+		self.widget['anatomical'].setChecked(True)
+		self.widget['markerSize'].setEnabled(False)
+		self.widget['markerSize'].setRange(0,5)
+		self.widget['markerSize'].setSingleStep(0.25)
+		self.widget['markerSize'].setValue(2.00)
+		self.widget['maxMarkers'].setMinimum(1)
+		# Signals and Slots
+		self.widget['anatomical'].toggled.connect(self.markerMode)
+		self.widget['fiducial'].toggled.connect(self.markerMode)
+		self.widget['optimise'].toggled.connect(self.markerMode)
+
+		# Group 2: Checklist
+		checklistGroup = QtWidgets.QGroupBox()
+		checklistGroup.setTitle('Checklist')
+		self.widget['checkSetup'] = QtWidgets.QLabel('Alignment Setup')
+		self.widget['checkXray'] = QtWidgets.QLabel('X-ray')
+		self.widget['checkDicom'] = QtWidgets.QLabel('Dicom Image')
+		self.widget['checkRTP'] = QtWidgets.QLabel('Treatment Plan')
+		self.widget['check'] = QtWidgets.QPushButton('Check')
+		self.widget['align'] = QtWidgets.QPushButton('Align')
+		# Layout
+		checklistGroupLayout = QtWidgets.QFormLayout()
+		checklistGroupLayout.addRow(self.widget['checkSetup'])
+		checklistGroupLayout.addRow(self.widget['checkXray'])
+		checklistGroupLayout.addRow(self.widget['checkDicom'])
+		checklistGroupLayout.addRow(self.widget['checkRTP'])
+		checklistGroupLayout.addRow(self.widget['check'],self.widget['align'])
+		checklistGroup.setLayout(checklistGroupLayout)
+		self.layout.addWidget(checklistGroup)
+		# Defaults
+		# Signals and Slots
+
+		# Finish page.
+		self.layout.addStretch(1)
+		self.parent.setLayout(self.layout)
+
+	def markerMode(self):
+		'''If fiducial markers are chosen then enable optimisation checkbox and sizing.'''
+		# Enabling/toggling optimise.
+		if self.widget['fiducial'].isChecked():
+			self.widget['optimise'].setEnabled(True)
+		else:
+			self.widget['optimise'].setEnabled(False)
+			self.widget['optimise'].setChecked(False)
+			self.widget['markerSize'].setEnabled(False)
+
+		# Enabling/toggling markerSize.
+		if self.widget['optimise'].isChecked():
+			self.widget['markerSize'].setEnabled(True)
+		else:
+			self.widget['markerSize'].setEnabled(False)
+
+	def delete(self):
+		for key, val in self.widget:
+			del key
+		del self.layout
+
+class sbTreatment:
+	def __init__(self,parent):
+		self.parent = parent
+		self.widget = {}
+		self.layout = QtWidgets.QVBoxLayout()
+
+		# Group 1: Treatment Settings
+		settingsGroup = QtWidgets.QGroupBox()
+		settingsGroup.setTitle('Description')
+		label1 = QtWidgets.QLabel('Number of beams: ')
+		self.widget['quantity'] = QtWidgets.QLabel()
+		# Layout
+		settingsGroupLayout = QtWidgets.QFormLayout()
+		settingsGroupLayout.addRow(label1,self.widget['quantity'])
+		settingsGroup.setLayout(settingsGroupLayout)
+		self.layout.addWidget(settingsGroup)
+		# Defaults
+		self.widget['quantity'].setText(str(0))
+		# Signals and Slots
+
+		# Group 2: Deliver Treatment
+		# Dict for beam plan group widgets.
+		self.widget['beam'] = {}
+		group = QtWidgets.QGroupBox()
+		group.setTitle('Deliver Treatment')
+		# Empty Layout
+		self.widget['deliveryGroup'] = QtWidgets.QFormLayout()
+		self.widget['noTreatment'] = QtWidgets.QLabel('No Treatment Plan loaded.')
+		self.widget['deliveryGroup'].addRow(self.widget['noTreatment'])
+		group.setLayout(self.widget['deliveryGroup'])
+		self.layout.addWidget(group)
+		# Defaults
+		# Signals and Slots
+
+		# Finish page.
+		self.layout.addStretch(1)
+		self.parent.setLayout(self.layout)
+
+	def populateTreatments(self):
+		'''Once treatment plan is loaded, add the treatments to the workflow.'''
+		self.widget['noTreatment'].deleteLater()
+		del self.widget['noTreatment']
+
+		for i in range(int(self.widget['quantity'].text())):	
+			self.widget['beam'][i] = {}
+			label = QtWidgets.QLabel(str('Beam %i'%(i+1)))
+			self.widget['beam'][i]['calculate'] = QtWidgets.QPushButton('Calculate')
+			self.widget['beam'][i]['align'] = QtWidgets.QPushButton('Align')
+			# self.widget['beam'][i]['hline'] = HLine()
+			self.widget['beam'][i]['interlock'] = QtWidgets.QCheckBox('Interlock')
+			self.widget['beam'][i]['deliver'] = QtWidgets.QPushButton('Deliver')
+			# Layout
+			self.widget['deliveryGroup'].addRow(label)
+			self.widget['deliveryGroup'].addRow(self.widget['beam'][i]['calculate'],self.widget['beam'][i]['align'])
+			self.widget['deliveryGroup'].addRow(HLine())
+			self.widget['deliveryGroup'].addRow(self.widget['beam'][i]['interlock'],self.widget['beam'][i]['deliver'])
+			# Defaults
+			self.widget['beam'][i]['alignmentComplete'] = False
+			self.widget['beam'][i]['interlock'].setChecked(True)
+			self.widget['beam'][i]['interlock'].setEnabled(False)
+			self.widget['beam'][i]['deliver'].setEnabled(False)
+			# Signals and Slots
+			self.widget['beam'][i]['interlock'].stateChanged.connect(partial(self.treatmentInterlock,i))
+
+	def treatmentInterlock(self,index):
+		'''Treatment interlock stops treatment from occuring. Requires alignment to be done first.'''
+		# Enable interlock button.
+		if self.widget['beam'][index]['alignmentComplete'] == True:
+			self.widget['beam'][index]['interlock'].setEnabled(True)
+
+		# Enable widget delivery button.
+		if self.widget['beam'][index]['interlock'].isChecked():
+			self.widget['beam'][index]['deliver'].setEnabled(False)
+		else:
+			self.widget['beam'][index]['deliver'].setEnabled(True)
+
+	def delete(self):
+		for key, val in self.widget:
+			del key
+		del self.layout
+
+class sbSettings:
+	def __init__(self,parent):
+		self.parent = parent
+		self.widget = {}
+		self.layout = QtWidgets.QVBoxLayout()
+
+		# Group 2: Alignment
+		alignmentGroup = QtWidgets.QGroupBox()
+		alignmentGroup.setTitle('Alignment')
+		self.widget['findXrIsoc'] = QtWidgets.QPushButton('Find Xray Isocentre')
+		label2 = QtWidgets.QLabel('Correct Patient')
+		label3 = QtWidgets.QLabel('Alignment')
+		label4 = QtWidgets.QLabel('Dosimetry')
+
+		# Group 3: Dosimetry
+		dosimetryGroup = QtWidgets.QGroupBox()
+		dosimetryGroup.setTitle('Dosimetry')
+		self.widget['check'] = QtWidgets.QPushButton('Check Treatment')
+		self.widget['deliver'] = QtWidgets.QPushButton('Deliver Treatment')
+		# Defaults
+		# Signals and Slots
+
+		# Add Sections
+
+		# Finish page.
+		self.layout.addStretch(1)
+		self.parent.setLayout(self.layout)
+
+	def delete(self):
+		for key, val in self.widget:
+			del key
+		del self.layout
+
+class sbXrayProperties:
+	def __init__(self,parent):
+		self.parent = parent
+		self.widget = {}
+		self.layout = QtWidgets.QVBoxLayout()
+
+		# Group 1: Alignment callibration.
+		callibrationGroup = QtWidgets.QGroupBox()
+		callibrationGroup.setTitle('Hardware Callibration')
+		label1 = QtWidgets.QLabel('Beam Isocenter (pixels)')
+		label2 = QtWidgets.QLabel('x: ')
+		self.widget['alignIsocX'] = QtWidgets.QLineEdit()
+		label3 = QtWidgets.QLabel('y: ')
+		self.widget['alignIsocY'] = QtWidgets.QLineEdit()
+		# Layout
+		callibrationGroupLayout = QtWidgets.QFormLayout()
+		callibrationGroupLayout.addRow(label1)
+		callibrationGroupLayout.addRow(label2,self.widget['alignIsocX'])
+		callibrationGroupLayout.addRow(label3,self.widget['alignIsocY'])
+		# Defaults
+		validator = QtGui.QDoubleValidator()
+		validator.setBottom(0)
+		validator.setDecimals(4)
+		self.widget['alignIsocX'].setValidator(validator)
+		self.widget['alignIsocY'].setValidator(validator)
+		# Signals and Slots
+		# Group inclusion to page
+		callibrationGroup.setLayout(callibrationGroupLayout)
+		self.layout.addWidget(callibrationGroup)
+
+		# Group 2: Overlays.
+		overlayGroup = QtWidgets.QGroupBox()
+		overlayGroup.setTitle('Plot Overlays')
+		self.widget['cbBeamIsoc'] = QtWidgets.QCheckBox('Beam Isocenter')
+		self.widget['cbPatIsoc'] = QtWidgets.QCheckBox('Patient Isocenter')
+		self.widget['cbCentroid'] = QtWidgets.QCheckBox('Centroid Position')
+		# Layout
+		overlayGroupLayout = QtWidgets.QVBoxLayout()
+		overlayGroupLayout.addWidget(self.widget['cbBeamIsoc'])
+		overlayGroupLayout.addWidget(self.widget['cbPatIsoc'])
+		overlayGroupLayout.addWidget(self.widget['cbCentroid'])
+		# Defaults
+		# Signals and Slots
+		# Group inclusion to page
+		overlayGroup.setLayout(overlayGroupLayout)
+		self.layout.addWidget(overlayGroup)
+
+		# Group 3: Windowing.
+		self.window = {}
+		windowGroup = QtWidgets.QGroupBox()
+		windowGroup.setTitle('X-ray Windowing')
+		header = QtWidgets.QLabel('No. Windows:')
+		self.window['numWindows'] = QtWidgets.QSpinBox()
+		self.window['pbApply'] = QtWidgets.QPushButton('Apply')
+		self.window['pbReset'] = QtWidgets.QPushButton('Reset')
+		self.window['window'] = {}
+		lower = QtWidgets.QLabel('Lower Limit') 
+		upper = QtWidgets.QLabel('Upper Limit')
+		self.window['window'][1] = XraySpinBox()
+		self.window['window'][0] = XraySpinBox()
+		# Layout
+		self.window['layout'] = QtWidgets.QFormLayout()
+		self.window['layout'].addRow(header,self.window['numWindows'])
+		self.window['layout'].addRow(lower,upper)
+		self.window['layout'].addRow(self.window['window'][0],self.window['window'][1])
+		self.window['layout'].addRow(self.window['pbApply'],self.window['pbReset'])
+		# Defaults
+		self.window['numWindows'].setMinimum(1)
+		self.window['numWindows'].setMaximum(10)
+		self.window['numWindows'].setValue(1)
+		self.window['numWindows'].setSingleStep(1)
+		self.window['window'][1].setValue(10000)
+		# Signals and Slots
+		self.window['numWindows'].valueChanged.connect(self.addWindows)
+		# Group inclusion to page
+		windowGroup.setLayout(self.window['layout'])
+		self.layout.addWidget(windowGroup)
+
+		# Finish page.
+		self.layout.addStretch(1)
+		self.parent.setLayout(self.layout)
+
+	def addWindows(self):
+		'''Add or remove windowing fields as required.'''
+		difference = int(self.window['numWindows'].value() - len(self.window['window'])/2)
+
+		# If number greater than, then add windows.
+		if difference > 0:
+			length = len(self.window['window'])
+			for i in range(difference):
+				# Add to dict, add to layout.
+				self.window['window'][length+i*2] = XraySpinBox()
+				self.window['window'][length+i*2+1] = XraySpinBox()
+				self.window['window'][length+i*2+1].setValue(10000)
+				self.window['layout'].insertRow(self.window['layout'].rowCount()-1,
+					self.window['window'][length+i],self.window['window'][length+i*2+1])
+
+		# If number less than, remove windows.
+		if difference < 0:
+			length = len(self.window['window'])
+			for i in range(abs(difference)):
+				# Remove from layout, remove from dict.
+				self.window['window'][length-i*2-1].deleteLater()
+				self.window['window'][length-i*2-2].deleteLater()
+				del self.window['window'][length-i*2-1]
+				del self.window['window'][length-i*2-2]
+
+	def getWindows(self):
+		'''Get window values as list of lists. Need scale slope and intercept.'''
+		windows = []
+
+		for i in range(int(len(self.window['window'])/2)):
+			window = [self.window['window'][i*2].value(),self.window['window'][i*2+1].value()]
+			windows.append(window)
+
+
+class sbCTProperties:
+	def __init__(self,parent):
+		self.parent = parent
+		self.widget = {}
+		self.layout = QtWidgets.QVBoxLayout()
+
+		# Group 1: Windowing
+		self.window = {}
+		windowGroup = QtWidgets.QGroupBox()
+		windowGroup.setTitle('CT Windowing')
+		header = QtWidgets.QLabel('No. Windows:')
+		self.window['numWindows'] = QtWidgets.QSpinBox()
+		self.window['pbApply'] = QtWidgets.QPushButton('Apply')
+		self.window['pbReset'] = QtWidgets.QPushButton('Reset')
+		self.window['window'] = {}
+		lower = QtWidgets.QLabel('Lower Limit') 
+		upper = QtWidgets.QLabel('Upper Limit')
+		self.window['window'][1] = HUSpinBox()
+		self.window['window'][0] = HUSpinBox()
+		# Layout
+		self.window['layout'] = QtWidgets.QFormLayout()
+		self.window['layout'].addRow(header,self.window['numWindows'])
+		self.window['layout'].addRow(lower,upper)
+		self.window['layout'].addRow(self.window['window'][0],self.window['window'][1])
+		self.window['layout'].addRow(self.window['pbApply'],self.window['pbReset'])
+		# Defaults
+		self.window['numWindows'].setMinimum(1)
+		self.window['numWindows'].setMaximum(10)
+		self.window['numWindows'].setValue(1)
+		self.window['numWindows'].setSingleStep(1)
+		self.window['window'][1].setValue(5000)
+		# Signals and Slots
+		self.window['numWindows'].valueChanged.connect(self.addWindows)
+
+		# Add Sections 
+		windowGroup.setLayout(self.window['layout'])
+		self.layout.addWidget(windowGroup)
+
+		# Finish page.
+		self.layout.addStretch(1)
+		self.parent.setLayout(self.layout)
+
+	def addWindows(self):
+		'''Add or remove windowing fields as required.'''
+		difference = int(self.window['numWindows'].value() - len(self.window['window'])/2)
+
+		# If number greater than, then add windows.
+		if difference > 0:
+			length = len(self.window['window'])
+			for i in range(difference):
+				# Add to dict, add to layout.
+				self.window['window'][length+i*2] = HUSpinBox()
+				self.window['window'][length+i*2+1] = HUSpinBox()
+				self.window['window'][length+i*2+1].setValue(5000)
+				self.window['layout'].insertRow(self.window['layout'].rowCount()-2,
+					self.window['window'][length+i],self.window['window'][length+i*2+1])
+
+		# If number less than, remove windows.
+		if difference < 0:
+			length = len(self.window['window'])
+			for i in range(abs(difference)):
+				# Remove from layout, remove from dict.
+				self.window['window'][length-i*2-1].deleteLater()
+				self.window['window'][length-i*2-2].deleteLater()
+				del self.window['window'][length-i*2-1]
+				del self.window['window'][length-i*2-2]
+
+	def getWindows(self,slope,intercept):
+		'''Get window values as list of lists. Need scale slope and intercept.'''
+		windows = []
+
+		for i in range(int(len(self.window['window'])/2)):
+			window = [self.window['window'][i*2].value()*slope-intercept,self.window['window'][i*2+1].value()*slope-intercept]
+			windows.append(window)
+
+		return windows
 
 class HUSpinBox(QtWidgets.QSpinBox):
 	'''CT HU windowing spinbox'''
@@ -509,7 +599,7 @@ class workEnvironment:
 				self.stackPage[name] = page
 
 				index = self.stack.indexOf(page)
-				button.clicked.connect(partial(self.showWorkspace,index))
+				self.button[name].clicked.connect(partial(self.showWorkspace,index))
 		else:
 			# Assume singular workspace addition.
 			button = QtWidgets.QToolButton()
