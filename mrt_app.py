@@ -32,8 +32,8 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
 
 		# Sidebar panels
-		self.sidebarStack = sidebarStack(self.frameSidebarStack)
-		self.sidebarList = sidebarList(self.frameSidebarList)
+		self.sidebarStack = sidebarStack(self.widgetSidebarStack)
+		self.sidebarList = sidebarList(self.widgetSidebarList)
 		self.sidebarSelector = sidebarSelector(self.sidebarList,self.sidebarStack)
 
 		# Add alignment section to sidebar (list+stack).
@@ -41,7 +41,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 
 		self.sbAlignment = sbAlignment(self.sidebarStack.stackDict['Alignment'])
 		self.sbAlignment.widget['maxMarkers'].setValue(3)
-		self.sbAlignment.widget['maxMarkers'].valueChanged.connect(partial(self.updateSettings,self.sbAlignment.widget['maxMarkers']))
+		self.sbAlignment.widget['maxMarkers'].valueChanged.connect(partial(self.updateSettings,'global',self.sbAlignment.widget['maxMarkers']))
 		self.sbAlignment.widget['align'].clicked.connect(partial(self.patientCalculateAlignment,treatmentIndex=-1))
 		self.sbAlignment.widget['optimise'].toggled.connect(partial(self.toggleOptimise))
 
@@ -182,15 +182,13 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		# Create stack page for xray image properties and populate.
 		self.sidebarStack.addPage('xrImageProperties')
 		self.sbXrayProperties = sbXrayProperties(self.sidebarStack.stackDict['xrImageProperties'])
-		self.sbXrayProperties.widget['cbBeamIsoc'].stateChanged.connect(self.xrayOverlay)
-		self.sbXrayProperties.widget['cbPatIsoc'].stateChanged.connect(self.xrayOverlay)
-		self.sbXrayProperties.widget['cbCentroid'].stateChanged.connect(self.xrayOverlay)
+		self.sbXrayProperties.widget['cbBeamIsoc'].stateChanged.connect(partial(self.xrayOverlay,overlay='beam'))
+		self.sbXrayProperties.widget['cbPatIsoc'].stateChanged.connect(partial(self.xrayOverlay,overlay='patient'))
+		self.sbXrayProperties.widget['cbCentroid'].stateChanged.connect(partial(self.xrayOverlay,overlay='centroid'))
 
 		# Link to environment
 		self.sbXrayProperties.widget['alignIsocX'].setText(str(gv.hamamatsuAlignmentIsoc[1]))
 		self.sbXrayProperties.widget['alignIsocY'].setText(str(gv.hamamatsuAlignmentIsoc[2]))
-		self.sbXrayProperties.widget['alignIsocX'].editingFinished.connect(partial(self.updateSettings,self.sbXrayProperties.widget['alignIsocX']))
-		self.sbXrayProperties.widget['alignIsocY'].editingFinished.connect(partial(self.updateSettings,self.sbXrayProperties.widget['alignIsocY']))
 
 		# Calculate extent for x-ray images.
 		self.xrayCalculateExtent(update=False)
@@ -203,7 +201,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 			self.property.addVariable('X-Ray',['Alignment Isocenter','x','y'],self.xray.alignmentIsoc[-2:].tolist())
 
 			# Connect changes to updates in settings.
-			self.property.itemChanged.connect(self.updateSettings)
+			# self.property.itemChanged.connect(self.updateSettings)
 
 			imageFiles = fileHandler.importImage(self.xray.fp,'xray','npy')
 			self.xray.arrayNormal = imageFiles[0]
@@ -230,6 +228,11 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 			self.xray.plotEnvironment.plot0.imageLoad(self.xray.arrayNormal,extent=self.xray.arrayExtent,imageOrientation=self.xray.patientOrientation,imageIndex=0)
 			self.xray.plotEnvironment.plot90.imageLoad(self.xray.arrayOrthogonal,extent=self.xray.arrayExtent,imageOrientation=self.xray.patientOrientation,imageIndex=1)
 		
+		# Signals and slots.
+		self.sbXrayProperties.widget['alignIsocX'].editingFinished.connect(partial(self.updateSettings,'xr',self.sbXrayProperties.widget['alignIsocX']))
+		self.sbXrayProperties.widget['alignIsocY'].editingFinished.connect(partial(self.updateSettings,'xr',self.sbXrayProperties.widget['alignIsocY']))
+		self.sbXrayProperties.window['pbApply'].clicked.connect(partial(self.updateSettings,'xr',self.sbXrayProperties.window['pbApply']))
+
 		# Set image properties in sidebar to x-ray image properties whenever the workspace is open.
 		self.workEnvironment.stack.currentChanged.connect(self.setImagePropertiesStack)
 		self.setImagePropertiesStack()
@@ -237,21 +240,26 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		# Set to current working environment (in widget stack).
 		self.workEnvironment.button['X-RAY'].clicked.emit()
 
-	def xrayOverlay(self):
+	def xrayOverlay(self,overlay):
 		'''Control x-ray plot overlays.'''
-		if self.sbXrayProperties.widget['cbBeamIsoc'].isChecked():
-			self.xray.plotEnvironment.plot0.overlayIsocenter(state=True)
-			self.xray.plotEnvironment.plot90.overlayIsocenter(state=True)
+		if overlay == 'beam':
+			if self.sbXrayProperties.widget['cbBeamIsoc'].isChecked():
+				self.xray.plotEnvironment.plot0.overlayIsocenter(state=True)
+				self.xray.plotEnvironment.plot90.overlayIsocenter(state=True)
+			else:
+				self.xray.plotEnvironment.plot0.overlayIsocenter(state=False)
+				self.xray.plotEnvironment.plot90.overlayIsocenter(state=False)
+		elif overlay == 'patient':
+			pass
+		elif overlay == 'centroid':
+			pass
 		else:
-			self.xray.plotEnvironment.plot0.overlayIsocenter(state=False)
-			self.xray.plotEnvironment.plot90.overlayIsocenter(state=False)
+			pass
 
 	def xrayCalculateExtent(self,update=True):
 		'''Should umbrella all this under an x-ray class.'''
 		# Force update of alignment isocenter from settings.
 		self.xray.alignmentIsoc = gv.hamamatsuAlignmentIsoc
-
-		print('in calc xray extent')
 
 		# Set extent for plotting. This is essentially the IMBL coordinate system according to the detector.
 		left = -self.xray.alignmentIsoc[0]*self.xray.imagePixelSize[0]
@@ -318,10 +326,16 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		self.ct.plotEnvironment.plot0.imageLoad(self.ct.array,extent=self.ct.arrayExtent,imageIndex=0)
 		self.ct.plotEnvironment.plot90.imageLoad(self.ct.array,extent=self.ct.arrayExtent,imageIndex=1)
 
+		# Signals and slots.
+		self.sbCTProperties.window['pbApply'].clicked.connect(partial(self.updateSettings,'ct',self.sbCTProperties.window['pbApply']))
+
 		# Last checklist items.
-		self.sbAlignment.widget['checkDicom'].setStyleSheet("color: green")
 		self.workEnvironment.stack.currentChanged.connect(self.setImagePropertiesStack)
 		self.setImagePropertiesStack()
+
+		# Set open switch to true and open the workspace (also sets the image properties stack?).
+		self._isCTOpen = True
+		self.sbAlignment.widget['checkDicom'].setStyleSheet("color: green")
 		self.workEnvironment.button['CT'].clicked.emit()
 
 	def openRTP(self,files):
@@ -377,14 +391,17 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 			self.sbTreatment.widget['beam'][i]['calculate'].clicked.connect(partial(self.patientCalculateAlignment,treatmentIndex=i))
 			self.sbTreatment.widget['beam'][i]['align'].clicked.connect(self.patientApplyAlignment)
 
+		self._isRTPOpen = True
 		self.workEnvironment.button['RTPLAN'].clicked.emit()
 
 	def setImagePropertiesStack(self):
-		if self.workEnvironment.stack.indexOf(self.workEnvironment.stackPage['X-RAY']) == self.workEnvironment.stack.currentIndex():
-			self.sidebarStack.stackDict['ImageProperties'] = self.sidebarStack.stackDict['xrImageProperties']
-		elif self.workEnvironment.stack.indexOf(self.workEnvironment.stackPage['CT']) == self.workEnvironment.stack.currentIndex():
-			self.sidebarStack.stackDict['ImageProperties'] = self.sidebarStack.stackDict['ctImageProperties']
-		else:
+		if self._isXrayOpen:
+			if self.workEnvironment.stack.indexOf(self.workEnvironment.stackPage['X-RAY']) == self.workEnvironment.stack.currentIndex():
+				self.sidebarStack.stackDict['ImageProperties'] = self.sidebarStack.stackDict['xrImageProperties']
+		if self._isCTOpen:
+			if self.workEnvironment.stack.indexOf(self.workEnvironment.stackPage['CT']) == self.workEnvironment.stack.currentIndex():
+				self.sidebarStack.stackDict['ImageProperties'] = self.sidebarStack.stackDict['ctImageProperties']
+		if self._isRTPOpen:
 			for i in range(len(self.rtp.beam)):
 				if self.workEnvironment.stack.indexOf(self.workEnvironment.stackPage['BEV%i'%(i+1)]) == self.workEnvironment.stack.currentIndex():
 						self.sidebarStack.stackDict['ImageProperties'] = self.sidebarStack.stackDict['bev%iImageProperties'%(i+1)]
@@ -392,70 +409,75 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		# Force refresh.
 		self.sidebarStack.setCurrentWidget(self.sidebarStack.stackDict['ImageProperties'])
 
-	def updateSettings(self,origin):
+	def updateSettings(self,mode,origin):
 		'''Update variable based of changed data in property model (in some cases, external sources).'''
-
-		'''Update x-ray isocenter properties.'''
-		if self._isXrayOpen is True:
+		if (mode == 'xr') & (self._isXrayOpen):
+			'''Update x-ray specific properties.'''
 			if origin == self.sbXrayProperties.widget['alignIsocX']:
+				# Overwrite the alignment isoc in settings.
 				gv.hamamatsuAlignmentIsoc[:2] = origin.text()
+				# Update the property variables.
 				item = self.property.itemFromIndex(self.property.index['X-Ray']['Alignment Isocenter']['x'])
 				item.setData(origin.text(),QtCore.Qt.DisplayRole)
+				# Re-calculate the extent.
+				self.xrayCalculateExtent()
 			elif origin == self.sbXrayProperties.widget['alignIsocY']:
+				# Overwrite the alignment isoc in settings.
 				gv.hamamatsuAlignmentIsoc[2] = origin.text()
+				# Update the property variables.
 				item = self.property.itemFromIndex(self.property.index['X-Ray']['Alignment Isocenter']['y'])
 				item.setData(origin.text(),QtCore.Qt.DisplayRole)
-			# Re-calculate the extent.
-			self.xrayCalculateExtent()
-			print('went into calc xray extent')
-
-		if origin == self.sbAlignment.widget['maxMarkers']:
-			value = self.sbAlignment.widget['maxMarkers'].value()
-			gv.markerQuantity = value
-			if self.xray.plotEnvironment:
-				self.xray.plotEnvironment.gv('maxMarkers',value)
-			if self.ct.plotEnvironment:
-				self.ct.plotEnvironment.gv('maxMarkers',value)
-			try:
-				for i in range(len(self.rtp.beam)):
-					self.rtp.beam[i].plotEnvironment.gv('maxMarkers',value)
-			except:
-				pass
-		elif self.ct.plotEnvironment:
-			if origin == self.sbCTProperties.window['pbApply']:
-				'''When push apply window button, check for mode type and amount of windows.'''
-				if self.sbCTProperties.window['rbMax'].isChecked():
-					mode = 'max'
-				else:
-					mode = 'sum'
-				if self.ct.plotEnvironment:
-					# ADD: If ct ticked, then do.
-					windows = self.sbCTProperties.getWindows(self.ct.rescaleSlope,self.ct.rescaleIntercept)
-					self.ct.plotEnvironment.setRadiographMode(mode)
-					self.ct.plotEnvironment.setWindows(windows)
-		elif origin == self.sbXrayProperties.window['pbApply']:
-			'''When push apply window button, check for mode type and amount of windows.'''
-			mode = 'radiograph'
-			if self.xray.plotEnvironment:
+				# Re-calculate the extent.
+				self.xrayCalculateExtent()
+			elif origin == self.sbXrayProperties.window['pbApply']:
+				# Must be in radiograph mode.
+				mode = 'radiograph'
+				# Get the windows and apply them.
 				windows = self.sbXrayProperties.getWindows()
 				self.xray.plotEnvironment.setRadiographMode(mode)
 				self.xray.plotEnvironment.setWindows(windows)
 
-		else:
-			# If not from an existing widget, it then must originate from the table.
-			try:
-				index = self.property.indexFromItem(origin)
+		elif (mode == 'ct') & (self._isCTOpen):
+			'''Update ct specific properties.'''
+			if origin == self.sbCTProperties.window['pbApply']:
+				# Check mode type.
+				if self.sbCTProperties.window['rbMax'].isChecked():
+					mode = 'max'
+				else:
+					mode = 'sum'
+				# Get windows and apply them.
+				windows = self.sbCTProperties.getWindows(self.ct.rescaleSlope,self.ct.rescaleIntercept)
+				self.ct.plotEnvironment.setRadiographMode(mode)
+				self.ct.plotEnvironment.setWindows(windows)
 
-				if index == self.property.index['X-Ray']['Alignment Isocenter']['x']:
-					gv.hamamatsuAlignmentIsoc[:2] = self.property.data(index)
-					self.sbSettings.widget['alignIsocX'].setText(str(self.property.data(index)))
-					self.xray.alignmentIsoc = gv.hamamatsuAlignmentIsoc
-				elif index == self.property.index['X-Ray']['Alignment Isocenter']['y']:
-					gv.hamamatsuAlignmentIsoc[2] = self.property.data(index)
-					self.sbSettings.widget['alignIsocY'].setText(str(self.property.data(index)))
-					self.xray.alignmentIsoc = gv.hamamatsuAlignmentIsoc
-			except:
-				pass
+		elif mode == 'global':
+			'''Update global variables, applicable to all modes.'''
+			if origin == self.sbAlignment.widget['maxMarkers']:
+				value = self.sbAlignment.widget['maxMarkers'].value()
+				# Update settings.
+				gv.markerQuantity = value
+				# Update plot tables.
+				if self._isXrayOpen: self.xray.plotEnvironment.settings('maxMarkers',value)
+				if self._isCTOpen: self.ct.plotEnvironment.settings('maxMarkers',value)
+				if self._isRTPOpen: 
+					for i in range(len(self.rtp.beam)):
+						self.rtp.beam[i].plotEnvironment.settings('maxMarkers',value)
+
+		# else:
+		# 	# If not from an existing widget, it then must originate from the table.
+		# 	try:
+		# 		index = self.property.indexFromItem(origin)
+
+		# 		if index == self.property.index['X-Ray']['Alignment Isocenter']['x']:
+		# 			gv.hamamatsuAlignmentIsoc[:2] = self.property.data(index)
+		# 			self.sbSettings.widget['alignIsocX'].setText(str(self.property.data(index)))
+		# 			self.xray.alignmentIsoc = gv.hamamatsuAlignmentIsoc
+		# 		elif index == self.property.index['X-Ray']['Alignment Isocenter']['y']:
+		# 			gv.hamamatsuAlignmentIsoc[2] = self.property.data(index)
+		# 			self.sbSettings.widget['alignIsocY'].setText(str(self.property.data(index)))
+		# 			self.xray.alignmentIsoc = gv.hamamatsuAlignmentIsoc
+		# 	except:
+		# 		pass
 
 	def toggleOptimise(self,state):
 		'''State(bool) tells you whether you should clear the optimisation plots or not.'''

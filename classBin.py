@@ -18,7 +18,7 @@ TOOL PANEL
 
 class sidebarStack(QtWidgets.QStackedWidget):
 	def __init__(self,parent):
-		super().__init__(parent)
+		super().__init__()
 		self.parent = parent
 		self.setMinimumHeight(500)
 		self.setFixedWidth(225)
@@ -26,6 +26,11 @@ class sidebarStack(QtWidgets.QStackedWidget):
 		self.setSizePolicy(sizePolicy)
 		self.parent.setVisible(False)
 		self.stackDict = {}
+
+		layout = QtWidgets.QGridLayout()
+		layout.addWidget(self)
+		layout.setContentsMargins(0,0,0,0)
+		parent.setLayout(layout)
 
 	def addPage(self,pageName,before=None,after=None):
 		'''Before and after must be names of other pages.'''
@@ -55,7 +60,7 @@ class sidebarStack(QtWidgets.QStackedWidget):
 class sidebarList(QtWidgets.QListWidget):
 	def __init__(self,parent):
 		# List initialisation.
-		super().__init__(parent)
+		super().__init__()
 		self.setMinimumHeight(500)
 		self.setFixedWidth(60)
 		sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Fixed,QtWidgets.QSizePolicy.MinimumExpanding)
@@ -63,6 +68,12 @@ class sidebarList(QtWidgets.QListWidget):
 		self.setIconSize(QtCore.QSize(50,50))
 		# A list of pageNames in the stacked widget (of pages to show and hide).
 		self.listDict = {}
+
+		# Add self to parent layout.
+		layout = QtWidgets.QGridLayout()
+		layout.addWidget(self)
+		layout.setContentsMargins(0,0,0,0)
+		parent.setLayout(layout)
 
 	def addPage(self,pageName,before=None,after=None):
 		'''Before and after must be names of other pages.'''
@@ -407,7 +418,7 @@ class sbXrayProperties:
 		self.window['numWindows'].setMaximum(10)
 		self.window['numWindows'].setValue(1)
 		self.window['numWindows'].setSingleStep(1)
-		self.window['window'][1].setValue(10000)
+		self.window['window'][1].setValue(65535)
 		# Signals and Slots
 		self.window['numWindows'].valueChanged.connect(self.addWindows)
 		# Group inclusion to page
@@ -451,6 +462,7 @@ class sbXrayProperties:
 			window = [self.window['window'][i*2].value(),self.window['window'][i*2+1].value()]
 			windows.append(window)
 
+		return windows
 
 class sbCTProperties:
 	def __init__(self,parent):
@@ -464,6 +476,8 @@ class sbCTProperties:
 		windowGroup.setTitle('CT Windowing')
 		header = QtWidgets.QLabel('No. Windows:')
 		self.window['numWindows'] = QtWidgets.QSpinBox()
+		self.window['rbMax'] = QtWidgets.QRadioButton('Max')
+		self.window['rbSum'] = QtWidgets.QRadioButton('Sum')
 		self.window['pbApply'] = QtWidgets.QPushButton('Apply')
 		self.window['pbReset'] = QtWidgets.QPushButton('Reset')
 		self.window['window'] = {}
@@ -476,6 +490,7 @@ class sbCTProperties:
 		self.window['layout'].addRow(header,self.window['numWindows'])
 		self.window['layout'].addRow(lower,upper)
 		self.window['layout'].addRow(self.window['window'][0],self.window['window'][1])
+		self.window['layout'].addRow(self.window['rbMax'],self.window['rbSum'])
 		self.window['layout'].addRow(self.window['pbApply'],self.window['pbReset'])
 		# Defaults
 		self.window['numWindows'].setMinimum(1)
@@ -483,6 +498,7 @@ class sbCTProperties:
 		self.window['numWindows'].setValue(1)
 		self.window['numWindows'].setSingleStep(1)
 		self.window['window'][1].setValue(5000)
+		self.window['rbSum'].setChecked(True)
 		# Signals and Slots
 		self.window['numWindows'].valueChanged.connect(self.addWindows)
 
@@ -541,8 +557,8 @@ class XraySpinBox(QtWidgets.QSpinBox):
 	'''Xray windowing spin box'''
 	def __init__(self):
 		super().__init__()
-		self.setRange(0,10000)
-		self.setSingleStep(100)
+		self.setRange(0,65535)
+		self.setSingleStep(5000)
 		self.setValue(0)
 
 class HLine(QtWidgets.QFrame):
@@ -822,7 +838,7 @@ class propertyManager(QtWidgets.QTreeView):
 	'''
 	def __init__(self,frame,model):
 		'''Send the frame location to sit the tree in along with the model to populate the tree with.'''
-		super().__init__(frame)
+		super().__init__()
 		# self.setHeaderLabel('Property Editor')
 		self.setMinimumSize(250,800)
 		self.setMaximumWidth(500)
@@ -832,6 +848,12 @@ class propertyManager(QtWidgets.QTreeView):
 		sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.MinimumExpanding,QtWidgets.QSizePolicy.MinimumExpanding)
 		self.setSizePolicy(sizePolicy)
 		self.setModel(model)
+
+		# Set layout and add propertyManager as widget to frame layout.
+		layout = QtWidgets.QGridLayout()
+		layout.addWidget(self)
+		layout.setContentsMargins(0,0,0,0)
+		frame.setLayout(layout)
 
 class propertyModel(QtGui.QStandardItemModel):
 	'''
