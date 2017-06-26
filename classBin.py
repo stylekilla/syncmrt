@@ -158,30 +158,37 @@ class sbAlignment:
 		# Group 1: Markers
 		markerGroup = QtWidgets.QGroupBox()
 		markerGroup.setTitle('Marker Options')
+		label1 = QtWidgets.QLabel('No. of Markers:')
+		self.widget['maxMarkers'] = QtWidgets.QSpinBox()
 		self.widget['anatomical'] = QtWidgets.QRadioButton('Anatomical')
 		self.widget['fiducial'] = QtWidgets.QRadioButton('Fiducial')
 		self.widget['optimise'] = QtWidgets.QCheckBox('Optimise')
-		label1 = QtWidgets.QLabel('Number of Points:')
-		self.widget['maxMarkers'] = QtWidgets.QSpinBox()
 		label2 = QtWidgets.QLabel('Marker Size (mm):')
 		self.widget['markerSize'] = QtWidgets.QDoubleSpinBox()
+		label3 = QtWidgets.QLabel('Threshold (%):')
+		self.widget['threshold'] = QtWidgets.QDoubleSpinBox()
 		# Layout
 		markerGroupLayout = QtWidgets.QFormLayout()
+		markerGroupLayout.addRow(label1,self.widget['maxMarkers'])
 		markerGroupLayout.addRow(self.widget['anatomical'])
 		markerGroupLayout.addRow(self.widget['fiducial'])
 		markerGroupLayout.addRow(self.widget['optimise'])
-		markerGroupLayout.addRow(label1,self.widget['maxMarkers'])
 		markerGroupLayout.addRow(label2,self.widget['markerSize'])
+		markerGroupLayout.addRow(label3,self.widget['threshold'])
 		markerGroup.setLayout(markerGroupLayout)
 		self.layout.addWidget(markerGroup)
 		# Default Positions
 		self.widget['optimise'].setEnabled(False)
 		self.widget['anatomical'].setChecked(True)
 		self.widget['markerSize'].setEnabled(False)
-		self.widget['markerSize'].setRange(0,5)
+		self.widget['markerSize'].setRange(1,5)
 		self.widget['markerSize'].setSingleStep(0.25)
 		self.widget['markerSize'].setValue(2.00)
 		self.widget['maxMarkers'].setMinimum(1)
+		self.widget['threshold'].setEnabled(False)
+		self.widget['threshold'].setRange(0,10)
+		self.widget['threshold'].setValue(3)
+		self.widget['threshold'].setSingleStep(0.5)
 		# Signals and Slots
 		self.widget['anatomical'].toggled.connect(self.markerMode)
 		self.widget['fiducial'].toggled.connect(self.markerMode)
@@ -221,12 +228,15 @@ class sbAlignment:
 			self.widget['optimise'].setEnabled(False)
 			self.widget['optimise'].setChecked(False)
 			self.widget['markerSize'].setEnabled(False)
+			self.widget['threshold'].setEnabled(False)
 
 		# Enabling/toggling markerSize.
 		if self.widget['optimise'].isChecked():
 			self.widget['markerSize'].setEnabled(True)
+			self.widget['threshold'].setEnabled(True)
 		else:
 			self.widget['markerSize'].setEnabled(False)
+			self.widget['threshold'].setEnabled(False)
 
 	def delete(self):
 		for key, val in self.widget:

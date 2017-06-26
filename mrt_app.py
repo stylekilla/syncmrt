@@ -2,6 +2,7 @@
 from settings import globalVariables as gv
 gv = gv()
 from classBin import *
+from controls import *
 # As normal...
 import os
 import sys
@@ -38,27 +39,34 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 
 		# Add alignment section to sidebar (list+stack).
 		self.sidebarSelector.addPage('Alignment',before='all')
-
 		self.sbAlignment = sbAlignment(self.sidebarStack.stackDict['Alignment'])
 		self.sbAlignment.widget['maxMarkers'].setValue(3)
 		self.sbAlignment.widget['maxMarkers'].valueChanged.connect(partial(self.updateSettings,'global',self.sbAlignment.widget['maxMarkers']))
 		self.sbAlignment.widget['align'].clicked.connect(partial(self.patientCalculateAlignment,treatmentIndex=-1))
 		self.sbAlignment.widget['optimise'].toggled.connect(partial(self.toggleOptimise))
 
+		# Add treatment section to sidebar.
 		self.sidebarSelector.addPage('Treatment',after='Alignment')
 		self.sbTreatment = sbTreatment(self.sidebarStack.stackDict['Treatment'])
 
+		# Add image properties section to sidebar.
 		self.sidebarSelector.addPage('ImageProperties',after='Treatment')
 
+		# Add settings section to sidebar.
 		self.sidebarSelector.addPage('Settings',after='all')
 		self.sbSettings = sbSettings(self.sidebarStack.stackDict['Settings'])
 
-		# Work environment
+		# Create work environment
 		self.workEnvironment = workEnvironment(self.toolbarPane,self.workStack)
+
+		# Create controls work environment.
+		self.workEnvironment.addWorkspace('Controls')
+		self.controls = controls(self.workEnvironment.stackPage['Controls'])
+		self.controls.addMotor()
 
 		# PropertyManager
 		self.property = propertyModel()
-		self.propertyTree = propertyManager(self.variableFrame,self.property)
+		self.propertyTree = propertyManager(self.variableWidget,self.property)
 
 		# Create a ct/mri/xray structure class.
 		self.ct = fileHandler.dataDicom()
@@ -68,11 +76,10 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 
 		# Create alignment table.
 		self.property.addSection('Alignment')
-		# Hide table until alignment is clicked...
 		self.property.addVariable('Alignment',['Rotation','x','y','z'],[0,0,0])
 		self.property.addVariable('Alignment',['Translation','x','y','z'],[0,0,0])
 		self.property.addVariable('Alignment','Scale',0)
-		# Get zero alignment solution result.
+		# Create initial zero alignment solution result.
 		self.alignmentSolution = imageGuidance.affineTransform(0,0,0,0,0)
 
 		# Connect buttons and widgets.
@@ -89,16 +96,6 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		self._isRTPOpen = False
 
 	def openFiles(self,modality):
-		# Create tool selector for image settings. Only create if it doesn't exist.
-		# try:
-		# 	self.sidebarSelector.stackPage['ImageProperties']
-		# except KeyError:
-		# 	self.toolSelect.addTool('ImageProperties')
-		# 	self.sbCTProperties.window['pbApply'].clicked.connect(partial(self.updateSettings,self.sbCTProperties.window['pbApply']))
-		# 	self.sbCTProperties.window['pbReset'].clicked.connect(partial(self.updateSettings,self.sbCTProperties.window['pbReset']))
-		# 	self.sbXrayProperties.window['pbApply'].clicked.connect(partial(self.updateSettings,self.sbXrayProperties.window['pbApply']))
-		# 	self.sbXrayProperties.window['pbReset'].clicked.connect(partial(self.updateSettings,self.sbXrayProperties.window['pbReset']))
-
 		# We don't do any importing of pixel data in here; that is left up to the plotter by sending the filepath.
 		if modality == 'ct':
 			fileFormat = 'DICOM (*.dcm)'
@@ -514,18 +511,21 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		# Do some check to see if Ly and Ry are the same/within a given tolerance?
 		# Left is ct
 		# Right is xr
-		numberOfPoints = self.sbAlignment.widget['markerSize'].value()
+		numberOfPoints = self.sbAlignment.widget['maxMarkers'].value()
 		left = np.zeros((numberOfPoints,3))
 		right = np.zeros((numberOfPoints,3))
+
 		if treatmentIndex == -1:
 			'''Align to CT'''
 			if len(self.xray.plotEnvironment.plot0.pointsX)>0:
 				if self.sbAlignment.widget['optimise'].isChecked():
+					markerSize = self.sbAlignment.widget['markerSize'].value()
+					threshold = self.sbAlignment.widget['threshold'].value()
 					'''Optimise points.'''
-					self.xray.plotEnvironment.plot0.markerOptimise(numberOfPoints)
-					self.xray.plotEnvironment.plot90.markerOptimise(numberOfPoints)
-					self.ct.plotEnvironment.plot0.markerOptimise(numberOfPoints)
-					self.ct.plotEnvironment.plot90.markerOptimise(numberOfPoints)
+					self.xray.plotEnvironment.plot0.markerOptimise(markerSize,threshold)
+					self.xray.plotEnvironment.plot90.markerOptimise(markerSize,threshold)
+					self.ct.plotEnvironment.plot0.markerOptimise(markerSize,threshold)
+					self.ct.plotEnvironment.plot90.markerOptimise(markerSize,threshold)
 					# log(self.logFile,"Successfully optimised points.","event")
 					# Collect points.
 					left[:,0] = self.ct.plotEnvironment.plot0.pointsXoptimised
@@ -554,10 +554,10 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 			if len(self.rtp.beam[treatmentIndex].plotEnvironment.plot0.pointsX)>0:
 				# Optimise Points
 				if self.toolSelect.alignment['optimise'].isChecked():
-					self.xray.plotEnvironment.plot0.markerOptimise(self.toolSelect.alignment['markerSize'].value())
-					self.xray.plotEnvironment.plot90.markerOptimise(self.toolSelect.alignment['markerSize'].value())
-					self.rtp.beam[treatmentIndex].plotEnvironment.plot0.markerOptimise(self.toolSelect.alignment['markerSize'].value())
-					self.rtp.beam[treatmentIndex].plotEnvironment.plot90.markerOptimise(self.toolSelect.alignment['markerSize'].value())
+					self.xray.plotEnvironment.plot0.markerOptimise(self.toolSelect.alignment['markerSize'].value(),threshold)
+					self.xray.plotEnvironment.plot90.markerOptimise(self.toolSelect.alignment['markerSize'].value(),threshold)
+					self.rtp.beam[treatmentIndex].plotEnvironment.plot0.markerOptimise(self.toolSelect.alignment['markerSize'].value(),threshold)
+					self.rtp.beam[treatmentIndex].plotEnvironment.plot90.markerOptimise(self.toolSelect.alignment['markerSize'].value(),threshold)
 					# log(self.logFile,"Successfully optimised points.","event")
 					# Collect points.
 					left[:,0] = self.rtp.beam[treatmentIndex].plotEnvironment.plot0.pointsXoptimised
