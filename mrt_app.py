@@ -2,7 +2,6 @@
 from settings import globalVariables as gv
 gv = gv()
 from classBin import *
-from controls import *
 # As normal...
 import os
 import sys
@@ -12,7 +11,7 @@ import numpy as np
 from PyQt5.QtCore import pyqtSlot as Slot
 from PyQt5 import QtCore, QtGui, QtWidgets, uic
 # SyncMRT Tools.
-from syncmrt import fileHandler, imageGuidance, treatment, widgets, tools
+import syncmrt as mrt
 # Select Qt5 user interface.
 qtCreatorFile = "main.ui"
 qtStyleSheet = open("stylesheet.css")
@@ -61,18 +60,18 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 
 		# Create controls work environment.
 		self.workEnvironment.addWorkspace('Controls')
-		self.controls = controls(self.workEnvironment.stackPage['Controls'])
-		self.controls.addMotor()
+		self.controls = mrt.tools.epics.controls.controlsPage(parent=self.workEnvironment.stackPage['Controls'])
+		self.controls.addMotor('DynMRT','ROTATE V')
 
 		# PropertyManager
 		self.property = propertyModel()
 		self.propertyTree = propertyManager(self.variableWidget,self.property)
 
 		# Create a ct/mri/xray structure class.
-		self.ct = fileHandler.dataDicom()
-		self.xray = fileHandler.dataXray()
-		self.mri = fileHandler.dataDicom()
-		self.rtp = fileHandler.dataRtp()
+		self.ct = mrt.fileHandler.dataDicom()
+		self.xray = mrt.fileHandler.dataXray()
+		self.mri = mrt.fileHandler.dataDicom()
+		self.rtp = mrt.fileHandler.dataRtp()
 
 		# Create alignment table.
 		self.property.addSection('Alignment')
@@ -80,7 +79,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		self.property.addVariable('Alignment',['Translation','x','y','z'],[0,0,0])
 		self.property.addVariable('Alignment','Scale',0)
 		# Create initial zero alignment solution result.
-		self.alignmentSolution = imageGuidance.affineTransform(0,0,0,0,0)
+		self.alignmentSolution = mrt.imageGuidance.affineTransform(0,0,0,0,0)
 
 		# Connect buttons and widgets.
 		self.menuFileOpenCT.triggered.connect(partial(self.openFiles,'ct'))
@@ -200,7 +199,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 			# Connect changes to updates in settings.
 			# self.property.itemChanged.connect(self.updateSettings)
 
-			imageFiles = fileHandler.importImage(self.xray.fp,'xray','npy')
+			imageFiles = mrt.fileHandler.importImage(self.xray.fp,'xray','npy')
 			self.xray.arrayNormal = imageFiles[0]
 			self.xray.arrayOrthogonal = imageFiles[1]
 
@@ -219,7 +218,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 
 		elif self._isXrayOpen is True:
 			# Get new files and plot.
-			imageFiles = fileHandler.importImage(self.xray.fp,'xray','npy')
+			imageFiles = mrt.fileHandler.importImage(self.xray.fp,'xray','npy')
 			self.xray.arrayNormal = imageFiles[0]
 			self.xray.arrayOrthogonal = imageFiles[1]
 			self.xray.plotEnvironment.plot0.imageLoad(self.xray.arrayNormal,extent=self.xray.arrayExtent,imageOrientation=self.xray.patientOrientation,imageIndex=0)
@@ -276,7 +275,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 
 	def openCT(self,files):
 		'''Open CT modality files.'''
-		self.ct.ds = fileHandler.dicom.importDicom(files,'CT')
+		self.ct.ds = mrt.fileHandler.dicom.importDicom(files,'CT')
 		self.workEnvironment.addWorkspace('CT')
 
 		# Get dicom file list.
@@ -293,7 +292,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		self.ct.fp = os.path.dirname(self.ct.ref)
 
 		# Import dicom files.
-		dicomData = fileHandler.dicom.importCT(self.ct.ds, arrayFormat="npy")
+		dicomData = mrt.fileHandler.dicom.importCT(self.ct.ds, arrayFormat="npy")
 		self.ct.pixelSize = dicomData.pixelSize
 		self.ct.patientPosition = dicomData.patientPosition
 		self.ct.rescaleIntercept = dicomData.rescaleIntercept
@@ -313,7 +312,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		self.property.addVariable('CT','Patient Position',self.ct.patientPosition)
 
 		# Import numpy files.
-		imageFiles = fileHandler.importImage(self.ct.fp,'ct','npy')
+		imageFiles = mrt.fileHandler.importImage(self.ct.fp,'ct','npy')
 		self.ct.arrayDicom = imageFiles[0]
 		self.ct.array = imageFiles[1]
 
@@ -337,7 +336,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 
 	def openRTP(self,files):
 		'''Open RTP modality files.'''
-		self.rtp.ds = fileHandler.dicom.importDicom(files,'RTPLAN')
+		self.rtp.ds = mrt.fileHandler.dicom.importDicom(files,'RTPLAN')
 		self.workEnvironment.addWorkspace('RTPLAN')
 
 		if len(self.rtp.ds) == 0:
@@ -349,7 +348,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		# log(self.logFile,"Loading %d Radiation Treatment Plan files..." %len(self.rtp.ds),"event")
 
 		self.rtp.fp = os.path.dirname(self.rtp.ds[0])
-		dicomData = fileHandler.dicom.importRTP(self.rtp.ds)
+		dicomData = mrt.fileHandler.dicom.importRTP(self.rtp.ds)
 		dicomData.extractTreatmentBeams(self.ct)
 
 		# Assume single fraction.
@@ -410,19 +409,22 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		'''Update variable based of changed data in property model (in some cases, external sources).'''
 		if (mode == 'xr') & (self._isXrayOpen):
 			'''Update x-ray specific properties.'''
-			if origin == self.sbXrayProperties.widget['alignIsocX']:
+			if origin == self.sbXrayProperties.widget['alignIsocY']:
 				# Overwrite the alignment isoc in settings.
-				gv.hamamatsuAlignmentIsoc[:2] = origin.text()
-				# Update the property variables.
-				item = self.property.itemFromIndex(self.property.index['X-Ray']['Alignment Isocenter']['x'])
-				item.setData(origin.text(),QtCore.Qt.DisplayRole)
-				# Re-calculate the extent.
-				self.xrayCalculateExtent()
-			elif origin == self.sbXrayProperties.widget['alignIsocY']:
-				# Overwrite the alignment isoc in settings.
+				# gv.hamamatsuAlignmentIsoc[:2] = origin.text()
+				gv.hamamatsuAlignmentIsoc[0] = origin.text()
 				gv.hamamatsuAlignmentIsoc[2] = origin.text()
 				# Update the property variables.
 				item = self.property.itemFromIndex(self.property.index['X-Ray']['Alignment Isocenter']['y'])
+				item.setData(origin.text(),QtCore.Qt.DisplayRole)
+				# Re-calculate the extent.
+				self.xrayCalculateExtent()
+			elif origin == self.sbXrayProperties.widget['alignIsocX']:
+				# Overwrite the alignment isoc in settings.
+				# gv.hamamatsuAlignmentIsoc[2] = origin.text()
+				gv.hamamatsuAlignmentIsoc[1] = origin.text()
+				# Update the property variables.
+				item = self.property.itemFromIndex(self.property.index['X-Ray']['Alignment Isocenter']['x'])
 				item.setData(origin.text(),QtCore.Qt.DisplayRole)
 				# Re-calculate the extent.
 				self.xrayCalculateExtent()
@@ -478,11 +480,9 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 
 	def toggleOptimise(self,state):
 		'''State(bool) tells you whether you should clear the optimisation plots or not.'''
-		print('Executed toggleOptimise with state,',state)
 		if state == True:
 			pass
 		elif state == False:
-			print('Attempting to remove optimisation parameters.')
 			try:
 				'''Remove X-ray optimised points.'''
 				self.xray.plotEnvironment.plot0.markerRemove(marker=-2)
@@ -543,8 +543,11 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 					right[:,1] = self.xray.plotEnvironment.plot0.pointsY
 					right[:,2] = self.xray.plotEnvironment.plot90.pointsX
 
+				print('left pts:',left)
+				print('right pts:',right)
+
 				# Align to the CT assuming that the rtp isoc is zero.
-				self.alignmentSolution = imageGuidance.affineTransform(left,right,
+				self.alignmentSolution = mrt.imageGuidance.affineTransform(left,right,
 					np.array([0,0,0]),
 					self.ct.userOrigin,
 					self.xray.alignmentIsoc)
@@ -579,7 +582,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 
 			# Calcualte alignment requirement
 			if success:
-				self.alignmentSolution = imageGuidance.affineTransform(left,right,
+				self.alignmentSolution = mrt.imageGuidance.affineTransform(left,right,
 					self.rtp.beam[treatmentIndex].isocenter,
 					self.ct.userOrigin,
 					self.xray.alignmentIsoc)
@@ -594,7 +597,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 
 	def patientApplyAlignment(self):
 		'''Connect to motors and apply alignment'''
-		patientPosition = imageGuidance.patientPositioningSystems.DynMRT()
+		patientPosition = mrt.imageGuidance.patientPositioningSystems.DynMRT()
 		patientPosition.write('tx',self.alignmentSolution.translation[0])
 		patientPosition.write('ty',self.alignmentSolution.translation[1])
 		patientPosition.write('tz',self.alignmentSolution.translation[2])

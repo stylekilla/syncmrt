@@ -1,7 +1,8 @@
 from PyQt5 import QtWidgets, QtGui, QtCore, uic
 from functools import partial
+import numpy as np
 
-# class plotEnvironment():
+# imports for class plotEnvironment():
 from syncmrt import widgets
 import matplotlib as mpl
 mpl.use('Qt5Agg')
@@ -941,7 +942,6 @@ class propertyModel(QtGui.QStandardItemModel):
 
 	def updateVariable(self,name,variable,value):
 		'''Find variable and update value.'''
-
 		if type(variable) is list:
 			# Multiple Entry
 			descr = self.itemFromIndex(self.index[name][variable[0]][0])
