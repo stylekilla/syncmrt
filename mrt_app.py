@@ -61,7 +61,10 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		# Create controls work environment.
 		self.workEnvironment.addWorkspace('Controls')
 		self.controls = mrt.tools.epics.controls.controlsPage(parent=self.workEnvironment.stackPage['Controls'])
-		self.controls.addMotor('DynMRT','ROTATE V')
+		self.sbSettings.modeChanged.connect(self.changeControlsComplexity)
+
+		# self.controls.addMotor('DynMRT','ROTATE V')
+		self.controls.addMotorGroup('DynMRT')
 
 		# PropertyManager
 		self.property = propertyModel()
@@ -93,6 +96,10 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		self._isCTOpen = False
 		self._isMRIOpen = False
 		self._isRTPOpen = False
+
+	@QtCore.pyqtSlot(str)
+	def changeControlsComplexity(self, level):
+		self.controls.changeLevel(level)
 
 	def openFiles(self,modality):
 		# We don't do any importing of pixel data in here; that is left up to the plotter by sending the filepath.

@@ -187,7 +187,7 @@ class sbAlignment:
 		self.widget['markerSize'].setValue(2.00)
 		self.widget['maxMarkers'].setMinimum(1)
 		self.widget['threshold'].setEnabled(False)
-		self.widget['threshold'].setRange(0,10)
+		self.widget['threshold'].setRange(0,50)
 		self.widget['threshold'].setValue(3)
 		self.widget['threshold'].setSingleStep(0.5)
 		# Signals and Slots
@@ -325,33 +325,51 @@ class sbTreatment:
 			del key
 		del self.layout
 
-class sbSettings:
+class sbSettings(QtCore.QObject):
+	modeChanged = QtCore.pyqtSignal('QString')
+
 	def __init__(self,parent):
+		super().__init__()
 		self.parent = parent
-		self.widget = {}
+		self.controls = {}
 		self.layout = QtWidgets.QVBoxLayout()
 
-		# Group 2: Alignment
-		alignmentGroup = QtWidgets.QGroupBox()
-		alignmentGroup.setTitle('Alignment')
-		self.widget['findXrIsoc'] = QtWidgets.QPushButton('Find Xray Isocentre')
-		label2 = QtWidgets.QLabel('Correct Patient')
-		label3 = QtWidgets.QLabel('Alignment')
-		label4 = QtWidgets.QLabel('Dosimetry')
-
-		# Group 3: Dosimetry
-		dosimetryGroup = QtWidgets.QGroupBox()
-		dosimetryGroup.setTitle('Dosimetry')
-		self.widget['check'] = QtWidgets.QPushButton('Check Treatment')
-		self.widget['deliver'] = QtWidgets.QPushButton('Deliver Treatment')
+		# Group 1: Alignment
+		controlsGroup = QtWidgets.QGroupBox()
+		controlsGroup.setTitle('Control Complexity')
+		self.controls['rbSimple'] = QtWidgets.QRadioButton('Simple')
+		self.controls['rbNormal'] = QtWidgets.QRadioButton('Normal')
+		self.controls['rbComplex'] = QtWidgets.QRadioButton('Complex')
+		self.controls['complexity'] = 'simple'
+		# Layout
+		controlsGroupLayout = QtWidgets.QVBoxLayout()
+		controlsGroupLayout.addWidget(self.controls['rbSimple'])
+		controlsGroupLayout.addWidget(self.controls['rbNormal'])
+		controlsGroupLayout.addWidget(self.controls['rbComplex'])
+		controlsGroup.setLayout(controlsGroupLayout)
 		# Defaults
+		self.controls['rbSimple'].setChecked(True)
 		# Signals and Slots
-
+		self.controls['rbSimple'].clicked.connect(self.controlsMode)
+		self.controls['rbNormal'].clicked.connect(self.controlsMode)
+		self.controls['rbComplex'].clicked.connect(self.controlsMode)
 		# Add Sections
-
+		self.layout.addWidget(controlsGroup)
 		# Finish page.
 		self.layout.addStretch(1)
 		self.parent.setLayout(self.layout)
+
+	def controlsMode(self):
+		''' Set complexity of controls. '''
+		if self.controls['rbSimple'].isChecked():
+			self.controls['complexity'] = 'simple'
+		elif self.controls['rbNormal'].isChecked():
+			self.controls['complexity'] = 'normal'
+		elif self.controls['rbComplex'].isChecked():
+			self.controls['complexity'] = 'complex'
+
+		# Emit signal to say state has changed.
+		self.modeChanged.emit(self.controls['complexity'])
 
 	def delete(self):
 		for key, val in self.widget:
