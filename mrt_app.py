@@ -61,10 +61,12 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		# Create controls work environment.
 		self.workEnvironment.addWorkspace('Controls')
 		self.controls = mrt.tools.epics.controls.controlsPage(parent=self.workEnvironment.stackPage['Controls'])
-		self.sbSettings.modeChanged.connect(self.changeControlsComplexity)
+		self.sbSettings.modeChanged.connect(self.setControlsComplexity)
+		self.sbSettings.controls['cbReadOnly'].stateChanged.connect(partial(self.setControlsReadOnly))
 
 		# self.controls.addMotor('DynMRT','ROTATE V')
-		self.controls.addMotorGroup('DynMRT')
+		self.controls.addMotorGroup('LAPSCT')
+		self.setControlsReadOnly(True)
 
 		# PropertyManager
 		self.property = propertyModel()
@@ -98,8 +100,11 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		self._isRTPOpen = False
 
 	@QtCore.pyqtSlot(str)
-	def changeControlsComplexity(self, level):
-		self.controls.changeLevel(level)
+	def setControlsComplexity(self, level):
+		self.controls.setLevel(level)
+
+	def setControlsReadOnly(self,state):
+		self.controls.setReadOnly(bool(not state))
 
 	def openFiles(self,modality):
 		# We don't do any importing of pixel data in here; that is left up to the plotter by sending the filepath.

@@ -340,15 +340,18 @@ class sbSettings(QtCore.QObject):
 		self.controls['rbSimple'] = QtWidgets.QRadioButton('Simple')
 		self.controls['rbNormal'] = QtWidgets.QRadioButton('Normal')
 		self.controls['rbComplex'] = QtWidgets.QRadioButton('Complex')
+		self.controls['cbReadOnly'] = QtWidgets.QCheckBox('Read Only')
 		self.controls['complexity'] = 'simple'
 		# Layout
 		controlsGroupLayout = QtWidgets.QVBoxLayout()
 		controlsGroupLayout.addWidget(self.controls['rbSimple'])
 		controlsGroupLayout.addWidget(self.controls['rbNormal'])
 		controlsGroupLayout.addWidget(self.controls['rbComplex'])
+		controlsGroupLayout.addWidget(self.controls['cbReadOnly'])
 		controlsGroup.setLayout(controlsGroupLayout)
 		# Defaults
 		self.controls['rbSimple'].setChecked(True)
+		self.controls['cbReadOnly'].setChecked(True)
 		# Signals and Slots
 		self.controls['rbSimple'].clicked.connect(self.controlsMode)
 		self.controls['rbNormal'].clicked.connect(self.controlsMode)
