@@ -8,3 +8,7 @@ QTreeView::Item {
     /*border-style: solid;*/
     border-color: darkgray;
 }
+
+QStatusBar {
+	/*background: black ;*/
+}

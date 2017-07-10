@@ -59,7 +59,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		self.workEnvironment = workEnvironment(self.toolbarPane,self.workStack)
 
 		# Create controls work environment.
-		self.workEnvironment.addWorkspace('Controls')
+		self.workEnvironment.addWorkspace('Controls',alignment='Right')
 		self.controls = mrt.tools.epics.controls.controlsPage(parent=self.workEnvironment.stackPage['Controls'])
 		self.sbSettings.modeChanged.connect(self.setControlsComplexity)
 		self.sbSettings.controls['cbReadOnly'].stateChanged.connect(partial(self.setControlsReadOnly))
@@ -72,6 +72,25 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		self.property = propertyModel()
 		self.propertyTree = propertyManager(self.variableWidget,self.property)
 
+		# Collapsing button for Property Manager.
+		self.statusBar.setContentsMargins(0,0,0,0)
+		icon = QtGui.QIcon('resources/CollapseRight.png')
+		icon.pixmap(20,20)
+		self.pbCollapseProperties = QtWidgets.QPushButton(icon,'')
+		self.pbCollapseProperties.setFlat(True)
+		self.statusBar.addPermanentWidget(self.pbCollapseProperties)
+		self.pbCollapseProperties.clicked.connect(self.propertyTree.toggleFrame)
+
+		# # Collapsing button for Bottom Widget.
+		# icon = QtGui.QIcon('resources/CollapseBottom.png')
+		# icon.pixmap(20,20)
+		# self.pbCollapseProperties = QtWidgets.QPushButton(icon,'')
+		# self.pbCollapseProperties.setFlat(True)
+		# self.statusBar.addPermanentWidget(self.pbCollapseProperties)
+		# self.pbCollapseProperties.clicked.connect(self.propertyTree.toggleFrame)
+		self.stackedWidget.setEnabled(False)
+		self.stackedWidget.setVisible(False)
+
 		# Create a ct/mri/xray structure class.
 		self.ct = mrt.fileHandler.dataDicom()
 		self.xray = mrt.fileHandler.dataXray()
@@ -83,6 +102,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		self.property.addVariable('Alignment',['Rotation','x','y','z'],[0,0,0])
 		self.property.addVariable('Alignment',['Translation','x','y','z'],[0,0,0])
 		self.property.addVariable('Alignment','Scale',0)
+		self.propertyTree.expandAll()
 		# Create initial zero alignment solution result.
 		self.alignmentSolution = mrt.imageGuidance.affineTransform(0,0,0,0,0)
 

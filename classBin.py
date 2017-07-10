@@ -623,7 +623,9 @@ class workEnvironment:
 		self.toolbarLayout = layout
 		toolbar.setLayout(self.toolbarLayout)
 
-	def addWorkspace(self,name):
+		self.toolbarLayout.addStretch()
+
+	def addWorkspace(self,name,alignment=None):
 		'''Add environments to work environment. Can be in form of list.'''
 		if name in self.stackPage:
 			# Do nothing if it already exists.
@@ -639,7 +641,10 @@ class workEnvironment:
 				button = QtWidgets.QToolButton()
 				button.setText(name)
 				button.setFixedSize(size)
-				self.toolbarLayout.addWidget(button)
+				if alignment is not None:
+					self.toolbarLayout.addWidget(button)
+				else:
+					self.toolbarLayout.insertWidget(0,button)
 				self.button[name] = button
 
 				page = QtWidgets.QWidget()
@@ -653,7 +658,10 @@ class workEnvironment:
 			button = QtWidgets.QToolButton()
 			button.setText(name)
 			button.setFixedSize(size)
-			self.toolbarLayout.addWidget(button)
+			if alignment is not None:
+				self.toolbarLayout.addWidget(button)
+			else:
+				self.toolbarLayout.insertWidget(0,button)
 			self.button[name] = button
 
 			page = QtWidgets.QWidget()
@@ -873,7 +881,7 @@ class propertyManager(QtWidgets.QTreeView):
 		super().__init__()
 		# self.setHeaderLabel('Property Editor')
 		self.setMinimumSize(250,800)
-		self.setMaximumWidth(500)
+		self.setMaximumWidth(600)
 		# self.setIndentation(0)
 		self.setAlternatingRowColors(True)
 		self.setRootIsDecorated(True)
@@ -886,6 +894,10 @@ class propertyManager(QtWidgets.QTreeView):
 		layout.addWidget(self)
 		layout.setContentsMargins(0,0,0,0)
 		frame.setLayout(layout)
+
+	def toggleFrame(self):
+		'''Show/hide frane as requested.'''
+		self.setVisible(not self.isVisible())
 
 class propertyModel(QtGui.QStandardItemModel):
 	'''
