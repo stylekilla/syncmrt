@@ -31,8 +31,14 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		self.setStyleSheet(qtStyleSheet.read())
 		self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
 
+		# Layout margins.
+		self.layoutCentralWidget.setContentsMargins(0,0,0,0)
+		self.statusBar.setContentsMargins(0,0,0,0)
+		self.layoutSidebar.setContentsMargins(0,0,0,0)
+		self.layoutWorkspace.setContentsMargins(0,0,0,0)
+
 		# Sidebar panels
-		self.sidebarStack = sidebarStack(self.widgetSidebarStack)
+		self.sidebarStack = sidebarStack(self.frameSidebarStack)
 		self.sidebarList = sidebarList(self.widgetSidebarList)
 		self.sidebarSelector = sidebarSelector(self.sidebarList,self.sidebarStack)
 
@@ -70,24 +76,17 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 
 		# PropertyManager
 		self.property = propertyModel()
-		self.propertyTree = propertyManager(self.variableWidget,self.property)
+		self.propertyTree = propertyManager(self.frameVariablePane,self.property)
 
 		# Collapsing button for Property Manager.
-		self.statusBar.setContentsMargins(0,0,0,0)
 		icon = QtGui.QIcon('resources/CollapseRight.png')
 		icon.pixmap(20,20)
 		self.pbCollapseProperties = QtWidgets.QPushButton(icon,'')
 		self.pbCollapseProperties.setFlat(True)
 		self.statusBar.addPermanentWidget(self.pbCollapseProperties)
-		self.pbCollapseProperties.clicked.connect(self.propertyTree.toggleFrame)
+		self.pbCollapseProperties.clicked.connect(partial(self.propertyTree.toggleFrame,self.frameVariablePane))
 
-		# # Collapsing button for Bottom Widget.
-		# icon = QtGui.QIcon('resources/CollapseBottom.png')
-		# icon.pixmap(20,20)
-		# self.pbCollapseProperties = QtWidgets.QPushButton(icon,'')
-		# self.pbCollapseProperties.setFlat(True)
-		# self.statusBar.addPermanentWidget(self.pbCollapseProperties)
-		# self.pbCollapseProperties.clicked.connect(self.propertyTree.toggleFrame)
+		# Temporarily turn off the stacked widget at the bottom.
 		self.stackedWidget.setEnabled(False)
 		self.stackedWidget.setVisible(False)
 
@@ -104,7 +103,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		self.property.addVariable('Alignment','Scale',0)
 		self.propertyTree.expandAll()
 		# Create initial zero alignment solution result.
-		self.alignmentSolution = mrt.imageGuidance.affineTransform(0,0,0,0,0)
+		self.alignmentSolution = mrt.imageGuidance.affineTransform(0,0,0)
 
 		# Connect buttons and widgets.
 		self.menuFileOpenCT.triggered.connect(partial(self.openFiles,'ct'))
@@ -579,8 +578,11 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 				print('right pts:',right)
 
 				# Align to the CT assuming that the rtp isoc is zero.
+				# self.alignmentSolution = mrt.imageGuidance.affineTransform(left,right,
+				# 	np.array([0,0,0]),
+				# 	self.ct.userOrigin,
+				# 	self.xray.alignmentIsoc)
 				self.alignmentSolution = mrt.imageGuidance.affineTransform(left,right,
-					np.array([0,0,0]),
 					self.ct.userOrigin,
 					self.xray.alignmentIsoc)
 

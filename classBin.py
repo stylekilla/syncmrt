@@ -895,9 +895,9 @@ class propertyManager(QtWidgets.QTreeView):
 		layout.setContentsMargins(0,0,0,0)
 		frame.setLayout(layout)
 
-	def toggleFrame(self):
+	def toggleFrame(self,frame):
 		'''Show/hide frane as requested.'''
-		self.setVisible(not self.isVisible())
+		frame.setVisible(not frame.isVisible())
 
 class propertyModel(QtGui.QStandardItemModel):
 	'''
