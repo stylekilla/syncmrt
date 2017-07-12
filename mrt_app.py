@@ -103,7 +103,8 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		self.property.addVariable('Alignment','Scale',0)
 		self.propertyTree.expandAll()
 		# Create initial zero alignment solution result.
-		self.alignmentSolution = mrt.imageGuidance.affineTransform(0,0,0)
+		# self.alignmentSolution = mrt.imageGuidance.affineTransform(0,0,0)
+		self.alignmentSolution = mrt.imageGuidance.affineTransform(0,0,0,0,0)
 
 		# Connect buttons and widgets.
 		self.menuFileOpenCT.triggered.connect(partial(self.openFiles,'ct'))
@@ -574,17 +575,12 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 					right[:,1] = self.xray.plotEnvironment.plot0.pointsY
 					right[:,2] = self.xray.plotEnvironment.plot90.pointsX
 
-				print('left pts:',left)
-				print('right pts:',right)
-
 				# Align to the CT assuming that the rtp isoc is zero.
-				# self.alignmentSolution = mrt.imageGuidance.affineTransform(left,right,
-				# 	np.array([0,0,0]),
-				# 	self.ct.userOrigin,
-				# 	self.xray.alignmentIsoc)
 				self.alignmentSolution = mrt.imageGuidance.affineTransform(left,right,
+					np.array([0,0,0]),
 					self.ct.userOrigin,
 					self.xray.alignmentIsoc)
+				# self.alignmentSolution = mrt.imageGuidance.affineTransform(left,right)
 
 		elif treatmentIndex != -1:
 			'''Align to RTPLAN[index]'''
