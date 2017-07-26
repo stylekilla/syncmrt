@@ -2,6 +2,7 @@
 from settings import globalVariables as gv
 gv = gv()
 from classBin import *
+from sidebar import *
 # As normal...
 import os
 import sys
@@ -68,11 +69,12 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		self.workEnvironment.addWorkspace('Controls',alignment='Right')
 		self.controls = mrt.tools.epics.controls.controlsPage(parent=self.workEnvironment.stackPage['Controls'])
 		self.sbSettings.modeChanged.connect(self.setControlsComplexity)
+		self.sbSettings.stageChanged.connect(self.setStage)
+		# self.sbSettings.detectorChanged.connect(self.setControlsComplexity)
 		self.sbSettings.controls['cbReadOnly'].stateChanged.connect(partial(self.setControlsReadOnly))
-
-		# self.controls.addMotor('DynMRT','ROTATE V')
-		self.controls.addMotorGroup('LAPSCT')
 		self.setControlsReadOnly(True)
+		self.sbSettings.loadStages(self.controls.motorList)
+		self.sbSettings.loadDetectors(self.controls.detectorList)
 
 		# PropertyManager
 		self.property = propertyModel()
@@ -102,9 +104,10 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		self.property.addVariable('Alignment',['Translation','x','y','z'],[0,0,0])
 		self.property.addVariable('Alignment','Scale',0)
 		self.propertyTree.expandAll()
+		
 		# Create initial zero alignment solution result.
 		# self.alignmentSolution = mrt.imageGuidance.affineTransform(0,0,0)
-		self.alignmentSolution = mrt.imageGuidance.affineTransform(0,0,0,0,0)
+		# self.alignmentSolution = mrt.imageGuidance.affineTransform(0,0,0,0,0)
 
 		# Connect buttons and widgets.
 		self.menuFileOpenCT.triggered.connect(partial(self.openFiles,'ct'))
@@ -122,6 +125,15 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 	@QtCore.pyqtSlot(str)
 	def setControlsComplexity(self, level):
 		self.controls.setLevel(level)
+
+	@QtCore.pyqtSlot(str)
+	def setDetector(self, level):
+		# self.controls.setLevel(level)
+		pass
+
+	@QtCore.pyqtSlot(str)
+	def setStage(self, group):
+		self.controls.setMotorGroup(group)
 
 	def setControlsReadOnly(self,state):
 		self.controls.setReadOnly(bool(not state))
@@ -205,7 +217,6 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		self.xray.patientOrientation = gv.chairOrientation
 		self.xray.alignmentIsoc = gv.hamamatsuAlignmentIsoc
 		self.xray.imagePixelSize = np.array([gv.hamamatsuPixelSize,gv.hamamatsuPixelSize])
-		self.xray.imageSize = gv.hamamatsuImageSize
 
 		# Create stack page for xray image properties and populate.
 		self.sidebarStack.addPage('xrImageProperties')
@@ -217,9 +228,6 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		# Link to environment
 		self.sbXrayProperties.widget['alignIsocX'].setText(str(gv.hamamatsuAlignmentIsoc[1]))
 		self.sbXrayProperties.widget['alignIsocY'].setText(str(gv.hamamatsuAlignmentIsoc[2]))
-
-		# Calculate extent for x-ray images.
-		self.xrayCalculateExtent(update=False)
 
 		if self._isXrayOpen is False:
 			# Add property variables.
@@ -234,12 +242,14 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 			imageFiles = mrt.fileHandler.importImage(self.xray.fp,'xray','npy')
 			self.xray.arrayNormal = imageFiles[0]
 			self.xray.arrayOrthogonal = imageFiles[1]
+			self.xray.imageSize = np.load(imageFiles[0]).shape[::-1]
+			self.xrayCalculateExtent(update=False)
 
 			# Create work environment (inclusive of plots and tables).
 			self.xray.plotEnvironment = plotEnvironment(self.workEnvironment.stackPage['X-RAY'])
 			self.xray.plotEnvironment.settings('maxMarkers',gv.markerQuantity)
-			self.xray.plotEnvironment.plot0.imageLoad(self.xray.arrayNormal,extent=self.xray.arrayExtent,imageOrientation=self.xray.patientOrientation,imageIndex=0)
-			self.xray.plotEnvironment.plot90.imageLoad(self.xray.arrayOrthogonal,extent=self.xray.arrayExtent,imageOrientation=self.xray.patientOrientation,imageIndex=1)
+			self.xray.plotEnvironment.plot0.imageLoad(self.xray.arrayNormal,extent=self.xray.arrayExtentNormal,imageOrientation=self.xray.patientOrientation,imageIndex=0)
+			self.xray.plotEnvironment.plot90.imageLoad(self.xray.arrayOrthogonal,extent=self.xray.arrayExtentOrthogonal,imageOrientation=self.xray.patientOrientation,imageIndex=1)
 
 			# item = self..findItems('ImageProperties',QtCore.Qt.MatchExactly)[0]
 			# print(item)
@@ -253,8 +263,10 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 			imageFiles = mrt.fileHandler.importImage(self.xray.fp,'xray','npy')
 			self.xray.arrayNormal = imageFiles[0]
 			self.xray.arrayOrthogonal = imageFiles[1]
-			self.xray.plotEnvironment.plot0.imageLoad(self.xray.arrayNormal,extent=self.xray.arrayExtent,imageOrientation=self.xray.patientOrientation,imageIndex=0)
-			self.xray.plotEnvironment.plot90.imageLoad(self.xray.arrayOrthogonal,extent=self.xray.arrayExtent,imageOrientation=self.xray.patientOrientation,imageIndex=1)
+			self.xray.imageSize = np.load(imageFiles[0]).shape[::-1]
+			self.xrayCalculateExtent(update=False)
+			self.xray.plotEnvironment.plot0.imageLoad(self.xray.arrayNormal,extent=self.xray.arrayExtentNormal,imageOrientation=self.xray.patientOrientation,imageIndex=0)
+			self.xray.plotEnvironment.plot90.imageLoad(self.xray.arrayOrthogonal,extent=self.xray.arrayExtentOrthogonal,imageOrientation=self.xray.patientOrientation,imageIndex=1)
 		
 		# Signals and slots.
 		self.sbXrayProperties.widget['alignIsocX'].editingFinished.connect(partial(self.updateSettings,'xr',self.sbXrayProperties.widget['alignIsocX']))
@@ -289,19 +301,35 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		# Force update of alignment isocenter from settings.
 		self.xray.alignmentIsoc = gv.hamamatsuAlignmentIsoc
 
+		# Synchrotron image geometry is vec directions (xyz), note reversed direction of y for looking downstream.
+		self.xray.imageAxes = np.array([1,-1,1])
+
+		# # Set extent for plotting. This is essentially the IMBL coordinate system according to the detector.
+		# left = -self.xray.alignmentIsoc[0]*self.xray.imagePixelSize[0]
+		# right = (self.xray.imageSize[0]-self.xray.alignmentIsoc[0])*self.xray.imagePixelSize[0]
+		# bottom = -(self.xray.imageSize[1]-self.xray.alignmentIsoc[1])*self.xray.imagePixelSize[0]
+		# top = self.xray.alignmentIsoc[1]*self.xray.imagePixelSize[0]
+		# self.xray.arrayExtentNormal = np.array([left,right,bottom,top])
+
 		# Set extent for plotting. This is essentially the IMBL coordinate system according to the detector.
-		left = -self.xray.alignmentIsoc[0]*self.xray.imagePixelSize[0]
-		right = (self.xray.imageSize[0]-self.xray.alignmentIsoc[0])*self.xray.imagePixelSize[0]
-		bottom = -(self.xray.imageSize[1]-self.xray.alignmentIsoc[1])*self.xray.imagePixelSize[0]
-		top = self.xray.alignmentIsoc[1]*self.xray.imagePixelSize[0]
-		self.xray.arrayExtent = np.array([left,right,bottom,top])
+		left = (0-self.xray.alignmentIsoc[0])*self.xray.imagePixelSize[0]*self.xray.imageAxes[1]
+		right = left+(self.xray.imageSize[0]*self.xray.imagePixelSize[0]*self.xray.imageAxes[1])
+		top = (0+self.xray.alignmentIsoc[1])*self.xray.imagePixelSize[1]*self.xray.imageAxes[2]
+		bottom = top-(self.xray.imageSize[1]*self.xray.imagePixelSize[1]*self.xray.imageAxes[2])
+		self.xray.arrayExtentNormal = np.array([left,right,bottom,top])
+
+		left = (0-self.xray.alignmentIsoc[0])*self.xray.imagePixelSize[0]*self.xray.imageAxes[0]
+		right = left+(self.xray.imageSize[0]*self.xray.imagePixelSize[0]*self.xray.imageAxes[0])
+		top = (0+self.xray.alignmentIsoc[1])*self.xray.imagePixelSize[1]*self.xray.imageAxes[2]
+		bottom = top-(self.xray.imageSize[1]*self.xray.imagePixelSize[1]*self.xray.imageAxes[2])
+		self.xray.arrayExtentOrthogonal = np.array([left,right,bottom,top])
 
 		if update is True:
 			# Force re-draw on plots.
-			self.xray.plotEnvironment.plot0.extent = self.xray.arrayExtent
-			self.xray.plotEnvironment.plot90.extent = self.xray.arrayExtent
-			self.xray.plotEnvironment.plot0.image.set_extent(self.xray.arrayExtent)
-			self.xray.plotEnvironment.plot90.image.set_extent(self.xray.arrayExtent)
+			self.xray.plotEnvironment.plot0.extent = self.xray.arrayExtentNormal
+			self.xray.plotEnvironment.plot90.extent = self.xray.arrayExtentOrthogonal
+			self.xray.plotEnvironment.plot0.image.set_extent(self.xray.arrayExtentNormal)
+			self.xray.plotEnvironment.plot90.image.set_extent(self.xray.arrayExtentOrthogonal)
 			self.xray.plotEnvironment.plot0.canvas.draw()
 			self.xray.plotEnvironment.plot90.canvas.draw()
 
