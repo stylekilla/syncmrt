@@ -649,7 +649,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 			pass
 
 		# If table already exists, update information...
-		self.property.updateVariable('Alignment',['Rotation','x','y','z'],[float(self.alignmentSolution.theta),float(self.alignmentSolution.phi),float(self.alignmentSolution.gamma)])
+		self.property.updateVariable('Alignment',['Rotation','x','y','z'],[float(self.alignmentSolution.x),float(self.alignmentSolution.y),float(self.alignmentSolution.z)])
 		self.property.updateVariable('Alignment',['Translation','x','y','z'],self.alignmentSolution.translation.tolist())
 		self.property.updateVariable('Alignment','Scale',float(self.alignmentSolution.scale))
 

@@ -8,7 +8,7 @@ class globalVariables():
 		self.chairOrientation = '-ap-hf'
 
 		self.hamamatsuPixelSize = 0.16145
-		self.hamamatsuAlignmentIsoc = np.array([637.5,238.5,637.5])
+		self.hamamatsuAlignmentIsoc = np.array([566.5,213.5,566.5])
 		# self.hamamatsuPixelSize = 0.0208
 		# self.hamamatsuAlignmentIsoc = np.array([1165,89,1165])
 
