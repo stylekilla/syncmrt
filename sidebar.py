@@ -137,6 +137,10 @@ class sidebarSelector:
 			self.stack.parent.setVisible(True)
 			self._previousListItem = listWidgetItem
 
+	def getListItem(self,key):
+		# return self.list.listDict['ImageProperties']
+		return self.list.listDict[key]
+
 class sbAlignment:
 	def __init__(self,parent):
 		self.parent = parent
@@ -183,21 +187,35 @@ class sbAlignment:
 		self.widget['optimise'].toggled.connect(self.markerMode)
 
 		# Group 2: Checklist
+		alignGroup = QtWidgets.QGroupBox()
+		alignGroup.setTitle('Patient Alignment')
+		self.widget['calcAlignment'] = QtWidgets.QPushButton('Calculate')
+		self.widget['doAlignment'] = QtWidgets.QPushButton('Align')
+		# Layout
+		alignGroupLayout = QtWidgets.QFormLayout()
+		alignGroupLayout.addRow(self.widget['calcAlignment'],self.widget['doAlignment'])
+		alignGroup.setLayout(alignGroupLayout)
+		self.layout.addWidget(alignGroup)
+		# Defaults
+		self.widget['doAlignment'].setEnabled(False)
+		# Signals and Slots
+
+		# Group 3: Checklist
 		checklistGroup = QtWidgets.QGroupBox()
 		checklistGroup.setTitle('Checklist')
 		self.widget['checkSetup'] = QtWidgets.QLabel('Alignment Setup')
 		self.widget['checkXray'] = QtWidgets.QLabel('X-ray')
 		self.widget['checkDicom'] = QtWidgets.QLabel('Dicom Image')
 		self.widget['checkRTP'] = QtWidgets.QLabel('Treatment Plan')
-		self.widget['check'] = QtWidgets.QPushButton('Check')
-		self.widget['align'] = QtWidgets.QPushButton('Align')
+		# self.widget['check'] = QtWidgets.QPushButton('Check')
+		# self.widget['align'] = QtWidgets.QPushButton('Align')
 		# Layout
 		checklistGroupLayout = QtWidgets.QFormLayout()
 		checklistGroupLayout.addRow(self.widget['checkSetup'])
 		checklistGroupLayout.addRow(self.widget['checkXray'])
 		checklistGroupLayout.addRow(self.widget['checkDicom'])
 		checklistGroupLayout.addRow(self.widget['checkRTP'])
-		checklistGroupLayout.addRow(self.widget['check'],self.widget['align'])
+		# checklistGroupLayout.addRow(self.widget['check'],self.widget['align'])
 		checklistGroup.setLayout(checklistGroupLayout)
 		self.layout.addWidget(checklistGroup)
 		# Defaults
@@ -409,7 +427,7 @@ class sbSettings(QtCore.QObject):
 		self.hardware['detector'].model().sort(0)
 
 	def detectorChange(self):
-		self.stageChanged.emit(self.hardware['detector'].currentText())
+		self.detectorChanged.emit(self.hardware['detector'].currentText())
 
 	def delete(self):
 		for key, val in self.widget:
@@ -539,7 +557,22 @@ class sbCTProperties:
 		self.widget = {}
 		self.layout = QtWidgets.QVBoxLayout()
 
-		# Group 1: Windowing
+		# Group 1: Overlays.
+		overlayGroup = QtWidgets.QGroupBox()
+		overlayGroup.setTitle('Plot Overlays')
+		self.widget['cbPatIsoc'] = QtWidgets.QCheckBox('Patient Isocenter')
+		self.widget['cbCentroid'] = QtWidgets.QCheckBox('Centroid Position')
+		# Layout
+		overlayGroupLayout = QtWidgets.QVBoxLayout()
+		overlayGroupLayout.addWidget(self.widget['cbPatIsoc'])
+		overlayGroupLayout.addWidget(self.widget['cbCentroid'])
+		# Defaults
+		# Signals and Slots
+		# Group inclusion to page
+		overlayGroup.setLayout(overlayGroupLayout)
+		self.layout.addWidget(overlayGroup)
+
+		# Group 2: Windowing
 		self.window = {}
 		windowGroup = QtWidgets.QGroupBox()
 		windowGroup.setTitle('CT Windowing')
@@ -570,8 +603,7 @@ class sbCTProperties:
 		self.window['rbSum'].setChecked(True)
 		# Signals and Slots
 		self.window['numWindows'].valueChanged.connect(self.addWindows)
-
-		# Add Sections 
+		# Group inclusion to page
 		windowGroup.setLayout(self.window['layout'])
 		self.layout.addWidget(windowGroup)
 

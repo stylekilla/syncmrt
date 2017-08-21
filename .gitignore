@@ -35,6 +35,11 @@
 *.tar
 *.zip
 
+# Test Files #
+##############
+*.npy
+*.dcm
+
 # Logs and databases #
 ######################
 *.log
