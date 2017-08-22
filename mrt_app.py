@@ -78,7 +78,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		# self.sbSettings.detectorChanged.connect(self.setControlsComplexity)
 		self.sbSettings.controls['cbReadOnly'].stateChanged.connect(partial(self.setControlsReadOnly))
 		self.setControlsReadOnly(True)
-		self.sbSettings.loadStages(self.controls.motorList)
+		self.sbSettings.loadStages(self.controls.stageList)
 		self.sbSettings.loadDetectors(self.controls.detectorList)
 
 		# PropertyManager
@@ -156,8 +156,8 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		pass
 
 	@QtCore.pyqtSlot(str)
-	def setStage(self,group):
-		self.controls.setMotorGroup(group)
+	def setStage(self,stage):
+		self.controls.setStage(stage)
 		try:
 			self.pps.connectMotors(self.controls.patient)
 			self.pps.setStageConnected(True)

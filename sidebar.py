@@ -401,15 +401,15 @@ class sbSettings(QtCore.QObject):
 		# Emit signal to say state has changed.
 		self.modeChanged.emit(self.controls['complexity'])
 
-	def loadStages(self,importList):
-		'''Expects a dict of csv values.'''
-		self.hardware['motorsList'] = set()
-		for motor in importList:
-			self.hardware['motorsList'].add(motor['Group'])
+	def loadStages(self,stageList):
+		# stageList should be a list of strings of the stages available to choose from.
+		self.hardware['motorsList'] = stageList
 
+		# For each item in the list, add it to the drop down list.
 		for item in self.hardware['motorsList']:
 			self.hardware['stage'].addItem(item)
 
+		# Sort the model alphanumerically.
 		self.hardware['stage'].model().sort(0)
 
 	def stageChange(self):
