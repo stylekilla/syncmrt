@@ -1,6 +1,4 @@
- # File is dependent on gv.py
-from settings import globalVariables as gv
-gv = gv()
+import config as cfg
 from classBin import *
 from sidebar import *
 # As normal...
@@ -32,6 +30,9 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		self.setStyleSheet(qtStyleSheet.read())
 		self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
 
+		'''
+		Qt5 Setup
+		'''
 		# Layout margins.
 		self.layoutCentralWidget.setContentsMargins(0,0,0,0)
 		self.statusBar.setContentsMargins(0,0,0,0)
@@ -67,8 +68,8 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		self.workEnvironment = workEnvironment(self.toolbarPane,self.workStack)
 
 		# Create patient alignment machine.
-		self.pps = mrt.imageGuidance.patientPositioningSystem.newSystem()
-		self.pps.stageConnected.connect(partial(self.enableDoAlignment))
+		# self.pps = mrt.imageGuidance.patientPositioningSystem.newSystem()
+		# self.pps.stageConnected.connect(partial(self.enableDoAlignment))
 
 		# Create controls work environment.
 		self.workEnvironment.addWorkspace('Controls',alignment='Right')
@@ -98,10 +99,10 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		self.stackedWidget.setVisible(False)
 
 		# Create a ct/mri/xray structure class.
-		self.ct = mrt.fileHandler.dataDicom()
-		self.xray = mrt.fileHandler.dataXray()
-		self.mri = mrt.fileHandler.dataDicom()
-		self.rtp = mrt.fileHandler.dataRtp()
+		# self.patient.ct = mrt.fileHandler.dataDicom()
+		# self.xray = mrt.fileHandler.dataXray()
+		# self.mri = mrt.fileHandler.dataDicom()
+		# self.rtp = mrt.fileHandler.dataRtp()
 
 		# Create alignment table.
 		self.property.addSection('Alignment')
@@ -111,7 +112,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		self.propertyTree.expandAll()
 		
 		# Create initial zero alignment solution result.
-		self.alignmentSolution = mrt.imageGuidance.affineTransform(0,0)
+		# self.alignmentSolution = mrt.imageGuidance.affineTransform(0,0)
 
 		# Connect buttons and widgets.
 		self.menuFileOpenCT.triggered.connect(partial(self.openFiles,'ct'))
@@ -129,6 +130,14 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		# TESTING MENU
 		self.menuTESTING.triggered.connect(self.testing)
 
+		'''
+		SyncMRT Setup
+		'''
+		# Create a new system, this has a solver, detector and stage.
+		self.system = mrt.system()
+		# Create a new patient, this has room for medical scans and synchrotron scans + other data.
+		self.patient = mrt.patient()
+
 	def testing(self):
 		xrayfiles = ['/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/xray0deg-inverted.npy', '/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/xray90deg-inverted.npy']
 		self.openXray(xrayfiles)
@@ -140,12 +149,12 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		self.xray.plotEnvironment.plot90.markerAdd(-34.25,-4.02)
 		self.xray.plotEnvironment.plot90.markerAdd(2.35,-23.00)
 		self.xray.plotEnvironment.plot90.markerAdd(-5.38,-44.38)
-		self.ct.plotEnvironment.plot0.markerAdd(-1.03,-26.02)
-		self.ct.plotEnvironment.plot0.markerAdd(9.10,-43.64)
-		self.ct.plotEnvironment.plot0.markerAdd(18.17,-65.51)
-		self.ct.plotEnvironment.plot90.markerAdd(9.32,-26.02)
-		self.ct.plotEnvironment.plot90.markerAdd(-25.45,-43.64)
-		self.ct.plotEnvironment.plot90.markerAdd(-13.29,-65.51)
+		self.patient.ct.plotEnvironment.plot0.markerAdd(-1.03,-26.02)
+		self.patient.ct.plotEnvironment.plot0.markerAdd(9.10,-43.64)
+		self.patient.ct.plotEnvironment.plot0.markerAdd(18.17,-65.51)
+		self.patient.ct.plotEnvironment.plot90.markerAdd(9.32,-26.02)
+		self.patient.ct.plotEnvironment.plot90.markerAdd(-25.45,-43.64)
+		self.patient.ct.plotEnvironment.plot90.markerAdd(-13.29,-65.51)
 
 	@QtCore.pyqtSlot(str)
 	def setControlsComplexity(self,level):
@@ -182,7 +191,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 			self.openCT(files)
 
 		elif modality == 'xray':
-			fileFormat = 'NumPy (*.npy)'
+			fileFormat = 'HDF5 (*.hdf5)'
 			fileDialogue = QtWidgets.QFileDialog()
 			fileDialogue.setFileMode(QtWidgets.QFileDialog.ExistingFiles)
 			files, dtype = fileDialogue.getOpenFileNames(self, "Open Xray dataset", "", fileFormat)
@@ -208,7 +217,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 			modality = 'xray'
 			for root, subdir, fp in os.walk(folder):
 				for fn in fp:
-					if (fn.endswith(tuple('.npy'))) & (fn[:len(modality)] == modality):
+					if (fn.endswith(tuple('.hdf5'))) & (fn[:len(modality)] == modality):
 						dataset.append(os.path.join(root,fn))
 			if len(dataset) > 0:
 				self.openXray(dataset)
@@ -235,82 +244,71 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 
 	def openXray(self,files):
 		'''Open Xray modality files.'''
+		# If no xray is open... do stuff.
 		if self._isXrayOpen is False:
 			# Add the x-ray workspace.
 			self.workEnvironment.addWorkspace('X-RAY')
 
-		if len(files) != 2:
-			# Force the user to select two files (being orthogonal x-rays).
-			self.sbAlignment.widget['checkXray'].setStyleSheet("color: red")
-			# log(self.logFile,"Please select 2 Xray images; these should be orthogonal images.","error")
-			return
+			# Load the files.
+			self.patient.loadXR(files)
+			print('Freshly loaded in MRTAPP')
+			print(self.patient.xr.image[0])
 
-		# Capture the filepath and dataset.
-		self.xray.ds = files
-		self.xray.fp = os.path.dirname(self.xray.ds[0])
+			# Create stack page for xray image properties and populate.
+			self.sidebarStack.addPage('xrImageProperties')
+			self.sbXrayProperties = sbXrayProperties(self.sidebarStack.stackDict['xrImageProperties'])
+			self.sbXrayProperties.widget['cbBeamIsoc'].stateChanged.connect(partial(self.xrayOverlay,overlay='beam'))
+			self.sbXrayProperties.widget['cbPatIsoc'].stateChanged.connect(partial(self.xrayOverlay,overlay='patient'))
+			self.sbXrayProperties.widget['cbCentroid'].stateChanged.connect(partial(self.xrayOverlay,overlay='centroid'))
 
-		self.xray.patientOrientation = gv.chairOrientation
-		self.xray.alignmentIsoc = gv.hamamatsuAlignmentIsoc
-		self.xray.imagePixelSize = np.array([gv.hamamatsuPixelSize,gv.hamamatsuPixelSize])
+			# Link to environment
+			# self.sbXrayProperties.widget['alignIsocX'].setText(str(cfg.hamamatsuAlignmentIsoc[1]))
+			# self.sbXrayProperties.widget['alignIsocY'].setText(str(cfg.hamamatsuAlignmentIsoc[2]))
 
-		# Create stack page for xray image properties and populate.
-		self.sidebarStack.addPage('xrImageProperties')
-		self.sbXrayProperties = sbXrayProperties(self.sidebarStack.stackDict['xrImageProperties'])
-		self.sbXrayProperties.widget['cbBeamIsoc'].stateChanged.connect(partial(self.xrayOverlay,overlay='beam'))
-		self.sbXrayProperties.widget['cbPatIsoc'].stateChanged.connect(partial(self.xrayOverlay,overlay='patient'))
-		self.sbXrayProperties.widget['cbCentroid'].stateChanged.connect(partial(self.xrayOverlay,overlay='centroid'))
-
-		# Link to environment
-		self.sbXrayProperties.widget['alignIsocX'].setText(str(gv.hamamatsuAlignmentIsoc[1]))
-		self.sbXrayProperties.widget['alignIsocY'].setText(str(gv.hamamatsuAlignmentIsoc[2]))
-
-		if self._isXrayOpen is False:
 			# Add property variables.
-			self.property.addSection('X-Ray')
-			self.property.addVariable('X-Ray',['Pixel Size','x','y'],self.xray.imagePixelSize.tolist())
-			self.property.addVariable('X-Ray','Patient Orientation',self.xray.patientOrientation)
-			self.property.addVariable('X-Ray',['Alignment Isocenter','x','y'],self.xray.alignmentIsoc[-2:].tolist())
+			# self.property.addSection('X-Ray')
+			# self.property.addVariable('X-Ray',['Pixel Size','x','y'],self.patient.xr.imagePixelSize.tolist())
+			# self.property.addVariable('X-Ray','Patient Orientation',self.xr.patientOrientation)
+			# self.property.addVariable('X-Ray',['Alignment Isocenter','x','y'],self.xr.alignmentIsoc[-2:].tolist())
 
 			# Connect changes to updates in settings.
 			# self.property.itemChanged.connect(self.updateSettings)
 
-			imageFiles = mrt.fileHandler.importImage(self.xray.fp,'xray','npy')
-			self.xray.arrayNormal = imageFiles[0]
-			self.xray.arrayOrthogonal = imageFiles[1]
-			self.xray.imageSize = np.load(imageFiles[0]).shape[::-1]
-			self.xrayCalculateExtent(update=False)
+			# imageFiles = mrt.fileHandler.importImage(self.xr.fp,'xray','npy')
+			# self.xr.arrayNormal = imageFiles[0]
+			# self.xr.arrayOrthogonal = imageFiles[1]
+			# self.xr.imageSize = np.load(imageFiles[0]).shape[::-1]
+			# self.xrayCalculateExtent(update=False)
 
-			# Create work environment (inclusive of plots and tables).
-			self.xray.plotEnvironment = plotEnvironment(self.workEnvironment.stackPage['X-RAY'])
-			self.xray.plotEnvironment.settings('maxMarkers',gv.markerQuantity)
-			self.xray.plotEnvironment.plot0.imageLoad(self.xray.arrayNormal,extent=self.xray.arrayExtentNormal,imageOrientation=self.xray.patientOrientation,imageIndex=0)
-			self.xray.plotEnvironment.plot90.imageLoad(self.xray.arrayOrthogonal,extent=self.xray.arrayExtentOrthogonal,imageOrientation=self.xray.patientOrientation,imageIndex=1)
+			# Plot data.
+			self.patient.xr.plot = plotEnvironment(self.workEnvironment.stackPage['X-RAY'])
+			self.patient.xr.plot.settings('maxMarkers',cfg.markerQuantity)
 
 			# item = self..findItems('ImageProperties',QtCore.Qt.MatchExactly)[0]
 			# print(item)
-			# self.xray.plotEnvironment.nav0.actionImageSettings.triggered.connect(partial(self.toolSelect.showToolExternalTrigger,item))
+			# self.xr.plotEnvironment.nav0.actionImageSettings.triggered.connect(partial(self.toolSelect.showToolExternalTrigger,item))
+
+			# Signals and slots.
+			self.sbXrayProperties.widget['alignIsocX'].editingFinished.connect(partial(self.updateSettings,'xr',self.sbXrayProperties.widget['alignIsocX']))
+			self.sbXrayProperties.widget['alignIsocY'].editingFinished.connect(partial(self.updateSettings,'xr',self.sbXrayProperties.widget['alignIsocY']))
+			self.sbXrayProperties.window['pbApply'].clicked.connect(partial(self.updateSettings,'xr',self.sbXrayProperties.window['pbApply']))
+
+			# Set image properties in sidebar to x-ray image properties whenever the workspace is open.
+			self.workEnvironment.stack.currentChanged.connect(self.setImagePropertiesStack)
+			self.setImagePropertiesStack()
 
 			self.sbAlignment.widget['checkXray'].setStyleSheet("color: green")
 			self._isXrayOpen = True
 
 		elif self._isXrayOpen is True:
-			# Get new files and plot.
-			imageFiles = mrt.fileHandler.importImage(self.xray.fp,'xray','npy')
-			self.xray.arrayNormal = imageFiles[0]
-			self.xray.arrayOrthogonal = imageFiles[1]
-			self.xray.imageSize = np.load(imageFiles[0]).shape[::-1]
-			self.xrayCalculateExtent(update=False)
-			self.xray.plotEnvironment.plot0.imageLoad(self.xray.arrayNormal,extent=self.xray.arrayExtentNormal,imageOrientation=self.xray.patientOrientation,imageIndex=0)
-			self.xray.plotEnvironment.plot90.imageLoad(self.xray.arrayOrthogonal,extent=self.xray.arrayExtentOrthogonal,imageOrientation=self.xray.patientOrientation,imageIndex=1)
-		
-		# Signals and slots.
-		self.sbXrayProperties.widget['alignIsocX'].editingFinished.connect(partial(self.updateSettings,'xr',self.sbXrayProperties.widget['alignIsocX']))
-		self.sbXrayProperties.widget['alignIsocY'].editingFinished.connect(partial(self.updateSettings,'xr',self.sbXrayProperties.widget['alignIsocY']))
-		self.sbXrayProperties.window['pbApply'].clicked.connect(partial(self.updateSettings,'xr',self.sbXrayProperties.window['pbApply']))
+			self.patient.xr.reloadFiles(files)
 
-		# Set image properties in sidebar to x-ray image properties whenever the workspace is open.
-		self.workEnvironment.stack.currentChanged.connect(self.setImagePropertiesStack)
-		self.setImagePropertiesStack()
+		print('Xray Image Array')
+		print(self.patient.xr.image[0])
+
+		# Set plots.
+		self.patient.xr.plot.plot0.imageLoad(self.patient.xr.image[0].array,extent=self.patient.xr.image[0].extent,imageIndex=0)
+		self.patient.xr.plot.plot90.imageLoad(self.patient.xr.image[0].array,extent=self.patient.xr.image[0].extent,imageIndex=1)
 
 		# Set to current working environment (in widget stack).
 		self.workEnvironment.button['X-RAY'].clicked.emit()
@@ -319,82 +317,62 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		'''Control x-ray plot overlays.'''
 		if overlay == 'beam':
 			if self.sbXrayProperties.widget['cbBeamIsoc'].isChecked():
-				self.xray.plotEnvironment.plot0.overlayIsocenter(state=True)
-				self.xray.plotEnvironment.plot90.overlayIsocenter(state=True)
+				self.xr.plotEnvironment.plot0.overlayIsocenter(state=True)
+				self.xr.plotEnvironment.plot90.overlayIsocenter(state=True)
 			else:
-				self.xray.plotEnvironment.plot0.overlayIsocenter(state=False)
-				self.xray.plotEnvironment.plot90.overlayIsocenter(state=False)
+				self.xr.plotEnvironment.plot0.overlayIsocenter(state=False)
+				self.xr.plotEnvironment.plot90.overlayIsocenter(state=False)
 		elif overlay == 'patient':
 			pass
 		elif overlay == 'centroid':
 			if self.sbXrayProperties.widget['cbCentroid'].isChecked():
-				self.xray.plotEnvironment.plot0.overlayCentroid(state=True)
-				self.xray.plotEnvironment.plot90.overlayCentroid(state=True)
+				self.xr.plotEnvironment.plot0.overlayCentroid(state=True)
+				self.xr.plotEnvironment.plot90.overlayCentroid(state=True)
 			else:
-				self.xray.plotEnvironment.plot0.overlayCentroid(state=False)
-				self.xray.plotEnvironment.plot90.overlayCentroid(state=False)
+				self.xr.plotEnvironment.plot0.overlayCentroid(state=False)
+				self.xr.plotEnvironment.plot90.overlayCentroid(state=False)
 		else:
 			pass
 
-	def xrayCalculateExtent(self,update=True):
-		'''Should umbrella all this under an x-ray class.'''
-		# Force update of alignment isocenter from settings.
-		self.xray.alignmentIsoc = gv.hamamatsuAlignmentIsoc
+	# def xrayCalculateExtent(self,update=True):
+	# 	'''Should umbrella all this under an x-ray class.'''
+	# 	# Force update of alignment isocenter from settings.
+	# 	self.xray.alignmentIsoc = cfg.hamamatsuAlignmentIsoc
 
-		# Synchrotron image geometry is vec directions (xyz), note reversed direction of y for looking downstream.
-		self.xray.imageAxes = np.array([1,-1,1])
+	# 	# Synchrotron image geometry is vec directions (xyz), note reversed direction of y for looking downstream.
+	# 	self.xray.imageAxes = np.array([1,-1,1])
 
-		# Set extent for plotting. This is essentially the IMBL coordinate system according to the detector.
-		left = (0-self.xray.alignmentIsoc[0])*self.xray.imagePixelSize[0]*self.xray.imageAxes[1]
-		right = left+(self.xray.imageSize[0]*self.xray.imagePixelSize[0]*self.xray.imageAxes[1])
-		top = (0+self.xray.alignmentIsoc[1])*self.xray.imagePixelSize[1]*self.xray.imageAxes[2]
-		bottom = top-(self.xray.imageSize[1]*self.xray.imagePixelSize[1]*self.xray.imageAxes[2])
-		self.xray.arrayExtentNormal = np.array([left,right,bottom,top])
+	# 	# Set extent for plotting. This is essentially the IMBL coordinate system according to the detector.
+	# 	left = (0-self.xray.alignmentIsoc[0])*self.xray.imagePixelSize[0]*self.xray.imageAxes[1]
+	# 	right = left+(self.xray.imageSize[0]*self.xray.imagePixelSize[0]*self.xray.imageAxes[1])
+	# 	top = (0+self.xray.alignmentIsoc[1])*self.xray.imagePixelSize[1]*self.xray.imageAxes[2]
+	# 	bottom = top-(self.xray.imageSize[1]*self.xray.imagePixelSize[1]*self.xray.imageAxes[2])
+	# 	self.xray.arrayExtentNormal = np.array([left,right,bottom,top])
 
-		left = (0-self.xray.alignmentIsoc[0])*self.xray.imagePixelSize[0]*self.xray.imageAxes[0]
-		right = left+(self.xray.imageSize[0]*self.xray.imagePixelSize[0]*self.xray.imageAxes[0])
-		top = (0+self.xray.alignmentIsoc[1])*self.xray.imagePixelSize[1]*self.xray.imageAxes[2]
-		bottom = top-(self.xray.imageSize[1]*self.xray.imagePixelSize[1]*self.xray.imageAxes[2])
-		self.xray.arrayExtentOrthogonal = np.array([left,right,bottom,top])
+	# 	left = (0-self.xray.alignmentIsoc[0])*self.xray.imagePixelSize[0]*self.xray.imageAxes[0]
+	# 	right = left+(self.xray.imageSize[0]*self.xray.imagePixelSize[0]*self.xray.imageAxes[0])
+	# 	top = (0+self.xray.alignmentIsoc[1])*self.xray.imagePixelSize[1]*self.xray.imageAxes[2]
+	# 	bottom = top-(self.xray.imageSize[1]*self.xray.imagePixelSize[1]*self.xray.imageAxes[2])
+	# 	self.xray.arrayExtentOrthogonal = np.array([left,right,bottom,top])
 
-		if update is True:
-			# Force re-draw on plots.
-			# self.xray.plotEnvironment.plot0.extent = self.xray.arrayExtentNormal
-			# self.xray.plotEnvironment.plot90.extent = self.xray.arrayExtentOrthogonal
-			# self.xray.plotEnvironment.plot0.image.set_extent(self.xray.arrayExtentNormal)
-			# self.xray.plotEnvironment.plot90.image.set_extent(self.xray.arrayExtentOrthogonal)
-			self.xray.plotEnvironment.plot0.setExtent(self.xray.arrayExtentNormal)
-			self.xray.plotEnvironment.plot90.setExtent(self.xray.arrayExtentOrthogonal)
-			self.xray.plotEnvironment.plot0.canvas.draw()
-			self.xray.plotEnvironment.plot90.canvas.draw()
+	# 	if update is True:
+	# 		# Force re-draw on plots.
+	# 		# self.xray.plotEnvironment.plot0.extent = self.xray.arrayExtentNormal
+	# 		# self.xray.plotEnvironment.plot90.extent = self.xray.arrayExtentOrthogonal
+	# 		# self.xray.plotEnvironment.plot0.image.set_extent(self.xray.arrayExtentNormal)
+	# 		# self.xray.plotEnvironment.plot90.image.set_extent(self.xray.arrayExtentOrthogonal)
+	# 		self.xray.plotEnvironment.plot0.setExtent(self.xray.arrayExtentNormal)
+	# 		self.xray.plotEnvironment.plot90.setExtent(self.xray.arrayExtentOrthogonal)
+	# 		self.xray.plotEnvironment.plot0.canvas.draw()
+	# 		self.xray.plotEnvironment.plot90.canvas.draw()
 
 	def openCT(self,files,skipGPU=False,skipGPUfiles=''):
 		'''Open CT modality files.'''
-		self.ct.ds = mrt.fileHandler.dicom.importDicom(files,'CT')
+		# self.patient.ct.ds = mrt.fileHandler.dicom.importDicom(files,'CT')
+		# Create a work environment in the application.
 		self.workEnvironment.addWorkspace('CT')
-
-		# Get dicom file list.
-		if len(self.ct.ds) == 0:
-			self.sbAlignment.widget['checkDicom'].setStyleSheet("color: red")
-			# log(self.logFile,"No CT files were found.","warning")
-			return
-
-		# Continue as normal.
-		# log(self.logFile,"Loading %d CT files..." %len(self.ct.ds),"event")
-
-		# Get dicom file list.
-		self.ct.ref = self.ct.ds[0]
-		self.ct.fp = os.path.dirname(self.ct.ref)
-
-		# Import dicom files.
-		dicomData = mrt.fileHandler.dicom.importCT(self.ct.ds, arrayFormat="npy",skipGPU=skipGPU,skipGPUfiles=skipGPUfiles)
-		self.ct.pixelSize = dicomData.pixelSize
-		self.ct.patientPosition = dicomData.patientPosition
-		self.ct.rescaleIntercept = dicomData.rescaleIntercept
-		self.ct.rescaleSlope = dicomData.rescaleSlope
-		self.ct.imageOrientationPatient = dicomData.imageOrientationPatient
-		self.ct.imagePositionPatient = dicomData.imagePositionPatient
-		self.ct.arrayExtent = dicomData.arrayExtent
+		# Load the ct dataset into the patient.
+		self.patient.loadCT(files)
 
 		# Create stack page for xray image properties and populate.
 		self.sidebarStack.addPage('ctImageProperties')
@@ -403,21 +381,21 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		self.sbCTProperties.widget['cbCentroid'].stateChanged.connect(partial(self.ctOverlay,overlay='centroid'))
 
 		# Update property table.
-		self.property.addSection('CT')
-		self.property.addVariable('CT',['Pixel Size','x','y'],self.ct.pixelSize[:2].tolist())
-		self.property.addVariable('CT','Slice Thickness',float(self.ct.pixelSize[2]))
-		self.property.addVariable('CT','Patient Position',self.ct.patientPosition)
+		# self.property.addSection('CT')
+		# self.property.addVariable('CT',['Pixel Size','x','y'],self.patient.ct.pixelSize[:2].tolist())
+		# self.property.addVariable('CT','Slice Thickness',float(self.patient.ct.pixelSize[2]))
+		# self.property.addVariable('CT','Patient Position',self.patient.ct.patientPosition)
 
 		# Import numpy files.
-		imageFiles = mrt.fileHandler.importImage(self.ct.fp,'ct','npy')
-		self.ct.arrayDicom = imageFiles[0]
-		self.ct.array = imageFiles[1]
+		# imageFiles = mrt.fileHandler.importImage(self.patient.ct.fp,'ct','npy')
+		# self.patient.ct.arrayDicom = imageFiles[0]
+		# self.patient.ct.array = imageFiles[1]
 
 		# Plot data.
-		self.ct.plotEnvironment = plotEnvironment(self.workEnvironment.stackPage['CT'])
-		self.ct.plotEnvironment.settings('maxMarkers',gv.markerQuantity)
-		self.ct.plotEnvironment.plot0.imageLoad(self.ct.array,extent=self.ct.arrayExtent,imageIndex=0)
-		self.ct.plotEnvironment.plot90.imageLoad(self.ct.array,extent=self.ct.arrayExtent,imageIndex=1)
+		self.patient.ct.plot = plotEnvironment(self.workEnvironment.stackPage['CT'])
+		self.patient.ct.plot.settings('maxMarkers',cfg.markerQuantity)
+		self.patient.ct.plot.plot0.imageLoad(self.patient.ct.image[0].array,extent=self.patient.ct.image[0].extent,imageIndex=0)
+		self.patient.ct.plot.plot90.imageLoad(self.patient.ct.image[0].array,extent=self.patient.ct.image[0].extent,imageIndex=1)
 
 		# Signals and slots.
 		self.sbCTProperties.window['pbApply'].clicked.connect(partial(self.updateSettings,'ct',self.sbCTProperties.window['pbApply']))
@@ -439,30 +417,21 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 			print('in overlay ctd')
 			if self.sbCTProperties.widget['cbCentroid'].isChecked():
 				print('adding overlay')
-				self.ct.plotEnvironment.plot0.overlayCentroid(state=True)
-				self.ct.plotEnvironment.plot90.overlayCentroid(state=True)
+				self.patient.ct.plot.plot0.overlayCentroid(state=True)
+				self.patient.ct.plot.plot90.overlayCentroid(state=True)
 			else:
-				self.ct.plotEnvironment.plot0.overlayCentroid(state=False)
-				self.ct.plotEnvironment.plot90.overlayCentroid(state=False)
+				self.patient.ct.plot.plot0.overlayCentroid(state=False)
+				self.patient.ct.plot.plot90.overlayCentroid(state=False)
 		else:
 			pass
 
 	def openRTP(self,files):
 		'''Open RTP modality files.'''
-		self.rtp.ds = mrt.fileHandler.dicom.importDicom(files,'RTPLAN')
+		# self.rtp.ds = mrt.fileHandler.dicom.importDicom(files,'RTPLAN')
+		# Create a work environment in the application.
 		self.workEnvironment.addWorkspace('RTPLAN')
-
-		if len(self.rtp.ds) == 0:
-			self.sbTreatment.widget['checkRTP'].setStyleSheet("color: red")
-			# log(self.logFile,"No RTP files were found.","warning")
-			return
-
-		# Continue as normal.
-		# log(self.logFile,"Loading %d Radiation Treatment Plan files..." %len(self.rtp.ds),"event")
-
-		self.rtp.fp = os.path.dirname(self.rtp.ds[0])
-		dicomData = mrt.fileHandler.dicom.importRTP(self.rtp.ds)
-		dicomData.extractTreatmentBeams(self.ct)
+		# Load the ct dataset into the patient.
+		self.patient.loadRTPLAN(files)
 
 		# Assume single fraction.
 		self.rtp.beam = dicomData.beam
@@ -481,7 +450,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 
 			self.workEnvironment.addWorkspace('BEV%i'%(i+1))
 			self.rtp.beam[i].plotEnvironment = plotEnvironment(self.workEnvironment.stackPage['BEV%i'%(i+1)])
-			self.rtp.beam[i].plotEnvironment.settings('maxMarkers',gv.markerQuantity)
+			self.rtp.beam[i].plotEnvironment.settings('maxMarkers',cfg.markerQuantity)
 			self.rtp.beam[i].arrayExtent = dicomData.beam[i].arrayExtent
 
 			# Plot.
@@ -525,9 +494,9 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 			'''Update x-ray specific properties.'''
 			if origin == self.sbXrayProperties.widget['alignIsocY']:
 				# Overwrite the alignment isoc in settings.
-				# gv.hamamatsuAlignmentIsoc[:2] = origin.text()
-				gv.hamamatsuAlignmentIsoc[0] = origin.text()
-				gv.hamamatsuAlignmentIsoc[2] = origin.text()
+				# cfg.hamamatsuAlignmentIsoc[:2] = origin.text()
+				cfg.hamamatsuAlignmentIsoc[0] = origin.text()
+				cfg.hamamatsuAlignmentIsoc[2] = origin.text()
 				# Update the property variables.
 				item = self.property.itemFromIndex(self.property.index['X-Ray']['Alignment Isocenter']['y'])
 				item.setData(origin.text(),QtCore.Qt.DisplayRole)
@@ -535,8 +504,8 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 				self.xrayCalculateExtent()
 			elif origin == self.sbXrayProperties.widget['alignIsocX']:
 				# Overwrite the alignment isoc in settings.
-				# gv.hamamatsuAlignmentIsoc[2] = origin.text()
-				gv.hamamatsuAlignmentIsoc[1] = origin.text()
+				# cfg.hamamatsuAlignmentIsoc[2] = origin.text()
+				cfg.hamamatsuAlignmentIsoc[1] = origin.text()
 				# Update the property variables.
 				item = self.property.itemFromIndex(self.property.index['X-Ray']['Alignment Isocenter']['x'])
 				item.setData(origin.text(),QtCore.Qt.DisplayRole)
@@ -559,19 +528,19 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 				else:
 					mode = 'sum'
 				# Get windows and apply them.
-				windows = self.sbCTProperties.getWindows(self.ct.rescaleSlope,self.ct.rescaleIntercept)
-				self.ct.plotEnvironment.setRadiographMode(mode)
-				self.ct.plotEnvironment.setWindows(windows)
+				windows = self.sbCTProperties.getWindows(self.patient.ct.rescaleSlope,self.patient.ct.rescaleIntercept)
+				self.patient.ct.plotEnvironment.setRadiographMode(mode)
+				self.patient.ct.plotEnvironment.setWindows(windows)
 
 		elif mode == 'global':
 			'''Update global variables, applicable to all modes.'''
 			if origin == self.sbAlignment.widget['maxMarkers']:
 				value = self.sbAlignment.widget['maxMarkers'].value()
 				# Update settings.
-				gv.markerQuantity = value
+				cfg.markerQuantity = value
 				# Update plot tables.
 				if self._isXrayOpen: self.xray.plotEnvironment.settings('maxMarkers',value)
-				if self._isCTOpen: self.ct.plotEnvironment.settings('maxMarkers',value)
+				if self._isCTOpen: self.patient.ct.plotEnvironment.settings('maxMarkers',value)
 				if self._isRTPOpen: 
 					for i in range(len(self.rtp.beam)):
 						self.rtp.beam[i].plotEnvironment.settings('maxMarkers',value)
@@ -582,13 +551,13 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		# 		index = self.property.indexFromItem(origin)
 
 		# 		if index == self.property.index['X-Ray']['Alignment Isocenter']['x']:
-		# 			gv.hamamatsuAlignmentIsoc[:2] = self.property.data(index)
+		# 			cfg.hamamatsuAlignmentIsoc[:2] = self.property.data(index)
 		# 			self.sbSettings.widget['alignIsocX'].setText(str(self.property.data(index)))
-		# 			self.xray.alignmentIsoc = gv.hamamatsuAlignmentIsoc
+		# 			self.xray.alignmentIsoc = cfg.hamamatsuAlignmentIsoc
 		# 		elif index == self.property.index['X-Ray']['Alignment Isocenter']['y']:
-		# 			gv.hamamatsuAlignmentIsoc[2] = self.property.data(index)
+		# 			cfg.hamamatsuAlignmentIsoc[2] = self.property.data(index)
 		# 			self.sbSettings.widget['alignIsocY'].setText(str(self.property.data(index)))
-		# 			self.xray.alignmentIsoc = gv.hamamatsuAlignmentIsoc
+		# 			self.xray.alignmentIsoc = cfg.hamamatsuAlignmentIsoc
 		# 	except:
 		# 		pass
 
@@ -605,8 +574,8 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 				pass
 			try:
 				'''Remove X-ray optimised points.'''
-				self.ct.plotEnvironment.plot0.markerRemove(marker=-2)
-				self.ct.plotEnvironment.plot90.markerRemove(marker=-2)
+				self.patient.ct.plotEnvironment.plot0.markerRemove(marker=-2)
+				self.patient.ct.plotEnvironment.plot90.markerRemove(marker=-2)
 			except:
 				pass
 			try:
@@ -645,21 +614,21 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 					'''Optimise points.'''
 					self.xray.plotEnvironment.plot0.markerOptimise(markerSize,threshold)
 					self.xray.plotEnvironment.plot90.markerOptimise(markerSize,threshold)
-					self.ct.plotEnvironment.plot0.markerOptimise(markerSize,threshold)
-					self.ct.plotEnvironment.plot90.markerOptimise(markerSize,threshold)
+					self.patient.ct.plotEnvironment.plot0.markerOptimise(markerSize,threshold)
+					self.patient.ct.plotEnvironment.plot90.markerOptimise(markerSize,threshold)
 					# log(self.logFile,"Successfully optimised points.","event")
 					# Collect points.
-					left[:,1] = self.ct.plotEnvironment.plot0.pointsXoptimised
-					left[:,2] = self.ct.plotEnvironment.plot0.pointsYoptimised
-					left[:,0] = self.ct.plotEnvironment.plot90.pointsXoptimised
+					left[:,1] = self.patient.ct.plotEnvironment.plot0.pointsXoptimised
+					left[:,2] = self.patient.ct.plotEnvironment.plot0.pointsYoptimised
+					left[:,0] = self.patient.ct.plotEnvironment.plot90.pointsXoptimised
 					right[:,1] = self.xray.plotEnvironment.plot0.pointsXoptimised
 					right[:,2] = self.xray.plotEnvironment.plot0.pointsYoptimised
 					right[:,0] = self.xray.plotEnvironment.plot90.pointsXoptimised
 				else:
 					'''Do not optimise anything.'''
-					left[:,1] = self.ct.plotEnvironment.plot0.pointsX
-					left[:,2] = self.ct.plotEnvironment.plot0.pointsY
-					left[:,0] = self.ct.plotEnvironment.plot90.pointsX
+					left[:,1] = self.patient.ct.plotEnvironment.plot0.pointsX
+					left[:,2] = self.patient.ct.plotEnvironment.plot0.pointsY
+					left[:,0] = self.patient.ct.plotEnvironment.plot90.pointsX
 					right[:,1] = self.xray.plotEnvironment.plot0.pointsX
 					right[:,2] = self.xray.plotEnvironment.plot0.pointsY
 					right[:,0] = self.xray.plotEnvironment.plot90.pointsX
@@ -668,8 +637,8 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 				self.alignmentSolution = mrt.imageGuidance.affineTransform(left,right)
 
 				# Update ct centroid position.
-				self.ct.plotEnvironment.plot0.ctd = [self.alignmentSolution.ct_ctd[0],self.alignmentSolution.ct_ctd[1]]
-				self.ct.plotEnvironment.plot90.ctd = [self.alignmentSolution.ct_ctd[2],self.alignmentSolution.ct_ctd[1]]
+				self.patient.ct.plotEnvironment.plot0.ctd = [self.alignmentSolution.ct_ctd[0],self.alignmentSolution.ct_ctd[1]]
+				self.patient.ct.plotEnvironment.plot90.ctd = [self.alignmentSolution.ct_ctd[2],self.alignmentSolution.ct_ctd[1]]
 
 		elif treatmentIndex != -1:
 			'''Align to RTPLAN[index]'''
@@ -703,7 +672,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 			if success:
 				# self.alignmentSolution = mrt.imageGuidance.affineTransform(left,right,
 				# 	self.rtp.beam[treatmentIndex].isocenter,
-				# 	self.ct.userOrigin,
+				# 	self.patient.ct.userOrigin,
 				# 	self.xray.alignmentIsoc)
 				self.alignmentSolution = mrt.imageGuidance.affineTransform(left,right)
 
@@ -715,8 +684,8 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		self.xray.plotEnvironment.plot90.ctd = [self.alignmentSolution.synch_ctd[0],self.alignmentSolution.synch_ctd[2]]
 
 		# Update x-ray centroid position.
-		self.ct.plotEnvironment.plot0.ctd = [self.alignmentSolution.ct_ctd[1],self.alignmentSolution.ct_ctd[2]]
-		self.ct.plotEnvironment.plot90.ctd = [self.alignmentSolution.ct_ctd[0],self.alignmentSolution.ct_ctd[2]]
+		self.patient.ct.plotEnvironment.plot0.ctd = [self.alignmentSolution.ct_ctd[1],self.alignmentSolution.ct_ctd[2]]
+		self.patient.ct.plotEnvironment.plot90.ctd = [self.alignmentSolution.ct_ctd[0],self.alignmentSolution.ct_ctd[2]]
 
 		# If table already exists, update information...
 		self.property.updateVariable('Alignment',['Rotation','x','y','z'],[float(self.alignmentSolution.rotation[0]),float(self.alignmentSolution.rotation[1]),float(self.alignmentSolution.rotation[2])])
