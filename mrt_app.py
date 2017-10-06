@@ -262,6 +262,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 			self.sbXrayProperties.widget['cbCentroid'].stateChanged.connect(partial(self.xrayOverlay,overlay='centroid'))
 
 			# Link to environment
+			
 			# self.sbXrayProperties.widget['alignIsocX'].setText(str(cfg.hamamatsuAlignmentIsoc[1]))
 			# self.sbXrayProperties.widget['alignIsocY'].setText(str(cfg.hamamatsuAlignmentIsoc[2]))
 
