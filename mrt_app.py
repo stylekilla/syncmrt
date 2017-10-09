@@ -432,39 +432,45 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		# Create a work environment in the application.
 		self.workEnvironment.addWorkspace('RTPLAN')
 		# Load the ct dataset into the patient.
-		self.patient.loadRTPLAN(files)
+		self.patient.loadRTPLAN(files,self.patient.ct.image[0])
 
 		# Assume single fraction.
-		self.rtp.beam = dicomData.beam
+		# self.rtp.beam = dicomData.beam
 
-		self.sbTreatment.widget['quantity'].setText(str(len(self.rtp.beam)))
-		self.property.addSection('RTPLAN DICOM')
-		self.property.addVariable('RTPLAN DICOM','Number of Beams',len(self.rtp.beam))
+		self.sbTreatment.widget['quantity'].setText(str(len(self.patient.rtplan.image)))
+		# self.property.addSection('RTPLAN DICOM')
+		# self.property.addVariable('RTPLAN DICOM','Number of Beams',len(self.rtp.beam))
 
 		self.sbTreatment.populateTreatments()
 
+		# Create a plot list the same length as the amount of images.
+		self.patient.rtplan.plot = np.empty(len(self.patient.rtplan.image),dtype=object)
+		self.patient.rtplan.guiInterface = np.empty(len(self.patient.rtplan.image),dtype=object)
+
 		# Iterate through each planned beam.
-		for i in range(len(self.rtp.beam)):
+		for i in range(len(self.patient.rtplan.image)):
+
 			# Create stack page for xray image properties and populate.
 			self.sidebarStack.addPage('bev%iImageProperties'%(i+1))
-			self.rtp.beam[i].sbImageProperties = sbCTProperties(self.sidebarStack.stackDict['bev%iImageProperties'%(i+1)])
 
 			self.workEnvironment.addWorkspace('BEV%i'%(i+1))
-			self.rtp.beam[i].plotEnvironment = plotEnvironment(self.workEnvironment.stackPage['BEV%i'%(i+1)])
-			self.rtp.beam[i].plotEnvironment.settings('maxMarkers',cfg.markerQuantity)
-			self.rtp.beam[i].arrayExtent = dicomData.beam[i].arrayExtent
+			self.patient.rtplan.plot[i] = plotEnvironment(self.workEnvironment.stackPage['BEV%i'%(i+1)])
+			self.patient.rtplan.guiInterface[i] = sbCTProperties(self.sidebarStack.stackDict['bev%iImageProperties'%(i+1)])
+			self.patient.rtplan.plot[i].plotEnvironment = plotEnvironment(self.workEnvironment.stackPage['BEV%i'%(i+1)])
+			self.patient.rtplan.plot[i].plotEnvironment.settings('maxMarkers',cfg.markerQuantity)
+			# self.patient.rtplan.plot[i].arrayExtent = dicomData.beam[i].arrayExtent
 
 			# Plot.
-			self.rtp.beam[i].plotEnvironment.plot0.imageLoad(self.rtp.beam[i].array,extent=self.rtp.beam[i].arrayExtent,imageIndex=0)
-			self.rtp.beam[i].plotEnvironment.plot90.imageLoad(self.rtp.beam[i].array,extent=self.rtp.beam[i].arrayExtent,imageIndex=1)
+			self.patient.rtplan.plot[i].plot0.imageLoad(self.patient.rtplan.image[i].array,extent=self.patient.rtplan.image[i].extent,imageIndex=0)
+			self.patient.rtplan.plot[i].plot90.imageLoad(self.patient.rtplan.image[i].array,extent=self.patient.rtplan.image[i].extent,imageIndex=1)
 
 			# Update property table.
-			labels = ['BEV%i'%(i+1),'Gantry Angle','Patient Support Angle','Collimator Angle']
-			values = [self.rtp.beam[i].gantryAngle,self.rtp.beam[i].patientSupportAngle,self.rtp.beam[i].collimatorAngle]
-			self.property.addVariable('RTPLAN DICOM',labels,values)
-			labels = ['BEV%i Isocenter (adjusted)'%(i+1),'x','y','z']
-			values = np.round(self.rtp.beam[i].isocenter,decimals=2).tolist()
-			self.property.addVariable('RTPLAN DICOM',labels,values)
+			# labels = ['BEV%i'%(i+1),'Gantry Angle','Patient Support Angle','Collimator Angle']
+			# values = [self.patient.rtplan.image[i].gantryAngle,self.patient.rtplan.image[i].patientSupportAngle,self.patient.rtplan.image[i].collimatorAngle]
+			# self.property.addVariable('RTPLAN DICOM',labels,values)
+			# labels = ['BEV%i Isocenter (adjusted)'%(i+1),'x','y','z']
+			# values = np.round(self.patient.rtplan.image[i].isocenter,decimals=2).tolist()
+			# self.property.addVariable('RTPLAN DICOM',labels,values)
 
 			# Button connections.
 			self.sbTreatment.widget['beam'][i]['calculate'].clicked.connect(partial(self.patientCalculateAlignment,treatmentIndex=i))
@@ -481,7 +487,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 			if self.workEnvironment.stack.indexOf(self.workEnvironment.stackPage['CT']) == self.workEnvironment.stack.currentIndex():
 				self.sidebarStack.stackDict['ImageProperties'] = self.sidebarStack.stackDict['ctImageProperties']
 		if self._isRTPOpen:
-			for i in range(len(self.rtp.beam)):
+			for i in range(len(self.patient.rtplan.image)):
 				if self.workEnvironment.stack.indexOf(self.workEnvironment.stackPage['BEV%i'%(i+1)]) == self.workEnvironment.stack.currentIndex():
 						self.sidebarStack.stackDict['ImageProperties'] = self.sidebarStack.stackDict['bev%iImageProperties'%(i+1)]
 
@@ -517,8 +523,8 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 				mode = 'radiograph'
 				# Get the windows and apply them.
 				windows = self.sbXrayProperties.getWindows()
-				self.xray.plotEnvironment.setRadiographMode(mode)
-				self.xray.plotEnvironment.setWindows(windows)
+				self.patient.xr.plotEnvironment.setRadiographMode(mode)
+				self.patient.xr.plotEnvironment.setWindows(windows)
 
 		elif (mode == 'ct') & (self._isCTOpen):
 			'''Update ct specific properties.'''
@@ -540,7 +546,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 				# Update settings.
 				cfg.markerQuantity = value
 				# Update plot tables.
-				if self._isXrayOpen: self.xray.plotEnvironment.settings('maxMarkers',value)
+				if self._isXrayOpen: self.patient.xr.plotEnvironment.settings('maxMarkers',value)
 				if self._isCTOpen: self.patient.ct.plotEnvironment.settings('maxMarkers',value)
 				if self._isRTPOpen: 
 					for i in range(len(self.rtp.beam)):
