@@ -139,22 +139,19 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		self.patient = mrt.patient()
 
 	def testing(self):
-		xrayfiles = ['/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/xray0deg-inverted.npy', '/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/xray90deg-inverted.npy']
-		self.openXray(xrayfiles)
-		ctfiles = ['/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/CT.1.2.840.113619.2.278.3.380434001.45.1470083911.126.1.dcm', '/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/CT.1.2.840.113619.2.278.3.380434001.45.1470083911.126.2.dcm', '/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/CT.1.2.840.113619.2.278.3.380434001.45.1470083911.126.3.dcm', '/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/CT.1.2.840.113619.2.278.3.380434001.45.1470083911.126.4.dcm', '/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/CT.1.2.840.113619.2.278.3.380434001.45.1470083911.126.5.dcm', '/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/CT.1.2.840.113619.2.278.3.380434001.45.1470083911.126.6.dcm', '/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/CT.1.2.840.113619.2.278.3.380434001.45.1470083911.126.7.dcm', '/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/CT.1.2.840.113619.2.278.3.380434001.45.1470083911.126.8.dcm', '/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/CT.1.2.840.113619.2.278.3.380434001.45.1470083911.126.9.dcm', '/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/CT.1.2.840.113619.2.278.3.380434001.45.1470083911.126.10.dcm', '/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/CT.1.2.840.113619.2.278.3.380434001.45.1470083911.126.11.dcm', '/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/CT.1.2.840.113619.2.278.3.380434001.45.1470083911.126.12.dcm', '/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/CT.1.2.840.113619.2.278.3.380434001.45.1470083911.126.13.dcm', '/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/CT.1.2.840.113619.2.278.3.380434001.45.1470083911.126.14.dcm', '/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/CT.1.2.840.113619.2.278.3.380434001.45.1470083911.126.15.dcm', '/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/CT.1.2.840.113619.2.278.3.380434001.45.1470083911.126.16.dcm', '/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/CT.1.2.840.113619.2.278.3.380434001.45.1470083911.126.17.dcm', '/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/CT.1.2.840.113619.2.278.3.380434001.45.1470083911.126.18.dcm', '/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/CT.1.2.840.113619.2.278.3.380434001.45.1470083911.126.19.dcm', '/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/CT.1.2.840.113619.2.278.3.380434001.45.1470083911.126.20.dcm', '/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/CT.1.2.840.113619.2.278.3.380434001.45.1470083911.126.21.dcm', '/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/CT.1.2.840.113619.2.278.3.380434001.45.1470083911.126.22.dcm', '/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/CT.1.2.840.113619.2.278.3.380434001.45.1470083911.126.23.dcm', '/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/CT.1.2.840.113619.2.278.3.380434001.45.1470083911.126.24.dcm', '/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/CT.1.2.840.113619.2.278.3.380434001.45.1470083911.126.25.dcm', '/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/CT.1.2.840.113619.2.278.3.380434001.45.1470083911.126.26.dcm', '/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/CT.1.2.840.113619.2.278.3.380434001.45.1470083911.126.27.dcm', '/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/CT.1.2.840.113619.2.278.3.380434001.45.1470083911.126.28.dcm', '/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/CT.1.2.840.113619.2.278.3.380434001.45.1470083911.126.29.dcm', '/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/CT.1.2.840.113619.2.278.3.380434001.45.1470083911.126.30.dcm', '/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/CT.1.2.840.113619.2.278.3.380434001.45.1470083911.126.31.dcm', '/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/CT.1.2.840.113619.2.278.3.380434001.45.1470083911.126.32.dcm', '/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/CT.1.2.840.113619.2.278.3.380434001.45.1470083911.126.33.dcm', '/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/CT.1.2.840.113619.2.278.3.380434001.45.1470083911.126.34.dcm', '/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/CT.1.2.840.113619.2.278.3.380434001.45.1470083911.126.35.dcm', '/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/CT.1.2.840.113619.2.278.3.380434001.45.1470083911.126.36.dcm', '/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/CT.1.2.840.113619.2.278.3.380434001.45.1470083911.126.37.dcm', '/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/CT.1.2.840.113619.2.278.3.380434001.45.1470083911.126.38.dcm', '/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/CT.1.2.840.113619.2.278.3.380434001.45.1470083911.126.39.dcm', '/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/CT.1.2.840.113619.2.278.3.380434001.45.1470083911.126.40.dcm', '/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/CT.1.2.840.113619.2.278.3.380434001.45.1470083911.126.41.dcm', '/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/CT.1.2.840.113619.2.278.3.380434001.45.1470083911.126.42.dcm', '/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/CT.1.2.840.113619.2.278.3.380434001.45.1470083911.126.43.dcm', '/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/CT.1.2.840.113619.2.278.3.380434001.45.1470083911.126.44.dcm', '/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/CT.1.2.840.113619.2.278.3.380434001.45.1470083911.126.45.dcm', '/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/CT.1.2.840.113619.2.278.3.380434001.45.1470083911.126.46.dcm', '/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/CT.1.2.840.113619.2.278.3.380434001.45.1470083911.126.47.dcm', '/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/CT.1.2.840.113619.2.278.3.380434001.45.1470083911.126.48.dcm', '/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/CT.1.2.840.113619.2.278.3.380434001.45.1470083911.126.49.dcm', '/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/CT.1.2.840.113619.2.278.3.380434001.45.1470083911.126.50.dcm', '/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/CT.1.2.840.113619.2.278.3.380434001.45.1470083911.126.51.dcm', '/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/CT.1.2.840.113619.2.278.3.380434001.45.1470083911.126.52.dcm', '/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/CT.1.2.840.113619.2.278.3.380434001.45.1470083911.126.53.dcm', '/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/CT.1.2.840.113619.2.278.3.380434001.45.1470083911.126.54.dcm', '/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/CT.1.2.840.113619.2.278.3.380434001.45.1470083911.126.55.dcm', '/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/CT.1.2.840.113619.2.278.3.380434001.45.1470083911.126.56.dcm', '/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/CT.1.2.840.113619.2.278.3.380434001.45.1470083911.126.57.dcm', '/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/CT.1.2.840.113619.2.278.3.380434001.45.1470083911.126.58.dcm', '/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/CT.1.2.840.113619.2.278.3.380434001.45.1470083911.126.59.dcm', '/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/CT.1.2.840.113619.2.278.3.380434001.45.1470083911.126.60.dcm', '/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/CT.1.2.840.113619.2.278.3.380434001.45.1470083911.126.61.dcm', '/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/CT.1.2.840.113619.2.278.3.380434001.45.1470083911.126.62.dcm', '/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/CT.1.2.840.113619.2.278.3.380434001.45.1470083911.126.63.dcm', '/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/CT.1.2.840.113619.2.278.3.380434001.45.1470083911.126.64.dcm', '/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/CT.1.2.840.113619.2.278.3.380434001.45.1470083911.126.65.dcm', '/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/CT.1.2.840.113619.2.278.3.380434001.45.1470083911.126.66.dcm', '/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/CT.1.2.840.113619.2.278.3.380434001.45.1470083911.126.67.dcm', '/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/CT.1.2.840.113619.2.278.3.380434001.45.1470083911.126.68.dcm', '/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/CT.1.2.840.113619.2.278.3.380434001.45.1470083911.126.69.dcm', '/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/CT.1.2.840.113619.2.278.3.380434001.45.1470083911.126.70.dcm', '/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/CT.1.2.840.113619.2.278.3.380434001.45.1470083911.126.71.dcm', '/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/CT.1.2.840.113619.2.278.3.380434001.45.1470083911.126.72.dcm', '/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/CT.1.2.840.113619.2.278.3.380434001.45.1470083911.126.73.dcm', '/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/CT.1.2.840.113619.2.278.3.380434001.45.1470083911.126.74.dcm', '/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/CT.1.2.840.113619.2.278.3.380434001.45.1470083911.126.75.dcm', '/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/CT.1.2.840.113619.2.278.3.380434001.45.1470083911.126.76.dcm', '/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/CT.1.2.840.113619.2.278.3.380434001.45.1470083911.126.77.dcm', '/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/CT.1.2.840.113619.2.278.3.380434001.45.1470083911.126.78.dcm', '/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/CT.1.2.840.113619.2.278.3.380434001.45.1470083911.126.79.dcm', '/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/CT.1.2.840.113619.2.278.3.380434001.45.1470083911.126.80.dcm', '/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/CT.1.2.840.113619.2.278.3.380434001.45.1470083911.126.81.dcm', '/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/CT.1.2.840.113619.2.278.3.380434001.45.1470083911.126.82.dcm', '/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/CT.1.2.840.113619.2.278.3.380434001.45.1470083911.126.83.dcm', '/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/CT.1.2.840.113619.2.278.3.380434001.45.1470083911.126.84.dcm', '/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/CT.1.2.840.113619.2.278.3.380434001.45.1470083911.126.85.dcm', '/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/CT.1.2.840.113619.2.278.3.380434001.45.1470083911.126.86.dcm', '/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/CT.1.2.840.113619.2.278.3.380434001.45.1470083911.126.87.dcm', '/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/CT.1.2.840.113619.2.278.3.380434001.45.1470083911.126.88.dcm', '/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/CT.1.2.840.113619.2.278.3.380434001.45.1470083911.126.89.dcm', '/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/CT.1.2.840.113619.2.278.3.380434001.45.1470083911.126.90.dcm', '/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/CT.1.2.840.113619.2.278.3.380434001.45.1470083911.126.91.dcm', '/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/CT.1.2.840.113619.2.278.3.380434001.45.1470083911.126.92.dcm', '/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/CT.1.2.840.113619.2.278.3.380434001.45.1470083911.126.93.dcm', '/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/CT.1.2.840.113619.2.278.3.380434001.45.1470083911.126.94.dcm', '/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/CT.1.2.840.113619.2.278.3.380434001.45.1470083911.126.95.dcm', '/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/CT.1.2.840.113619.2.278.3.380434001.45.1470083911.126.96.dcm', '/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/CT.1.2.840.113619.2.278.3.380434001.45.1470083911.126.97.dcm', '/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/CT.1.2.840.113619.2.278.3.380434001.45.1470083911.126.98.dcm', '/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/CT.1.2.840.113619.2.278.3.380434001.45.1470083911.126.99.dcm', '/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/CT.1.2.840.113619.2.278.3.380434001.45.1470083911.126.100.dcm', '/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/CT.1.2.840.113619.2.278.3.380434001.45.1470083911.126.101.dcm', '/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/CT.1.2.840.113619.2.278.3.380434001.45.1470083911.126.102.dcm', '/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/CT.1.2.840.113619.2.278.3.380434001.45.1470083911.126.103.dcm', '/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/CT.1.2.840.113619.2.278.3.380434001.45.1470083911.126.104.dcm', '/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/CT.1.2.840.113619.2.278.3.380434001.45.1470083911.126.105.dcm', '/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/CT.1.2.840.113619.2.278.3.380434001.45.1470083911.126.106.dcm', '/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/CT.1.2.840.113619.2.278.3.380434001.45.1470083911.126.107.dcm', '/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/CT.1.2.840.113619.2.278.3.380434001.45.1470083911.126.108.dcm', '/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/CT.1.2.840.113619.2.278.3.380434001.45.1470083911.126.109.dcm', '/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/CT.1.2.840.113619.2.278.3.380434001.45.1470083911.126.110.dcm', '/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/CT.1.2.840.113619.2.278.3.380434001.45.1470083911.126.111.dcm', '/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/CT.1.2.840.113619.2.278.3.380434001.45.1470083911.126.112.dcm', '/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/CT.1.2.840.113619.2.278.3.380434001.45.1470083911.126.113.dcm', '/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/CT.1.2.840.113619.2.278.3.380434001.45.1470083911.126.114.dcm', '/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/CT.1.2.840.113619.2.278.3.380434001.45.1470083911.126.115.dcm', '/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/CT.1.2.840.113619.2.278.3.380434001.45.1470083911.126.116.dcm', '/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/CT.1.2.840.113619.2.278.3.380434001.45.1470083911.126.117.dcm', '/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/CT.1.2.840.113619.2.278.3.380434001.45.1470083911.126.118.dcm', '/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/CT.1.2.840.113619.2.278.3.380434001.45.1470083911.126.119.dcm', '/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/CT.1.2.840.113619.2.278.3.380434001.45.1470083911.126.120.dcm', '/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/CT.1.2.840.113619.2.278.3.380434001.45.1470083911.126.121.dcm', '/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/CT.1.2.840.113619.2.278.3.380434001.45.1470083911.126.122.dcm', '/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/CT.1.2.840.113619.2.278.3.380434001.45.1470083911.126.123.dcm', '/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/CT.1.2.840.113619.2.278.3.380434001.45.1470083911.126.124.dcm', '/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/CT.1.2.840.113619.2.278.3.380434001.45.1470083911.126.125.dcm', '/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/CT.1.2.840.113619.2.278.3.380434001.45.1470083911.126.126.dcm', '/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/CT.1.2.840.113619.2.278.3.380434001.45.1470083911.126.127.dcm', '/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/CT.1.2.840.113619.2.278.3.380434001.45.1470083911.126.128.dcm', '/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/CT.1.2.840.113619.2.278.3.380434001.45.1470083911.126.129.dcm', '/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/CT.1.2.840.113619.2.278.3.380434001.45.1470083911.126.130.dcm', '/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/CT.1.2.840.113619.2.278.3.380434001.45.1470083911.126.131.dcm', '/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/CT.1.2.840.113619.2.278.3.380434001.45.1470083911.126.132.dcm', '/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/CT.1.2.840.113619.2.278.3.380434001.45.1470083911.126.133.dcm', '/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/CT.1.2.840.113619.2.278.3.380434001.45.1470083911.126.134.dcm', '/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/CT.1.2.840.113619.2.278.3.380434001.45.1470083911.126.135.dcm', '/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/CT.1.2.840.113619.2.278.3.380434001.45.1470083911.126.136.dcm', '/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/CT.1.2.840.113619.2.278.3.380434001.45.1470083911.126.137.dcm', '/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/CT.1.2.840.113619.2.278.3.380434001.45.1470083911.126.138.dcm', '/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/CT.1.2.840.113619.2.278.3.380434001.45.1470083911.126.139.dcm', '/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/CT.1.2.840.113619.2.278.3.380434001.45.1470083911.126.140.dcm', '/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/CT.1.2.840.113619.2.278.3.380434001.45.1470083911.126.141.dcm']
-		self.openCT(ctfiles,skipGPU=True,skipGPUfiles='/Users/micahbarnes/OneDrive/University/MR233 Health and Medical Physics/Research/Image Alignment/python/mrt_app/test/ct1_correctlyOrientated.npy')
-		self.xray.plotEnvironment.plot0.markerAdd(12.37,-4.02)
-		self.xray.plotEnvironment.plot0.markerAdd(7.88,-23.00)
-		self.xray.plotEnvironment.plot0.markerAdd(21.17,-44.38)
-		self.xray.plotEnvironment.plot90.markerAdd(-34.25,-4.02)
-		self.xray.plotEnvironment.plot90.markerAdd(2.35,-23.00)
-		self.xray.plotEnvironment.plot90.markerAdd(-5.38,-44.38)
-		self.patient.ct.plotEnvironment.plot0.markerAdd(-1.03,-26.02)
-		self.patient.ct.plotEnvironment.plot0.markerAdd(9.10,-43.64)
-		self.patient.ct.plotEnvironment.plot0.markerAdd(18.17,-65.51)
-		self.patient.ct.plotEnvironment.plot90.markerAdd(9.32,-26.02)
-		self.patient.ct.plotEnvironment.plot90.markerAdd(-25.45,-43.64)
-		self.patient.ct.plotEnvironment.plot90.markerAdd(-13.29,-65.51)
+		self.openFiles('folder')
+		self.patient.xr.plot.plot0.markerAdd(12.37,-4.02)
+		self.patient.xr.plot.plot0.markerAdd(7.88,-23.00)
+		self.patient.xr.plot.plot0.markerAdd(21.17,-44.38)
+		self.patient.xr.plot.plot90.markerAdd(-34.25,-4.02)
+		self.patient.xr.plot.plot90.markerAdd(2.35,-23.00)
+		self.patient.xr.plot.plot90.markerAdd(-5.38,-44.38)
+		self.patient.ct.plot.plot0.markerAdd(-1.03,-26.02)
+		self.patient.ct.plot.plot0.markerAdd(9.10,-43.64)
+		self.patient.ct.plot.plot0.markerAdd(18.17,-65.51)
+		self.patient.ct.plot.plot90.markerAdd(9.32,-26.02)
+		self.patient.ct.plot.plot90.markerAdd(-25.45,-43.64)
+		self.patient.ct.plot.plot90.markerAdd(-13.29,-65.51)
 
 	@QtCore.pyqtSlot(str)
 	def setControlsComplexity(self,level):
@@ -251,8 +248,6 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 
 			# Load the files.
 			self.patient.loadXR(files)
-			print('Freshly loaded in MRTAPP')
-			print(self.patient.xr.image[0])
 
 			# Create stack page for xray image properties and populate.
 			self.sidebarStack.addPage('xrImageProperties')
@@ -303,9 +298,6 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 
 		elif self._isXrayOpen is True:
 			self.patient.xr.reloadFiles(files)
-
-		print('Xray Image Array')
-		print(self.patient.xr.image[0])
 
 		# Set plots.
 		self.patient.xr.plot.plot0.imageLoad(self.patient.xr.image[0].array,extent=self.patient.xr.image[0].extent,imageIndex=0)
@@ -452,12 +444,10 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 
 			# Create stack page for xray image properties and populate.
 			self.sidebarStack.addPage('bev%iImageProperties'%(i+1))
-
 			self.workEnvironment.addWorkspace('BEV%i'%(i+1))
 			self.patient.rtplan.plot[i] = plotEnvironment(self.workEnvironment.stackPage['BEV%i'%(i+1)])
+			self.patient.rtplan.plot[i].settings('maxMarkers',cfg.markerQuantity)
 			self.patient.rtplan.guiInterface[i] = sbCTProperties(self.sidebarStack.stackDict['bev%iImageProperties'%(i+1)])
-			self.patient.rtplan.plot[i].plotEnvironment = plotEnvironment(self.workEnvironment.stackPage['BEV%i'%(i+1)])
-			self.patient.rtplan.plot[i].plotEnvironment.settings('maxMarkers',cfg.markerQuantity)
 			# self.patient.rtplan.plot[i].arrayExtent = dicomData.beam[i].arrayExtent
 
 			# Plot.
@@ -475,6 +465,8 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 			# Button connections.
 			self.sbTreatment.widget['beam'][i]['calculate'].clicked.connect(partial(self.patientCalculateAlignment,treatmentIndex=i))
 			self.sbTreatment.widget['beam'][i]['align'].clicked.connect(self.patientApplyAlignment)
+			# Signals and slots.
+			# self.sbCTProperties.window['pbApply'].clicked.connect(partial(self.updateSettings,'ct',self.sbCTProperties.window['pbApply']))
 
 		self._isRTPOpen = True
 		self.workEnvironment.button['RTPLAN'].clicked.emit()
@@ -523,8 +515,8 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 				mode = 'radiograph'
 				# Get the windows and apply them.
 				windows = self.sbXrayProperties.getWindows()
-				self.patient.xr.plotEnvironment.setRadiographMode(mode)
-				self.patient.xr.plotEnvironment.setWindows(windows)
+				self.patient.xr.plot.setRadiographMode(mode)
+				self.patient.xr.plot.setWindows(windows)
 
 		elif (mode == 'ct') & (self._isCTOpen):
 			'''Update ct specific properties.'''
@@ -535,9 +527,9 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 				else:
 					mode = 'sum'
 				# Get windows and apply them.
-				windows = self.sbCTProperties.getWindows(self.patient.ct.rescaleSlope,self.patient.ct.rescaleIntercept)
-				self.patient.ct.plotEnvironment.setRadiographMode(mode)
-				self.patient.ct.plotEnvironment.setWindows(windows)
+				windows = self.sbCTProperties.getWindows()
+				self.patient.ct.plot.setRadiographMode(mode)
+				self.patient.ct.plot.setWindows(windows)
 
 		elif mode == 'global':
 			'''Update global variables, applicable to all modes.'''
@@ -546,11 +538,11 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 				# Update settings.
 				cfg.markerQuantity = value
 				# Update plot tables.
-				if self._isXrayOpen: self.patient.xr.plotEnvironment.settings('maxMarkers',value)
-				if self._isCTOpen: self.patient.ct.plotEnvironment.settings('maxMarkers',value)
+				if self._isXrayOpen: self.patient.xr.plot.settings('maxMarkers',value)
+				if self._isCTOpen: self.patient.ct.plot.settings('maxMarkers',value)
 				if self._isRTPOpen: 
 					for i in range(len(self.rtp.beam)):
-						self.rtp.beam[i].plotEnvironment.settings('maxMarkers',value)
+						self.rtp.plot[i].settings('maxMarkers',value)
 
 		# else:
 		# 	# If not from an existing widget, it then must originate from the table.
@@ -607,71 +599,82 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		# Left is ct
 		# Right is xr
 		numberOfPoints = self.sbAlignment.widget['maxMarkers'].value()
-		left = np.zeros((numberOfPoints,3))
-		right = np.zeros((numberOfPoints,3))
+		l = np.zeros((numberOfPoints,3))
+		r = np.zeros((numberOfPoints,3))
 
 		# Plot xyz maps onto synchrotron yzx.
 
 		if treatmentIndex == -1:
 			'''Align to CT'''
-			if len(self.xray.plotEnvironment.plot0.pointsX)>0:
+			if len(self.patient.xr.plot.plot0.pointsX)>0:
 				if self.sbAlignment.widget['optimise'].isChecked():
 					markerSize = self.sbAlignment.widget['markerSize'].value()
 					threshold = self.sbAlignment.widget['threshold'].value()
 					'''Optimise points.'''
-					self.xray.plotEnvironment.plot0.markerOptimise(markerSize,threshold)
-					self.xray.plotEnvironment.plot90.markerOptimise(markerSize,threshold)
-					self.patient.ct.plotEnvironment.plot0.markerOptimise(markerSize,threshold)
-					self.patient.ct.plotEnvironment.plot90.markerOptimise(markerSize,threshold)
+					self.patient.xr.plot.plot0.markerOptimise(markerSize,threshold)
+					self.patient.xr.plot.plot90.markerOptimise(markerSize,threshold)
+					self.patient.ct.plot.plot0.markerOptimise(markerSize,threshold)
+					self.patient.ct.plot.plot90.markerOptimise(markerSize,threshold)
 					# log(self.logFile,"Successfully optimised points.","event")
 					# Collect points.
-					left[:,1] = self.patient.ct.plotEnvironment.plot0.pointsXoptimised
-					left[:,2] = self.patient.ct.plotEnvironment.plot0.pointsYoptimised
-					left[:,0] = self.patient.ct.plotEnvironment.plot90.pointsXoptimised
-					right[:,1] = self.xray.plotEnvironment.plot0.pointsXoptimised
-					right[:,2] = self.xray.plotEnvironment.plot0.pointsYoptimised
-					right[:,0] = self.xray.plotEnvironment.plot90.pointsXoptimised
+					l[:,1] = self.patient.ct.plot.plot0.pointsXoptimised
+					l[:,2] = self.patient.ct.plot.plot0.pointsYoptimised
+					l[:,0] = self.patient.ct.plot.plot90.pointsXoptimised
+					r[:,1] = self.patient.xr.plot.plot0.pointsXoptimised
+					r[:,2] = self.patient.xr.plot.plot0.pointsYoptimised
+					r[:,0] = self.patient.xr.plot.plot90.pointsXoptimised
 				else:
 					'''Do not optimise anything.'''
-					left[:,1] = self.patient.ct.plotEnvironment.plot0.pointsX
-					left[:,2] = self.patient.ct.plotEnvironment.plot0.pointsY
-					left[:,0] = self.patient.ct.plotEnvironment.plot90.pointsX
-					right[:,1] = self.xray.plotEnvironment.plot0.pointsX
-					right[:,2] = self.xray.plotEnvironment.plot0.pointsY
-					right[:,0] = self.xray.plotEnvironment.plot90.pointsX
+					l[:,1] = self.patient.ct.plot.plot0.pointsX
+					l[:,2] = self.patient.ct.plot.plot0.pointsY
+					l[:,0] = self.patient.ct.plot.plot90.pointsX
+					r[:,1] = self.patient.xr.plot.plot0.pointsX
+					r[:,2] = self.patient.xr.plot.plot0.pointsY
+					r[:,0] = self.patient.xr.plot.plot90.pointsX
 
-				# Align to the CT assuming that the rtp isoc is zero.
-				self.alignmentSolution = mrt.imageGuidance.affineTransform(left,right)
+
+				print('left and right')
+				print(l)
+				print(r)
+				# Solve.
+				self.system.solver.updateVariable(
+					left=l,
+					right=r)
+				self.system.solver.solve()
+
+				# Update x-ray centroid position.
+				self.patient.xr.plot.plot0.ctd = [self.system.solver._rightCentroid[1],self.system.solver._rightCentroid[2]]
+				self.patient.xr.plot.plot90.ctd = [self.system.solver._rightCentroid[0],self.system.solver._rightCentroid[2]]
 
 				# Update ct centroid position.
-				self.patient.ct.plotEnvironment.plot0.ctd = [self.alignmentSolution.ct_ctd[0],self.alignmentSolution.ct_ctd[1]]
-				self.patient.ct.plotEnvironment.plot90.ctd = [self.alignmentSolution.ct_ctd[2],self.alignmentSolution.ct_ctd[1]]
+				self.patient.ct.plot.plot0.ctd = [self.system.solver._leftCentroid[1],self.system.solver._leftCentroid[2]]
+				self.patient.ct.plot.plot90.ctd = [self.system.solver._leftCentroid[0],self.system.solver._leftCentroid[2]]
 
 		elif treatmentIndex != -1:
 			'''Align to RTPLAN[index]'''
-			if len(self.rtp.beam[treatmentIndex].plotEnvironment.plot0.pointsX)>0:
+			if len(self.patient.rtplan.plot[treatmentIndex].plot0.pointsX)>0:
 				# Optimise Points
 				if self.toolSelect.alignment['optimise'].isChecked():
-					self.xray.plotEnvironment.plot0.markerOptimise(self.toolSelect.alignment['markerSize'].value(),threshold)
-					self.xray.plotEnvironment.plot90.markerOptimise(self.toolSelect.alignment['markerSize'].value(),threshold)
-					self.rtp.beam[treatmentIndex].plotEnvironment.plot0.markerOptimise(self.toolSelect.alignment['markerSize'].value(),threshold)
-					self.rtp.beam[treatmentIndex].plotEnvironment.plot90.markerOptimise(self.toolSelect.alignment['markerSize'].value(),threshold)
+					self.patient.xr.plot.plot0.markerOptimise(self.toolSelect.alignment['markerSize'].value(),threshold)
+					self.patient.xr.plot.plot90.markerOptimise(self.toolSelect.alignment['markerSize'].value(),threshold)
+					self.patient.rtplan.plot[treatmentIndex].plot0.markerOptimise(self.toolSelect.alignment['markerSize'].value(),threshold)
+					self.patient.rtplan.plot[treatmentIndex].plot90.markerOptimise(self.toolSelect.alignment['markerSize'].value(),threshold)
 					# log(self.logFile,"Successfully optimised points.","event")
 					# Collect points.
-					left[:,1] = self.rtp.beam[treatmentIndex].plotEnvironment.plot0.pointsXoptimised
-					left[:,2] = self.rtp.beam[treatmentIndex].plotEnvironment.plot0.pointsYoptimised
-					left[:,0] = self.rtp.beam[treatmentIndex].plotEnvironment.plot90.pointsXoptimised
-					right[:,1] = self.xray.plotEnvironment.plot0.pointsXoptimised
-					right[:,2] = self.xray.plotEnvironment.plot0.pointsYoptimised
-					right[:,0] = self.xray.plotEnvironment.plot90.pointsXoptimised
+					l[:,1] = self.patient.rtplan.plot[treatmentIndex].plot0.pointsXoptimised
+					l[:,2] = self.patient.rtplan.plot[treatmentIndex].plot0.pointsYoptimised
+					l[:,0] = self.patient.rtplan.plot[treatmentIndex].plot90.pointsXoptimised
+					r[:,1] = self.patient.xr.plot.plot0.pointsXoptimised
+					r[:,2] = self.patient.xr.plot.plot0.pointsYoptimised
+					r[:,0] = self.patient.xr.plot.plot90.pointsXoptimised
 				else:
 					'''Do not optimise anyting.'''
-					left[:,1] = self.rtp.beam[treatmentIndex].plotEnvironment.plot0.pointsX
-					left[:,2] = self.rtp.beam[treatmentIndex].plotEnvironment.plot0.pointsY
-					left[:,0] = self.rtp.beam[treatmentIndex].plotEnvironment.plot90.pointsX
-					right[:,1] = self.xray.plotEnvironment.plot0.pointsX
-					right[:,2] = self.xray.plotEnvironment.plot0.pointsY
-					right[:,0] = self.xray.plotEnvironment.plot90.pointsX
+					l[:,1] = self.patient.rtplan.plot[treatmentIndex].plot0.pointsX
+					l[:,2] = self.patient.rtplan.plot[treatmentIndex].plot0.pointsY
+					l[:,0] = self.patient.rtplan.plot[treatmentIndex].plot90.pointsX
+					r[:,1] = self.patient.xr.plot.plot0.pointsX
+					r[:,2] = self.patient.xr.plot.plot0.pointsY
+					r[:,0] = self.patient.xr.plot.plot90.pointsX
 
 				success = True
 
@@ -680,24 +683,29 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 				# self.alignmentSolution = mrt.imageGuidance.affineTransform(left,right,
 				# 	self.rtp.beam[treatmentIndex].isocenter,
 				# 	self.patient.ct.userOrigin,
-				# 	self.xray.alignmentIsoc)
-				self.alignmentSolution = mrt.imageGuidance.affineTransform(left,right)
+				# 	self.patient.xr.alig
+				# Solve.
+				self.system.solver.updateVariable(
+					left=l,
+					right=r,
+					patientIsoc=self.patient.rtplan.image[treatmentIndex].isocenter)
+				self.system.solver.solve()
 
 		else:
 			pass
 
 		# Update x-ray centroid position.
-		self.xray.plotEnvironment.plot0.ctd = [self.alignmentSolution.synch_ctd[1],self.alignmentSolution.synch_ctd[2]]
-		self.xray.plotEnvironment.plot90.ctd = [self.alignmentSolution.synch_ctd[0],self.alignmentSolution.synch_ctd[2]]
+		self.patient.xr.plot.plot0.ctd = [self.system.solver._rightCentroid[1],self.system.solver._rightCentroid[2]]
+		self.patient.xr.plot.plot90.ctd = [self.system.solver._rightCentroid[0],self.system.solver._rightCentroid[2]]
 
-		# Update x-ray centroid position.
-		self.patient.ct.plotEnvironment.plot0.ctd = [self.alignmentSolution.ct_ctd[1],self.alignmentSolution.ct_ctd[2]]
-		self.patient.ct.plotEnvironment.plot90.ctd = [self.alignmentSolution.ct_ctd[0],self.alignmentSolution.ct_ctd[2]]
+		# Update ct centroid position.
+		self.patient.ct.plot.plot0.ctd = [self.system.solver._leftCentroid[1],self.system.solver._leftCentroid[2]]
+		self.patient.ct.plot.plot90.ctd = [self.system.solver._leftCentroid[0],self.system.solver._leftCentroid[2]]
 
 		# If table already exists, update information...
-		self.property.updateVariable('Alignment',['Rotation','x','y','z'],[float(self.alignmentSolution.rotation[0]),float(self.alignmentSolution.rotation[1]),float(self.alignmentSolution.rotation[2])])
-		self.property.updateVariable('Alignment',['Translation','x','y','z'],self.alignmentSolution.translation.tolist())
-		self.property.updateVariable('Alignment','Scale',float(self.alignmentSolution.scale))
+		self.property.updateVariable('Alignment',['Rotation','x','y','z'],[float(self.system.solver.solution[3]),float(self.system.solver.solution[4]),float(self.system.solver.solution[5])])
+		self.property.updateVariable('Alignment',['Translation','x','y','z'],[float(self.system.solver.solution[0]),float(self.system.solver.solution[1]),float(self.system.solver.solution[2])])
+		self.property.updateVariable('Alignment','Scale',float(self.system.solver.scale))
 
 	def patientApplyAlignment(self,treatmentIndex=-1):
 		'''Calculate alignment first.'''
@@ -705,7 +713,8 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 
 		# Apply alignment.
 		if self.pps._isStageConnected:
-			completion = self.pps.movePatient(np.concatenate((self.alignmentSolution.translation,self.alignmentSolution.rotation)))
+			completion = self.pps.movePatient(self.system.solver.solution)
+			print('This should be updating the values as they move and reduce to zero.')
 			self.property.updateVariable('Alignment',['Rotation','x','y','z'],[float(completion[3]),float(completion[4]),float(completion[5])])
 			self.property.updateVariable('Alignment',['Translation','x','y','z'],[float(completion[0]),float(completion[1]),float(completion[2])])
 

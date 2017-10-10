@@ -636,12 +636,12 @@ class sbCTProperties:
 				del self.window['window'][length-i*2-1]
 				del self.window['window'][length-i*2-2]
 
-	def getWindows(self,slope,intercept):
-		'''Get window values as list of lists. Need scale slope and intercept.'''
+	def getWindows(self):
+		'''Get window values as list of lists.'''
 		windows = []
 
 		for i in range(int(len(self.window['window'])/2)):
-			window = [self.window['window'][i*2].value()*slope-intercept,self.window['window'][i*2+1].value()*slope-intercept]
+			window = [self.window['window'][i*2].value(),self.window['window'][i*2+1].value()]
 			windows.append(window)
 
 		return windows
