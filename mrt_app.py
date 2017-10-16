@@ -632,10 +632,6 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 					r[:,2] = self.patient.xr.plot.plot0.pointsY
 					r[:,0] = self.patient.xr.plot.plot90.pointsX
 
-
-				print('left and right')
-				print(l)
-				print(r)
 				# Solve.
 				self.system.solver.updateVariable(
 					left=l,
