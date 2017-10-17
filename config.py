@@ -1,9 +1,17 @@
+
+
 '''
 Marker Defaults
 '''
 markerQuantity = 3
 markerSize = 2.00
 
+# File locations
+import os
+cwd = os.getcwd()
+stageList = cwd+'/resources/stageList.csv'
+# detectorList = 
+# maskList = 
 
 
 # chairOrientation = '-ap-hf'

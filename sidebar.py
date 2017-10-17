@@ -197,7 +197,7 @@ class sbAlignment:
 		alignGroup.setLayout(alignGroupLayout)
 		self.layout.addWidget(alignGroup)
 		# Defaults
-		self.widget['doAlignment'].setEnabled(False)
+		# self.widget['doAlignment'].setEnabled(False)
 		# Signals and Slots
 
 		# Group 3: Checklist

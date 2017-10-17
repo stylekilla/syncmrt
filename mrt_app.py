@@ -1,4 +1,4 @@
-import config as cfg
+import config
 from classBin import *
 from sidebar import *
 # As normal...
@@ -67,21 +67,6 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		# Create work environment
 		self.workEnvironment = workEnvironment(self.toolbarPane,self.workStack)
 
-		# Create patient alignment machine.
-		# self.pps = mrt.imageGuidance.patientPositioningSystem.newSystem()
-		# self.pps.stageConnected.connect(partial(self.enableDoAlignment))
-
-		# Create controls work environment.
-		self.workEnvironment.addWorkspace('Controls',alignment='Right')
-		self.controls = mrt.tools.epics.controls.controlsPage(parent=self.workEnvironment.stackPage['Controls'])
-		self.sbSettings.modeChanged.connect(self.setControlsComplexity)
-		self.sbSettings.stageChanged.connect(self.setStage)
-		# self.sbSettings.detectorChanged.connect(self.setControlsComplexity)
-		self.sbSettings.controls['cbReadOnly'].stateChanged.connect(partial(self.setControlsReadOnly))
-		self.setControlsReadOnly(True)
-		self.sbSettings.loadStages(self.controls.stageList)
-		self.sbSettings.loadDetectors(self.controls.detectorList)
-
 		# PropertyManager
 		self.property = propertyModel()
 		self.propertyTree = propertyManager(self.frameVariablePane,self.property)
@@ -134,9 +119,23 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		SyncMRT Setup
 		'''
 		# Create a new system, this has a solver, detector and stage.
-		self.system = mrt.system()
+		self.system = mrt.system(config.stageList)
 		# Create a new patient, this has room for medical scans and synchrotron scans + other data.
 		self.patient = mrt.patient()
+
+		'''
+		More GUI linking from System and Patient.
+		'''
+		# Create controls work environment.
+		self.workEnvironment.addWorkspace('Controls',alignment='Right')
+		# self.controls = mrt.widgets.controls.controlsPage(parent=self.workEnvironment.stackPage['Controls'])
+		self.sbSettings.modeChanged.connect(self.setControlsComplexity)
+		self.sbSettings.stageChanged.connect(self.setStage)
+		# self.sbSettings.detectorChanged.connect(self.setControlsComplexity)
+		self.sbSettings.controls['cbReadOnly'].stateChanged.connect(partial(self.setControlsReadOnly))
+		# self.setControlsReadOnly(True)
+		self.sbSettings.loadStages(self.system.stageList)
+		# self.sbSettings.loadDetectors(self.system.detectorList)
 
 	def testing(self):
 		self.openFiles('folder')
@@ -163,12 +162,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 
 	@QtCore.pyqtSlot(str)
 	def setStage(self,stage):
-		self.controls.setStage(stage)
-		try:
-			self.pps.connectMotors(self.controls.patient)
-			self.pps.setStageConnected(True)
-		except:
-			pass	
+		self.system.setStage(stage)
 
 	@QtCore.pyqtSlot(bool)
 	def enableDoAlignment(self,state=False):
@@ -258,8 +252,8 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 
 			# Link to environment
 			
-			# self.sbXrayProperties.widget['alignIsocX'].setText(str(cfg.hamamatsuAlignmentIsoc[1]))
-			# self.sbXrayProperties.widget['alignIsocY'].setText(str(cfg.hamamatsuAlignmentIsoc[2]))
+			# self.sbXrayProperties.widget['alignIsocX'].setText(str(config.hamamatsuAlignmentIsoc[1]))
+			# self.sbXrayProperties.widget['alignIsocY'].setText(str(config.hamamatsuAlignmentIsoc[2]))
 
 			# Add property variables.
 			# self.property.addSection('X-Ray')
@@ -278,7 +272,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 
 			# Plot data.
 			self.patient.xr.plot = plotEnvironment(self.workEnvironment.stackPage['X-RAY'])
-			self.patient.xr.plot.settings('maxMarkers',cfg.markerQuantity)
+			self.patient.xr.plot.settings('maxMarkers',config.markerQuantity)
 
 			# item = self..findItems('ImageProperties',QtCore.Qt.MatchExactly)[0]
 			# print(item)
@@ -310,27 +304,27 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		'''Control x-ray plot overlays.'''
 		if overlay == 'beam':
 			if self.sbXrayProperties.widget['cbBeamIsoc'].isChecked():
-				self.xr.plotEnvironment.plot0.overlayIsocenter(state=True)
-				self.xr.plotEnvironment.plot90.overlayIsocenter(state=True)
+				self.patient.xr.plot.plot0.overlayIsocenter(state=True)
+				self.patient.xr.plot.plot90.overlayIsocenter(state=True)
 			else:
-				self.xr.plotEnvironment.plot0.overlayIsocenter(state=False)
-				self.xr.plotEnvironment.plot90.overlayIsocenter(state=False)
+				self.patient.xr.plot.plot0.overlayIsocenter(state=False)
+				self.patient.xr.plot.plot90.overlayIsocenter(state=False)
 		elif overlay == 'patient':
 			pass
 		elif overlay == 'centroid':
 			if self.sbXrayProperties.widget['cbCentroid'].isChecked():
-				self.xr.plotEnvironment.plot0.overlayCentroid(state=True)
-				self.xr.plotEnvironment.plot90.overlayCentroid(state=True)
+				self.patient.xr.plot.plot0.overlayCentroid(state=True)
+				self.patient.xr.plot.plot90.overlayCentroid(state=True)
 			else:
-				self.xr.plotEnvironment.plot0.overlayCentroid(state=False)
-				self.xr.plotEnvironment.plot90.overlayCentroid(state=False)
+				self.patient.xr.plot.plot0.overlayCentroid(state=False)
+				self.patient.xr.plot.plot90.overlayCentroid(state=False)
 		else:
 			pass
 
 	# def xrayCalculateExtent(self,update=True):
 	# 	'''Should umbrella all this under an x-ray class.'''
 	# 	# Force update of alignment isocenter from settings.
-	# 	self.xray.alignmentIsoc = cfg.hamamatsuAlignmentIsoc
+	# 	self.xray.alignmentIsoc = config.hamamatsuAlignmentIsoc
 
 	# 	# Synchrotron image geometry is vec directions (xyz), note reversed direction of y for looking downstream.
 	# 	self.xray.imageAxes = np.array([1,-1,1])
@@ -386,7 +380,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 
 		# Plot data.
 		self.patient.ct.plot = plotEnvironment(self.workEnvironment.stackPage['CT'])
-		self.patient.ct.plot.settings('maxMarkers',cfg.markerQuantity)
+		self.patient.ct.plot.settings('maxMarkers',config.markerQuantity)
 		self.patient.ct.plot.plot0.imageLoad(self.patient.ct.image[0].array,extent=self.patient.ct.image[0].extent,imageIndex=0)
 		self.patient.ct.plot.plot90.imageLoad(self.patient.ct.image[0].array,extent=self.patient.ct.image[0].extent,imageIndex=1)
 
@@ -446,7 +440,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 			self.sidebarStack.addPage('bev%iImageProperties'%(i+1))
 			self.workEnvironment.addWorkspace('BEV%i'%(i+1))
 			self.patient.rtplan.plot[i] = plotEnvironment(self.workEnvironment.stackPage['BEV%i'%(i+1)])
-			self.patient.rtplan.plot[i].settings('maxMarkers',cfg.markerQuantity)
+			self.patient.rtplan.plot[i].settings('maxMarkers',config.markerQuantity)
 			self.patient.rtplan.guiInterface[i] = sbCTProperties(self.sidebarStack.stackDict['bev%iImageProperties'%(i+1)])
 			# self.patient.rtplan.plot[i].arrayExtent = dicomData.beam[i].arrayExtent
 
@@ -493,9 +487,9 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 			'''Update x-ray specific properties.'''
 			if origin == self.sbXrayProperties.widget['alignIsocY']:
 				# Overwrite the alignment isoc in settings.
-				# cfg.hamamatsuAlignmentIsoc[:2] = origin.text()
-				cfg.hamamatsuAlignmentIsoc[0] = origin.text()
-				cfg.hamamatsuAlignmentIsoc[2] = origin.text()
+				# config.hamamatsuAlignmentIsoc[:2] = origin.text()
+				config.hamamatsuAlignmentIsoc[0] = origin.text()
+				config.hamamatsuAlignmentIsoc[2] = origin.text()
 				# Update the property variables.
 				item = self.property.itemFromIndex(self.property.index['X-Ray']['Alignment Isocenter']['y'])
 				item.setData(origin.text(),QtCore.Qt.DisplayRole)
@@ -503,8 +497,8 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 				self.xrayCalculateExtent()
 			elif origin == self.sbXrayProperties.widget['alignIsocX']:
 				# Overwrite the alignment isoc in settings.
-				# cfg.hamamatsuAlignmentIsoc[2] = origin.text()
-				cfg.hamamatsuAlignmentIsoc[1] = origin.text()
+				# config.hamamatsuAlignmentIsoc[2] = origin.text()
+				config.hamamatsuAlignmentIsoc[1] = origin.text()
 				# Update the property variables.
 				item = self.property.itemFromIndex(self.property.index['X-Ray']['Alignment Isocenter']['x'])
 				item.setData(origin.text(),QtCore.Qt.DisplayRole)
@@ -536,7 +530,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 			if origin == self.sbAlignment.widget['maxMarkers']:
 				value = self.sbAlignment.widget['maxMarkers'].value()
 				# Update settings.
-				cfg.markerQuantity = value
+				config.markerQuantity = value
 				# Update plot tables.
 				if self._isXrayOpen: self.patient.xr.plot.settings('maxMarkers',value)
 				if self._isCTOpen: self.patient.ct.plot.settings('maxMarkers',value)
@@ -550,13 +544,13 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		# 		index = self.property.indexFromItem(origin)
 
 		# 		if index == self.property.index['X-Ray']['Alignment Isocenter']['x']:
-		# 			cfg.hamamatsuAlignmentIsoc[:2] = self.property.data(index)
+		# 			config.hamamatsuAlignmentIsoc[:2] = self.property.data(index)
 		# 			self.sbSettings.widget['alignIsocX'].setText(str(self.property.data(index)))
-		# 			self.xray.alignmentIsoc = cfg.hamamatsuAlignmentIsoc
+		# 			self.xray.alignmentIsoc = config.hamamatsuAlignmentIsoc
 		# 		elif index == self.property.index['X-Ray']['Alignment Isocenter']['y']:
-		# 			cfg.hamamatsuAlignmentIsoc[2] = self.property.data(index)
+		# 			config.hamamatsuAlignmentIsoc[2] = self.property.data(index)
 		# 			self.sbSettings.widget['alignIsocY'].setText(str(self.property.data(index)))
-		# 			self.xray.alignmentIsoc = cfg.hamamatsuAlignmentIsoc
+		# 			self.xray.alignmentIsoc = config.hamamatsuAlignmentIsoc
 		# 	except:
 		# 		pass
 
@@ -703,16 +697,18 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		self.property.updateVariable('Alignment',['Translation','x','y','z'],[float(self.system.solver.solution[0]),float(self.system.solver.solution[1]),float(self.system.solver.solution[2])])
 		self.property.updateVariable('Alignment','Scale',float(self.system.solver.scale))
 
+		# Calculate alignment for stage.
+		self.system.calculateAlignment()
+
 	def patientApplyAlignment(self,treatmentIndex=-1):
 		'''Calculate alignment first.'''
-		self.patientCalculateAlignment(treatmentIndex=treatmentIndex)
+		# self.patientCalculateAlignment(treatmentIndex=treatmentIndex)
 
 		# Apply alignment.
-		if self.pps._isStageConnected:
-			completion = self.pps.movePatient(self.system.solver.solution)
-			print('This should be updating the values as they move and reduce to zero.')
-			self.property.updateVariable('Alignment',['Rotation','x','y','z'],[float(completion[3]),float(completion[4]),float(completion[5])])
-			self.property.updateVariable('Alignment',['Translation','x','y','z'],[float(completion[0]),float(completion[1]),float(completion[2])])
+		completion = self.system.movePatient(self.system.solver.solution)
+		# print('This should be updating the values as they move and reduce to zero.')
+		self.property.updateVariable('Alignment',['Rotation','x','y','z'],[float(completion[3]),float(completion[4]),float(completion[5])])
+		self.property.updateVariable('Alignment',['Translation','x','y','z'],[float(completion[0]),float(completion[1]),float(completion[2])])
 
 
 	# def eventFilter(self, source, event):
