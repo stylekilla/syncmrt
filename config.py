@@ -10,6 +10,7 @@ markerSize = 2.00
 import os
 cwd = os.getcwd()
 stageList = cwd+'/resources/stageList.csv'
+motorList = cwd+'/resources/motorList.csv'
 # detectorList = 
 # maskList = 
 

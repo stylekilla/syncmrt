@@ -119,7 +119,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		SyncMRT Setup
 		'''
 		# Create a new system, this has a solver, detector and stage.
-		self.system = mrt.system(config.stageList)
+		self.system = mrt.system(config.motorList)
 		# Create a new patient, this has room for medical scans and synchrotron scans + other data.
 		self.patient = mrt.patient()
 
@@ -134,7 +134,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		# self.sbSettings.detectorChanged.connect(self.setControlsComplexity)
 		self.sbSettings.controls['cbReadOnly'].stateChanged.connect(partial(self.setControlsReadOnly))
 		# self.setControlsReadOnly(True)
-		self.sbSettings.loadStages(self.system.stageList)
+		self.sbSettings.loadStages(self.system.motorList)
 		# self.sbSettings.loadDetectors(self.system.detectorList)
 
 	def testing(self):
