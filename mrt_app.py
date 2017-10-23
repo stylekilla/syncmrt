@@ -134,7 +134,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		# self.sbSettings.detectorChanged.connect(self.setControlsComplexity)
 		self.sbSettings.controls['cbReadOnly'].stateChanged.connect(partial(self.setControlsReadOnly))
 		# self.setControlsReadOnly(True)
-		self.sbSettings.loadStages(self.system.motorList)
+		self.sbSettings.loadStages(self.system.stageList)
 		# self.sbSettings.loadDetectors(self.system.detectorList)
 
 	def testing(self):
