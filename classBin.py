@@ -338,6 +338,10 @@ class propertyModel(QtGui.QStandardItemModel):
 
 	def addVariable(self,name,variable,value):
 		'''Takes single and multiple variables, adds to parent item (name).'''
+		if type(value) is not str:
+			# Convert to 3dec places, assuming it's a number
+			value = np.around(value,decimals=3)
+
 		if type(variable) is list:
 			# Multiple Entry
 			prop = QtGui.QStandardItem()

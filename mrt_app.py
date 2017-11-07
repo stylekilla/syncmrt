@@ -535,8 +535,8 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 				if self._isXrayOpen: self.patient.xr.plot.settings('maxMarkers',value)
 				if self._isCTOpen: self.patient.ct.plot.settings('maxMarkers',value)
 				if self._isRTPOpen: 
-					for i in range(len(self.rtp.beam)):
-						self.rtp.plot[i].settings('maxMarkers',value)
+					for i in range(len(self.patient.rtplan.plot)):
+						self.patient.rtplan.plot[i].settings('maxMarkers',value)
 
 		# else:
 		# 	# If not from an existing widget, it then must originate from the table.
@@ -705,10 +705,11 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		# self.patientCalculateAlignment(treatmentIndex=treatmentIndex)
 
 		# Apply alignment.
-		completion = self.system.movePatient(self.system.solver.solution)
+		# completion = self.system.movePatient(self.system.solver.solution)
 		# print('This should be updating the values as they move and reduce to zero.')
-		self.property.updateVariable('Alignment',['Rotation','x','y','z'],[float(completion[3]),float(completion[4]),float(completion[5])])
-		self.property.updateVariable('Alignment',['Translation','x','y','z'],[float(completion[0]),float(completion[1]),float(completion[2])])
+		# self.property.updateVariable('Alignment',['Rotation','x','y','z'],[float(completion[3]),float(completion[4]),float(completion[5])])
+		# self.property.updateVariable('Alignment',['Translation','x','y','z'],[float(completion[0]),float(completion[1]),float(completion[2])])
+		pass
 
 
 	# def eventFilter(self, source, event):
