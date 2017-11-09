@@ -1,0 +1,24 @@
+[[source]]
+
+url = "https://pypi.python.org/simple"
+verify_ssl = true
+name = "pypi"
+
+
+[packages]
+
+numpy = "*"
+pydicom = "*"
+pyepics = "*"
+"h5py" = "*"
+matplotlib = "*"
+natsort = "*"
+dxfwrite = "*"
+"PyQt5" = "==5.8.2"
+scipy = "*"
+scikit-image = "*"
+Cython = "*"
+
+
+[dev-packages]
+

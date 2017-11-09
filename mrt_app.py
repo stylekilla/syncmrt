@@ -702,15 +702,13 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 
 	def patientApplyAlignment(self,treatmentIndex=-1):
 		'''Calculate alignment first.'''
-		# self.patientCalculateAlignment(treatmentIndex=treatmentIndex)
+		self.patientCalculateAlignment(treatmentIndex=treatmentIndex)
 
 		# Apply alignment.
 		# completion = self.system.movePatient(self.system.solver.solution)
 		# print('This should be updating the values as they move and reduce to zero.')
 		# self.property.updateVariable('Alignment',['Rotation','x','y','z'],[float(completion[3]),float(completion[4]),float(completion[5])])
 		# self.property.updateVariable('Alignment',['Translation','x','y','z'],[float(completion[0]),float(completion[1]),float(completion[2])])
-		pass
-
 
 	# def eventFilter(self, source, event):
 	# 	# Update ct and xr points in the table as the widget is clicked.
