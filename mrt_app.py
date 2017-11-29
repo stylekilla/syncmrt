@@ -139,18 +139,30 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 
 	def testing(self):
 		self.openFiles('folder')
-		self.patient.xr.plot.plot0.markerAdd(12.37,-4.02)
-		self.patient.xr.plot.plot0.markerAdd(7.88,-23.00)
-		self.patient.xr.plot.plot0.markerAdd(21.17,-44.38)
-		self.patient.xr.plot.plot90.markerAdd(-34.25,-4.02)
-		self.patient.xr.plot.plot90.markerAdd(2.35,-23.00)
-		self.patient.xr.plot.plot90.markerAdd(-5.38,-44.38)
-		self.patient.ct.plot.plot0.markerAdd(-1.03,-26.02)
-		self.patient.ct.plot.plot0.markerAdd(9.10,-43.64)
-		self.patient.ct.plot.plot0.markerAdd(18.17,-65.51)
-		self.patient.ct.plot.plot90.markerAdd(9.32,-26.02)
-		self.patient.ct.plot.plot90.markerAdd(-25.45,-43.64)
-		self.patient.ct.plot.plot90.markerAdd(-13.29,-65.51)
+		# self.patient.xr.plot.plot0.markerAdd(12.37,-4.02)
+		# self.patient.xr.plot.plot0.markerAdd(7.88,-23.00)
+		# self.patient.xr.plot.plot0.markerAdd(21.17,-44.38)
+		# self.patient.xr.plot.plot90.markerAdd(-34.25,-4.02)
+		# self.patient.xr.plot.plot90.markerAdd(2.35,-23.00)
+		# self.patient.xr.plot.plot90.markerAdd(-5.38,-44.38)
+		# self.patient.ct.plot.plot0.markerAdd(-1.03,-26.02)
+		# self.patient.ct.plot.plot0.markerAdd(9.10,-43.64)
+		# self.patient.ct.plot.plot0.markerAdd(18.17,-65.51)
+		# self.patient.ct.plot.plot90.markerAdd(9.32,-26.02)
+		# self.patient.ct.plot.plot90.markerAdd(-25.45,-43.64)
+		# self.patient.ct.plot.plot90.markerAdd(-13.29,-65.51)
+		self.patient.xr.plot.plot0.markerAdd(0,0)
+		self.patient.xr.plot.plot0.markerAdd(100,0)
+		self.patient.xr.plot.plot0.markerAdd(0,50)
+		self.patient.xr.plot.plot90.markerAdd(0,0)
+		self.patient.xr.plot.plot90.markerAdd(20,0)
+		self.patient.xr.plot.plot90.markerAdd(75,50)
+		self.patient.ct.plot.plot0.markerAdd(0,0)
+		self.patient.ct.plot.plot0.markerAdd(20,0)
+		self.patient.ct.plot.plot0.markerAdd(75,50)
+		self.patient.ct.plot.plot90.markerAdd(0,0)
+		self.patient.ct.plot.plot90.markerAdd(-100,0)
+		self.patient.ct.plot.plot90.markerAdd(0,50)
 
 	@QtCore.pyqtSlot(str)
 	def setControlsComplexity(self,level):
@@ -488,22 +500,24 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 			if origin == self.sbXrayProperties.widget['alignIsocY']:
 				# Overwrite the alignment isoc in settings.
 				# config.hamamatsuAlignmentIsoc[:2] = origin.text()
-				config.hamamatsuAlignmentIsoc[0] = origin.text()
-				config.hamamatsuAlignmentIsoc[2] = origin.text()
+				# config.hamamatsuAlignmentIsoc[0] = origin.text()
+				# config.hamamatsuAlignmentIsoc[2] = origin.text()
 				# Update the property variables.
-				item = self.property.itemFromIndex(self.property.index['X-Ray']['Alignment Isocenter']['y'])
-				item.setData(origin.text(),QtCore.Qt.DisplayRole)
+				# item = self.property.itemFromIndex(self.property.index['X-Ray']['Alignment Isocenter']['y'])
+				# item.setData(origin.text(),QtCore.Qt.DisplayRole)
 				# Re-calculate the extent.
-				self.xrayCalculateExtent()
+				# self.xrayCalculateExtent()
+				pass
 			elif origin == self.sbXrayProperties.widget['alignIsocX']:
 				# Overwrite the alignment isoc in settings.
 				# config.hamamatsuAlignmentIsoc[2] = origin.text()
-				config.hamamatsuAlignmentIsoc[1] = origin.text()
+				# config.hamamatsuAlignmentIsoc[1] = origin.text()
 				# Update the property variables.
-				item = self.property.itemFromIndex(self.property.index['X-Ray']['Alignment Isocenter']['x'])
-				item.setData(origin.text(),QtCore.Qt.DisplayRole)
+				# item = self.property.itemFromIndex(self.property.index['X-Ray']['Alignment Isocenter']['x'])
+				# item.setData(origin.text(),QtCore.Qt.DisplayRole)
 				# Re-calculate the extent.
-				self.xrayCalculateExtent()
+				# self.xrayCalculateExtent()
+				pass
 			elif origin == self.sbXrayProperties.window['pbApply']:
 				# Must be in radiograph mode.
 				mode = 'radiograph'

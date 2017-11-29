@@ -14,6 +14,10 @@ motorList = cwd+'/resources/motorList.csv'
 # detectorList = 
 # maskList = 
 
+'''
+Synchrotron Properties
+'''
+
 
 # chairOrientation = '-ap-hf'
 # hamamatsuPixelSize = 0.16145
