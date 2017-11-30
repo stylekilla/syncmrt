@@ -1,0 +1,25 @@
+Stage,Movement,Name,PV,Order,Axis,Type,Direction,Accuracy,Frame,StageLocation,SizeX,SizeY,SizeZ,WorkDistanceX,WorkDistanceY,WorkDistanceZ,Notes
+Description,tx/rx/m,Motor Label,EPICS PV,Application Order,"0 to 5 (3x trans,3x rots)",0 (trans) or 1 (rot),1 or -1 as per cs.,(mm) or (deg),Local (0) or Global (1),"Does it affect the location of the stage system, no (0), yes (1)?",Physical width of motor.,Physical width of motor.,Physical height of motor.,Distance in mm at which work takes place.,Distance in mm at which work takes place.,Distance in mm at which work takes place.,Just some notes.
+DynMRT,tx,SAMPLEH1,SR08ID01SST25:SAMPLEH1,3,0,0,1,0.001,0,0,0,0,0,0,0,0,Must get value of rz to recalculate new value.
+DynMRT,ty,SAMPLEH2,SR08ID01SST25:SAMPLEH2,2,1,0,1,0.001,0,0,0,0,0,0,0,0,Must get value of rz to recalculate new value.
+DynMRT,tz,SAMPLEV,SR08ID01SST25:SAMPLEV,0,2,0,1,0.001,0,0,0,0,0,0,0,0,"No dependencies, can move freely."
+DynMRT,rz,ROTATION,SR08ID01SST25:ROTATION,1,2,1,1,0.001,0,0,0,0,0,0,0,0,"No dependencies, can move freely."
+3BCT,tx,SAMPLE X,SR08ID01SST01:SAMPLEX,6,0,0,1,0.001,0,0,0,0,10,0,0,0,
+3BCT,ty,SAMPLE Y,SR08ID01SST01:SAMPLEY,5,1,0,1,0.001,0,0,0,0,10,0,0,0,
+3BCT,tz,LARGE Z,SR08ID01SST01:Z,1,2,0,1,0.001,0,1,0,0,0,0,0,0,
+3BCT,rx,TILT X,SR08ID01SST01:TILT1,2,0,1,1,0.001,0,0,0,0,58,0,0,173,
+3BCT,ry,TILT Y,SR08ID01SST01:TILT2,3,1,1,1,0.001,0,0,0,0,53,0,0,120,
+3BCT,rz,ROTATE Z,SR08ID01SST01:ROTATION,4,2,1,1,0.001,0,0,0,0,10,0,0,0,
+3BCT,ty,LARGE Y,SR08ID01SST01:Y,0,1,0,1,0.001,0,1,0,0,0,0,0,0,
+LAPS,tx,TRANSX,,0,0,0,1,0.01,1,0,0,0,0,0,0,0,
+LAPS,ty,TRANSY,,1,1,0,1,0.01,1,0,0,0,0,0,0,0,
+LAPS,tz,TRANSZ,,2,2,0,1,0.01,1,0,0,0,0,0,0,0,
+LAPS,rx,ROTX,,3,0,1,1,0.01,1,0,0,0,0,0,0,0,Need to accurately define this point.
+LAPS,ry,ROTY,,4,1,1,1,0.01,1,0,0,0,0,0,0,0,Need to accurately define this point.
+LAPS,rz,ROTZ,,5,2,1,1,0.01,1,0,0,0,0,0,0,0,Need to accurately define this point.
+PPS,tx,TRANSX,,0,0,0,1,0.01,1,0,0,0,0,0,0,0,
+PPS,ty,TRANSY,,1,1,0,1,0.01,1,0,0,0,0,0,0,0,
+PPS,tz,TRANSZ,,2,2,0,1,0.01,1,0,0,0,0,0,0,0,
+PPS,rx,ROTX,,3,0,1,1,0.01,1,0,0,0,0,0,0,0,
+PPS,ry,ROTY,,4,1,1,1,0.01,1,0,0,0,0,0,0,0,
+PPS,rz,ROTZ,,5,2,1,1,0.01,1,0,0,0,0,0,0,0,
