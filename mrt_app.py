@@ -307,7 +307,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 
 		# Set plots.
 		self.patient.xr.plot.plot0.imageLoad(self.patient.xr.image[0].array,extent=self.patient.xr.image[0].extent,imageIndex=0)
-		self.patient.xr.plot.plot90.imageLoad(self.patient.xr.image[0].array,extent=self.patient.xr.image[0].extent,imageIndex=1)
+		self.patient.xr.plot.plot90.imageLoad(self.patient.xr.image[1].array,extent=self.patient.xr.image[1].extent,imageIndex=1)
 
 		# Set to current working environment (in widget stack).
 		self.workEnvironment.button['X-RAY'].clicked.emit()
@@ -413,9 +413,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		if overlay == 'patient':
 			pass
 		elif overlay == 'centroid':
-			print('in overlay ctd')
 			if self.sbCTProperties.widget['cbCentroid'].isChecked():
-				print('adding overlay')
 				self.patient.ct.plot.plot0.overlayCentroid(state=True)
 				self.patient.ct.plot.plot90.overlayCentroid(state=True)
 			else:
@@ -433,7 +431,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		self.patient.loadRTPLAN(files,self.patient.ct.image[0])
 
 		# Assume single fraction.
-		# self.rtp.beam = dicomData.beam
+		# self.rtp.beam = dicomData.beam		
 
 		self.sbTreatment.widget['quantity'].setText(str(len(self.patient.rtplan.image)))
 		# self.property.addSection('RTPLAN DICOM')
@@ -448,17 +446,23 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		# Iterate through each planned beam.
 		for i in range(len(self.patient.rtplan.image)):
 
-			# Create stack page for xray image properties and populate.
+			# Create stack page for rtplan image properties and populate.
 			self.sidebarStack.addPage('bev%iImageProperties'%(i+1))
 			self.workEnvironment.addWorkspace('BEV%i'%(i+1))
 			self.patient.rtplan.plot[i] = plotEnvironment(self.workEnvironment.stackPage['BEV%i'%(i+1)])
 			self.patient.rtplan.plot[i].settings('maxMarkers',config.markerQuantity)
 			self.patient.rtplan.guiInterface[i] = sbCTProperties(self.sidebarStack.stackDict['bev%iImageProperties'%(i+1)])
+			self.patient.rtplan.guiInterface[i].widget['cbPatIsoc'].stateChanged.connect(partial(self.rtpOverlay,overlay='patient'))
+			self.patient.rtplan.guiInterface[i].widget['cbCentroid'].stateChanged.connect(partial(self.rtpOverlay,overlay='centroid'))
+
 			# self.patient.rtplan.plot[i].arrayExtent = dicomData.beam[i].arrayExtent
 
 			# Plot.
 			self.patient.rtplan.plot[i].plot0.imageLoad(self.patient.rtplan.image[i].array,extent=self.patient.rtplan.image[i].extent,imageIndex=0)
 			self.patient.rtplan.plot[i].plot90.imageLoad(self.patient.rtplan.image[i].array,extent=self.patient.rtplan.image[i].extent,imageIndex=1)
+
+			self.patient.rtplan.plot[i].plot0.isocenter = self.patient.rtplan.image[i].isocenter
+			self.patient.rtplan.plot[i].plot90.isocenter = self.patient.rtplan.image[i].isocenter
 
 			# Update property table.
 			# labels = ['BEV%i'%(i+1),'Gantry Angle','Patient Support Angle','Collimator Angle']
@@ -472,10 +476,31 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 			self.sbTreatment.widget['beam'][i]['calculate'].clicked.connect(partial(self.patientCalculateAlignment,treatmentIndex=i))
 			self.sbTreatment.widget['beam'][i]['align'].clicked.connect(self.patientApplyAlignment)
 			# Signals and slots.
-			# self.sbCTProperties.window['pbApply'].clicked.connect(partial(self.updateSettings,'ct',self.sbCTProperties.window['pbApply']))
+			self.patient.rtplan.guiInterface[i].window['pbApply'].clicked.connect(partial(self.updateSettings,'rtplan',self.patient.rtplan.guiInterface[i].window['pbApply'],idx=i))
 
 		self._isRTPOpen = True
 		self.workEnvironment.button['RTPLAN'].clicked.emit()
+
+	def rtpOverlay(self,overlay):
+		'''Control rtplan plot overlays.'''
+		if overlay == 'patient':
+			for i in range(len(self.patient.rtplan.guiInterface)):
+				if self.patient.rtplan.guiInterface[i].widget['cbPatIsoc'].isChecked():
+					self.patient.rtplan.plot[i].plot0.overlayIsocenter(state=True)
+					self.patient.rtplan.plot[i].plot90.overlayIsocenter(state=True)
+				else:
+					self.patient.rtplan.plot[i].plot0.overlayIsocenter(state=False)
+					self.patient.rtplan.plot[i].plot90.overlayIsocenter(state=False)
+		elif overlay == 'centroid':
+			for i in range(len(self.patient.rtplan.guiInterface)):
+				if self.patient.rtplan.guiInterface[i].widget['cbCentroid'].isChecked():
+					self.patient.rtplan.plot[i].plot0.overlayCentroid(state=True)
+					self.patient.rtplan.plot[i].plot90.overlayCentroid(state=True)
+				else:
+					self.patient.rtplan.plot[i].plot0.overlayCentroid(state=False)
+					self.patient.rtplan.plot[i].plot90.overlayCentroid(state=False)
+		else:
+			pass
 
 	def setImagePropertiesStack(self):
 		if self._isXrayOpen:
@@ -493,7 +518,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		if (self.sidebarSelector.list.currentItem() == self.sidebarSelector.getListItem('ImageProperties')):
 			self.sidebarStack.setCurrentWidget(self.sidebarStack.stackDict['ImageProperties'])
 
-	def updateSettings(self,mode,origin):
+	def updateSettings(self,mode,origin,idx=0):
 		'''Update variable based of changed data in property model (in some cases, external sources).'''
 		if (mode == 'xr') & (self._isXrayOpen):
 			'''Update x-ray specific properties.'''
@@ -538,6 +563,19 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 				windows = self.sbCTProperties.getWindows()
 				self.patient.ct.plot.setRadiographMode(mode)
 				self.patient.ct.plot.setWindows(windows)
+
+		elif (mode == 'rtplan') & (self._isRTPOpen):
+			'''Update rtplan specific properties.'''
+			if origin == self.patient.rtplan.guiInterface[idx].window['pbApply']:
+				# Check mode type.
+				if self.patient.rtplan.guiInterface[idx].window['rbMax'].isChecked():
+					mode = 'max'
+				else:
+					mode = 'sum'
+				# Get windows and apply them.
+				windows = self.patient.rtplan.guiInterface[idx].getWindows()
+				self.patient.rtplan.plot[idx].setRadiographMode(mode)
+				self.patient.rtplan.plot[idx].setWindows(windows)
 
 		elif mode == 'global':
 			'''Update global variables, applicable to all modes.'''
@@ -658,11 +696,11 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 			'''Align to RTPLAN[index]'''
 			if len(self.patient.rtplan.plot[treatmentIndex].plot0.pointsX)>0:
 				# Optimise Points
-				if self.toolSelect.alignment['optimise'].isChecked():
-					self.patient.xr.plot.plot0.markerOptimise(self.toolSelect.alignment['markerSize'].value(),threshold)
-					self.patient.xr.plot.plot90.markerOptimise(self.toolSelect.alignment['markerSize'].value(),threshold)
-					self.patient.rtplan.plot[treatmentIndex].plot0.markerOptimise(self.toolSelect.alignment['markerSize'].value(),threshold)
-					self.patient.rtplan.plot[treatmentIndex].plot90.markerOptimise(self.toolSelect.alignment['markerSize'].value(),threshold)
+				if self.sbAlignment.widget['optimise'].isChecked():
+					self.patient.xr.plot.plot0.markerOptimise(self.sbAlignment.widget['markerSize'].value(),threshold)
+					self.patient.xr.plot.plot90.markerOptimise(self.sbAlignment.widget['markerSize'].value(),threshold)
+					self.patient.rtplan.plot[treatmentIndex].plot0.markerOptimise(self.sbAlignment.widget['markerSize'].value(),threshold)
+					self.patient.rtplan.plot[treatmentIndex].plot90.markerOptimise(self.sbAlignment.widget['markerSize'].value(),threshold)
 					# log(self.logFile,"Successfully optimised points.","event")
 					# Collect points.
 					l[:,1] = self.patient.rtplan.plot[treatmentIndex].plot0.pointsXoptimised

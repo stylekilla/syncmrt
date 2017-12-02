@@ -24,7 +24,7 @@ if platform.system() == "Windows":
 else:
    slash = '/'
 
-fol = '/mnt/imbl-imaging-data/mrt/xray/cache'+slash
+fol = '/mnt/datahdd/mrt/xray/cache'+slash
 
 # Read the names of the files in the sequence into a list
 for filenames in os.walk(fol):
@@ -43,8 +43,8 @@ stack = np.zeros((im.shape[0], im.shape[1], len(fn)))
 intens = np.zeros(len(fn))
 
 for i in range(len(fn)):
-    stack[:,:,i] = tif.imread(fol+slash+fn[i])
-    intens[i] = np.sum(stack[:200,:200,i])
+  stack[:,:,i] = tif.imread(fol+slash+fn[i])
+  intens[i] = np.sum(stack[:200,:200,i])
 
 binary_intens = intens > (intens[1] * 1.5)
         
@@ -73,12 +73,14 @@ image[39,:] = image[38,:]
 # image[image>windowMax] = windowMax
 
 outputPretext = "{:%y%m%d-%Hh%Mm%Ss}".format(datetime.datetime.now())
-outputFolder = '/mnt/imbl-imaging-data/mrt/xray'+slash
+outputFolder = '/mnt/datahdd/mrt/xray'+slash
 np.save(outputFolder+outputPretext,image.astype('float32'))
 tif.imsave(outputFolder+outputPretext+'.tif',image.astype('float32'))
 
 # os.remove(fol)
 
+import matplotlib
+matplotlib.use('Agg')
 from matplotlib import pyplot as plt
 plt.imshow(image,cmap='bone_r')
 plt.show()
