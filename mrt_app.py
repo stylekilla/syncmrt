@@ -461,6 +461,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 			self.patient.rtplan.plot[i].plot0.imageLoad(self.patient.rtplan.image[i].array,extent=self.patient.rtplan.image[i].extent,imageIndex=0)
 			self.patient.rtplan.plot[i].plot90.imageLoad(self.patient.rtplan.image[i].array,extent=self.patient.rtplan.image[i].extent,imageIndex=1)
 
+			# Add isocenters to plots.
 			self.patient.rtplan.plot[i].plot0.isocenter = self.patient.rtplan.image[i].isocenter
 			self.patient.rtplan.plot[i].plot90.isocenter = self.patient.rtplan.image[i].isocenter
 
@@ -718,6 +719,14 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 					r[:,2] = self.patient.xr.plot.plot0.pointsY
 					r[:,0] = self.patient.xr.plot.plot90.pointsX
 
+				# Re-order left DICOM coords to align with synchrotron.
+				# Map (-x,z,y) to (x,z,-y):
+				# l[:,0] = -l[:,0] 
+				# l[:,1] = -l[:,1]
+				# r[:,1] = -r[:,1]
+				# temp = self.patient.rtplan.image[treatmentIndex].isocenter
+				# isoc = np.array([temp[2],-temp[0],-temp[1]])
+
 				success = True
 
 			# Calcualte alignment requirement
@@ -749,14 +758,19 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		self.property.updateVariable('Alignment',['Translation','x','y','z'],[float(self.system.solver.solution[0]),float(self.system.solver.solution[1]),float(self.system.solver.solution[2])])
 		self.property.updateVariable('Alignment','Scale',float(self.system.solver.scale))
 
-		# Calculate alignment for stage.
-		self.system.calculateAlignment()
+		# # Calculate alignment for stage.
+		# self.system.calculateAlignment()
 
 	def patientApplyAlignment(self,treatmentIndex=-1):
 		'''Calculate alignment first.'''
 		self.patientCalculateAlignment(treatmentIndex=treatmentIndex)
 
+		# Calculate alignment for stage.
+		self.system.calculateAlignment()
+
 		# Apply alignment.
+		self.system.applyAlignment()
+
 		# completion = self.system.movePatient(self.system.solver.solution)
 		# print('This should be updating the values as they move and reduce to zero.')
 		# self.property.updateVariable('Alignment',['Rotation','x','y','z'],[float(completion[3]),float(completion[4]),float(completion[5])])
