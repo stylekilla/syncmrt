@@ -30,16 +30,18 @@ im0 = f.create_dataset('0',data=ary0)
 im1 = f.create_dataset('1',data=ary1)
 
 # Calculate extent vars.
-b = (0-isoc[0])*pixsize
-l = (0-isoc[1])*pixsize
-t = (ary0.shape[0]-isoc[0])*pixsize
-r = (ary0.shape[1]-isoc[1])*pixsize
-extent = np.array([l,r,b,t])
+x1 = isoc[0]*pixsize
+x2 = x1-ary0.shape[1]*pixsize
+y1 = -isoc[1]*pixsize
+y2 = y1+ary0.shape[0]*pixsize
+z1 = -isoc[0]*pixsize
+z2 = z1+ary0.shape[1]*pixsize
+extent = np.array([x1,x2,y1,y2,z1,z2])
 
 # Assign vars to images.
-im0.attrs['extent'] = extent
+im0.attrs['extent'] = extent[:4]
 im0.attrs['isocenter'] = np.array([0,0,0])
-im1.attrs['extent'] = extent
+im1.attrs['extent'] = np.concatenate((extent[4:6],extent[2:4]))
 im1.attrs['isocenter'] = np.array([0,0,0])
 
 # Close and save file.

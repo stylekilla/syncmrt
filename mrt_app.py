@@ -139,30 +139,18 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 
 	def testing(self):
 		self.openFiles('folder')
-		# self.patient.xr.plot.plot0.markerAdd(12.37,-4.02)
-		# self.patient.xr.plot.plot0.markerAdd(7.88,-23.00)
-		# self.patient.xr.plot.plot0.markerAdd(21.17,-44.38)
-		# self.patient.xr.plot.plot90.markerAdd(-34.25,-4.02)
-		# self.patient.xr.plot.plot90.markerAdd(2.35,-23.00)
-		# self.patient.xr.plot.plot90.markerAdd(-5.38,-44.38)
-		# self.patient.ct.plot.plot0.markerAdd(-1.03,-26.02)
-		# self.patient.ct.plot.plot0.markerAdd(9.10,-43.64)
-		# self.patient.ct.plot.plot0.markerAdd(18.17,-65.51)
-		# self.patient.ct.plot.plot90.markerAdd(9.32,-26.02)
-		# self.patient.ct.plot.plot90.markerAdd(-25.45,-43.64)
-		# self.patient.ct.plot.plot90.markerAdd(-13.29,-65.51)
-		self.patient.xr.plot.plot0.markerAdd(0,0)
-		self.patient.xr.plot.plot0.markerAdd(100,0)
-		self.patient.xr.plot.plot0.markerAdd(0,50)
-		self.patient.xr.plot.plot90.markerAdd(0,0)
-		self.patient.xr.plot.plot90.markerAdd(20,0)
-		self.patient.xr.plot.plot90.markerAdd(75,50)
-		self.patient.ct.plot.plot0.markerAdd(0,0)
-		self.patient.ct.plot.plot0.markerAdd(20,0)
-		self.patient.ct.plot.plot0.markerAdd(75,50)
-		self.patient.ct.plot.plot90.markerAdd(0,0)
-		self.patient.ct.plot.plot90.markerAdd(-100,0)
-		self.patient.ct.plot.plot90.markerAdd(0,50)
+		self.patient.xr.plot.plot0.markerAdd(-27.036,45.995)
+		self.patient.xr.plot.plot0.markerAdd(32.8665,45.001)
+		self.patient.xr.plot.plot0.markerAdd(34.6091,-15.0564)
+		self.patient.xr.plot.plot90.markerAdd(-23.2147,46.0205)
+		self.patient.xr.plot.plot90.markerAdd(-57.9952,43.4355)
+		self.patient.xr.plot.plot90.markerAdd(43.1843,-15.4921)
+		self.patient.rtplan.plot[0].plot0.markerAdd(25.527,-27.8264)
+		self.patient.rtplan.plot[0].plot0.markerAdd(-29.334,-25.1335)
+		self.patient.rtplan.plot[0].plot0.markerAdd(-34.1097,32.0152)
+		self.patient.rtplan.plot[0].plot90.markerAdd(-0.3594,-27.2985)
+		self.patient.rtplan.plot[0].plot90.markerAdd(-35.9191,-25.8618)
+		self.patient.rtplan.plot[0].plot90.markerAdd(63.9358,31.6087)
 
 	@QtCore.pyqtSlot(str)
 	def setControlsComplexity(self,level):
@@ -411,7 +399,12 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 	def ctOverlay(self,overlay):
 		'''Control ct plot overlays.'''
 		if overlay == 'patient':
-			pass
+			if self.sbCTProperties.widget['cbPatIsoc'].isChecked():
+				self.patient.ct.plot.plot0.overlayIsocenter(state=True)
+				self.patient.ct.plot.plot90.overlayIsocenter(state=True)
+			else:
+				self.patient.ct.plot.plot0.overlayIsocenter(state=False)
+				self.patient.ct.plot.plot90.overlayIsocenter(state=False)
 		elif overlay == 'centroid':
 			if self.sbCTProperties.widget['cbCentroid'].isChecked():
 				self.patient.ct.plot.plot0.overlayCentroid(state=True)
@@ -429,6 +422,10 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		self.workEnvironment.addWorkspace('RTPLAN')
 		# Load the ct dataset into the patient.
 		self.patient.loadRTPLAN(files,self.patient.ct.image[0])
+		# Add rtp isoc to ct.
+		self.patient.ct.isocenter = self.patient.rtplan.ctisocenter
+		self.patient.ct.plot.plot0.isocenter = self.patient.ct.isocenter
+		self.patient.ct.plot.plot90.isocenter = self.patient.ct.isocenter
 
 		# Assume single fraction.
 		# self.rtp.beam = dicomData.beam		
@@ -475,7 +472,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 
 			# Button connections.
 			self.sbTreatment.widget['beam'][i]['calculate'].clicked.connect(partial(self.patientCalculateAlignment,treatmentIndex=i))
-			self.sbTreatment.widget['beam'][i]['align'].clicked.connect(self.patientApplyAlignment)
+			self.sbTreatment.widget['beam'][i]['align'].clicked.connect(partial(self.patientApplyAlignment,treatmentIndex=i))
 			# Signals and slots.
 			self.patient.rtplan.guiInterface[i].window['pbApply'].clicked.connect(partial(self.updateSettings,'rtplan',self.patient.rtplan.guiInterface[i].window['pbApply'],idx=i))
 
@@ -719,28 +716,20 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 					r[:,2] = self.patient.xr.plot.plot0.pointsY
 					r[:,0] = self.patient.xr.plot.plot90.pointsX
 
-				# Re-order left DICOM coords to align with synchrotron.
-				# Map (-x,z,y) to (x,z,-y):
-				# l[:,0] = -l[:,0] 
-				# l[:,1] = -l[:,1]
-				# r[:,1] = -r[:,1]
-				# temp = self.patient.rtplan.image[treatmentIndex].isocenter
-				# isoc = np.array([temp[2],-temp[0],-temp[1]])
-
 				success = True
 
 			# Calcualte alignment requirement
 			if success:
-				# self.alignmentSolution = mrt.imageGuidance.affineTransform(left,right,
-				# 	self.rtp.beam[treatmentIndex].isocenter,
-				# 	self.patient.ct.userOrigin,
-				# 	self.patient.xr.alig
 				# Solve.
 				self.system.solver.updateVariable(
 					left=l,
 					right=r,
 					patientIsoc=self.patient.rtplan.image[treatmentIndex].isocenter)
 				self.system.solver.solve()
+
+				# Update centroids.
+				self.patient.rtplan.plot[treatmentIndex].plot0.ctd = [self.system.solver._leftCentroid[1],self.system.solver._leftCentroid[2]]
+				self.patient.rtplan.plot[treatmentIndex].plot90.ctd = [self.system.solver._leftCentroid[0],self.system.solver._leftCentroid[2]]
 
 		else:
 			pass
@@ -767,6 +756,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 
 		# Calculate alignment for stage.
 		self.system.calculateAlignment()
+		print('in mrt app, system motion is:',self.system.stage._motion)
 
 		# Apply alignment.
 		self.system.applyAlignment()
