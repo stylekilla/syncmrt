@@ -304,54 +304,27 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		'''Control x-ray plot overlays.'''
 		if overlay == 'beam':
 			if self.sbXrayProperties.widget['cbBeamIsoc'].isChecked():
-				self.patient.xr.plot.plot0.overlayIsocenter(state=True)
-				self.patient.xr.plot.plot90.overlayIsocenter(state=True)
+				self.patient.xr.plot.plot0.toggleOverlay(1,state=True)
+				self.patient.xr.plot.plot90.toggleOverlay(1,state=True)
 			else:
-				self.patient.xr.plot.plot0.overlayIsocenter(state=False)
-				self.patient.xr.plot.plot90.overlayIsocenter(state=False)
+				self.patient.xr.plot.plot0.toggleOverlay(1,state=False)
+				self.patient.xr.plot.plot90.toggleOverlay(1,state=False)
 		elif overlay == 'patient':
-			pass
+			if self.sbXrayProperties.widget['cbPatIsoc'].isChecked():
+				self.patient.xr.plot.plot0.toggleOverlay(2,state=True)
+				self.patient.xr.plot.plot90.toggleOverlay(2,state=True)
+			else:
+				self.patient.xr.plot.plot0.toggleOverlay(2,state=False)
+				self.patient.xr.plot.plot90.toggleOverlay(2,state=False)
 		elif overlay == 'centroid':
 			if self.sbXrayProperties.widget['cbCentroid'].isChecked():
-				self.patient.xr.plot.plot0.overlayCentroid(state=True)
-				self.patient.xr.plot.plot90.overlayCentroid(state=True)
+				self.patient.xr.plot.plot0.toggleOverlay(0,state=True)
+				self.patient.xr.plot.plot90.toggleOverlay(0,state=True)
 			else:
-				self.patient.xr.plot.plot0.overlayCentroid(state=False)
-				self.patient.xr.plot.plot90.overlayCentroid(state=False)
+				self.patient.xr.plot.plot0.toggleOverlay(0,state=False)
+				self.patient.xr.plot.plot90.toggleOverlay(0,state=False)
 		else:
 			pass
-
-	# def xrayCalculateExtent(self,update=True):
-	# 	'''Should umbrella all this under an x-ray class.'''
-	# 	# Force update of alignment isocenter from settings.
-	# 	self.xray.alignmentIsoc = config.hamamatsuAlignmentIsoc
-
-	# 	# Synchrotron image geometry is vec directions (xyz), note reversed direction of y for looking downstream.
-	# 	self.xray.imageAxes = np.array([1,-1,1])
-
-	# 	# Set extent for plotting. This is essentially the IMBL coordinate system according to the detector.
-	# 	left = (0-self.xray.alignmentIsoc[0])*self.xray.imagePixelSize[0]*self.xray.imageAxes[1]
-	# 	right = left+(self.xray.imageSize[0]*self.xray.imagePixelSize[0]*self.xray.imageAxes[1])
-	# 	top = (0+self.xray.alignmentIsoc[1])*self.xray.imagePixelSize[1]*self.xray.imageAxes[2]
-	# 	bottom = top-(self.xray.imageSize[1]*self.xray.imagePixelSize[1]*self.xray.imageAxes[2])
-	# 	self.xray.arrayExtentNormal = np.array([left,right,bottom,top])
-
-	# 	left = (0-self.xray.alignmentIsoc[0])*self.xray.imagePixelSize[0]*self.xray.imageAxes[0]
-	# 	right = left+(self.xray.imageSize[0]*self.xray.imagePixelSize[0]*self.xray.imageAxes[0])
-	# 	top = (0+self.xray.alignmentIsoc[1])*self.xray.imagePixelSize[1]*self.xray.imageAxes[2]
-	# 	bottom = top-(self.xray.imageSize[1]*self.xray.imagePixelSize[1]*self.xray.imageAxes[2])
-	# 	self.xray.arrayExtentOrthogonal = np.array([left,right,bottom,top])
-
-	# 	if update is True:
-	# 		# Force re-draw on plots.
-	# 		# self.xray.plotEnvironment.plot0.extent = self.xray.arrayExtentNormal
-	# 		# self.xray.plotEnvironment.plot90.extent = self.xray.arrayExtentOrthogonal
-	# 		# self.xray.plotEnvironment.plot0.image.set_extent(self.xray.arrayExtentNormal)
-	# 		# self.xray.plotEnvironment.plot90.image.set_extent(self.xray.arrayExtentOrthogonal)
-	# 		self.xray.plotEnvironment.plot0.setExtent(self.xray.arrayExtentNormal)
-	# 		self.xray.plotEnvironment.plot90.setExtent(self.xray.arrayExtentOrthogonal)
-	# 		self.xray.plotEnvironment.plot0.canvas.draw()
-	# 		self.xray.plotEnvironment.plot90.canvas.draw()
 
 	def openCT(self,files,skipGPU=False,skipGPUfiles=''):
 		'''Open CT modality files.'''
@@ -400,18 +373,18 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		'''Control ct plot overlays.'''
 		if overlay == 'patient':
 			if self.sbCTProperties.widget['cbPatIsoc'].isChecked():
-				self.patient.ct.plot.plot0.overlayIsocenter(state=True)
-				self.patient.ct.plot.plot90.overlayIsocenter(state=True)
+				self.patient.ct.plot.plot0.toggleOverlay(2,state=True)
+				self.patient.ct.plot.plot90.toggleOverlay(2,state=True)
 			else:
-				self.patient.ct.plot.plot0.overlayIsocenter(state=False)
-				self.patient.ct.plot.plot90.overlayIsocenter(state=False)
+				self.patient.ct.plot.plot0.toggleOverlay(2,state=False)
+				self.patient.ct.plot.plot90.toggleOverlay(2,state=False)
 		elif overlay == 'centroid':
 			if self.sbCTProperties.widget['cbCentroid'].isChecked():
-				self.patient.ct.plot.plot0.overlayCentroid(state=True)
-				self.patient.ct.plot.plot90.overlayCentroid(state=True)
+				self.patient.ct.plot.plot0.toggleOverlay(0,state=True)
+				self.patient.ct.plot.plot90.toggleOverlay(0,state=True)
 			else:
-				self.patient.ct.plot.plot0.overlayCentroid(state=False)
-				self.patient.ct.plot.plot90.overlayCentroid(state=False)
+				self.patient.ct.plot.plot0.toggleOverlay(0,state=False)
+				self.patient.ct.plot.plot90.toggleOverlay(0,state=False)
 		else:
 			pass
 
@@ -422,10 +395,6 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		self.workEnvironment.addWorkspace('RTPLAN')
 		# Load the ct dataset into the patient.
 		self.patient.loadRTPLAN(files,self.patient.ct.image[0])
-		# Add rtp isoc to ct.
-		self.patient.ct.isocenter = self.patient.rtplan.ctisocenter
-		self.patient.ct.plot.plot0.isocenter = self.patient.ct.isocenter
-		self.patient.ct.plot.plot90.isocenter = self.patient.ct.isocenter
 
 		# Assume single fraction.
 		# self.rtp.beam = dicomData.beam		
@@ -459,8 +428,10 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 			self.patient.rtplan.plot[i].plot90.imageLoad(self.patient.rtplan.image[i].array,extent=self.patient.rtplan.image[i].extent,imageIndex=1)
 
 			# Add isocenters to plots.
-			self.patient.rtplan.plot[i].plot0.isocenter = self.patient.rtplan.image[i].isocenter
-			self.patient.rtplan.plot[i].plot90.isocenter = self.patient.rtplan.image[i].isocenter
+			x1,y1,x2 = self.patient.rtplan.image[i].isocenter
+			mpl_iso = np.array([x2,x1,y1])
+			self.patient.rtplan.plot[i].plot0.patientIsocenter = mpl_iso
+			self.patient.rtplan.plot[i].plot90.patientIsocenter = mpl_iso
 
 			# Update property table.
 			# labels = ['BEV%i'%(i+1),'Gantry Angle','Patient Support Angle','Collimator Angle']
@@ -476,6 +447,11 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 			# Signals and slots.
 			self.patient.rtplan.guiInterface[i].window['pbApply'].clicked.connect(partial(self.updateSettings,'rtplan',self.patient.rtplan.guiInterface[i].window['pbApply'],idx=i))
 
+		# Add rtp isoc to ct.
+		self.patient.ct.isocenter = self.patient.rtplan.ctisocenter
+		self.patient.ct.plot.plot0.patientIsocenter = self.patient.ct.isocenter
+		self.patient.ct.plot.plot90.patientIsocenter = self.patient.ct.isocenter
+
 		self._isRTPOpen = True
 		self.workEnvironment.button['RTPLAN'].clicked.emit()
 
@@ -484,19 +460,19 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		if overlay == 'patient':
 			for i in range(len(self.patient.rtplan.guiInterface)):
 				if self.patient.rtplan.guiInterface[i].widget['cbPatIsoc'].isChecked():
-					self.patient.rtplan.plot[i].plot0.overlayIsocenter(state=True)
-					self.patient.rtplan.plot[i].plot90.overlayIsocenter(state=True)
+					self.patient.rtplan.plot[i].plot0.toggleOverlay(2,state=True)
+					self.patient.rtplan.plot[i].plot90.toggleOverlay(2,state=True)
 				else:
-					self.patient.rtplan.plot[i].plot0.overlayIsocenter(state=False)
-					self.patient.rtplan.plot[i].plot90.overlayIsocenter(state=False)
+					self.patient.rtplan.plot[i].plot0.toggleOverlay(2,state=False)
+					self.patient.rtplan.plot[i].plot90.toggleOverlay(2,state=False)
 		elif overlay == 'centroid':
 			for i in range(len(self.patient.rtplan.guiInterface)):
 				if self.patient.rtplan.guiInterface[i].widget['cbCentroid'].isChecked():
-					self.patient.rtplan.plot[i].plot0.overlayCentroid(state=True)
-					self.patient.rtplan.plot[i].plot90.overlayCentroid(state=True)
+					self.patient.rtplan.plot[i].plot0.toggleOverlay(0,state=True)
+					self.patient.rtplan.plot[i].plot90.toggleOverlay(0,state=True)
 				else:
-					self.patient.rtplan.plot[i].plot0.overlayCentroid(state=False)
-					self.patient.rtplan.plot[i].plot90.overlayCentroid(state=False)
+					self.patient.rtplan.plot[i].plot0.toggleOverlay(0,state=False)
+					self.patient.rtplan.plot[i].plot90.toggleOverlay(0,state=False)
 		else:
 			pass
 
@@ -588,22 +564,6 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 					for i in range(len(self.patient.rtplan.plot)):
 						self.patient.rtplan.plot[i].settings('maxMarkers',value)
 
-		# else:
-		# 	# If not from an existing widget, it then must originate from the table.
-		# 	try:
-		# 		index = self.property.indexFromItem(origin)
-
-		# 		if index == self.property.index['X-Ray']['Alignment Isocenter']['x']:
-		# 			config.hamamatsuAlignmentIsoc[:2] = self.property.data(index)
-		# 			self.sbSettings.widget['alignIsocX'].setText(str(self.property.data(index)))
-		# 			self.xray.alignmentIsoc = config.hamamatsuAlignmentIsoc
-		# 		elif index == self.property.index['X-Ray']['Alignment Isocenter']['y']:
-		# 			config.hamamatsuAlignmentIsoc[2] = self.property.data(index)
-		# 			self.sbSettings.widget['alignIsocY'].setText(str(self.property.data(index)))
-		# 			self.xray.alignmentIsoc = config.hamamatsuAlignmentIsoc
-		# 	except:
-		# 		pass
-
 	def toggleOptimise(self,state):
 		'''State(bool) tells you whether you should clear the optimisation plots or not.'''
 		if state == True:
@@ -676,19 +636,33 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 					r[:,2] = self.patient.xr.plot.plot0.pointsY
 					r[:,0] = self.patient.xr.plot.plot90.pointsX
 
+				# Re-align the points with the synchrotron axes.
+				# Use the extent to get the axes directions.
+				if (self.patient.ct.image[0].extent[4] < self.patient.ct.image[0].extent[5]):
+					xd = 1
+				else:
+					xd = -1
+				if (self.patient.ct.image[0].extent[0] < self.patient.ct.image[0].extent[1]):
+					yd = 1
+				else:
+					yd = -1
+				if (self.patient.ct.image[0].extent[2] < self.patient.ct.image[0].extent[3]):
+					zd = 1
+				else:
+					zd = -1
+				# Dicom axes are:
+				dicomAxes = np.array([xd,yd,zd])
+				# Synchrotron axes are fixed:
+				synchrotronAxes = np.array([1,-1,1])
+				# Divide to get the direction difference.
+				changeAxes = dicomAxes/synchrotronAxes
+
 				# Solve.
 				self.system.solver.updateVariable(
 					left=l,
-					right=r)
+					right=r,
+					axesDirection=changeAxes)
 				self.system.solver.solve()
-
-				# Update x-ray centroid position.
-				self.patient.xr.plot.plot0.ctd = [self.system.solver._rightCentroid[1],self.system.solver._rightCentroid[2]]
-				self.patient.xr.plot.plot90.ctd = [self.system.solver._rightCentroid[0],self.system.solver._rightCentroid[2]]
-
-				# Update ct centroid position.
-				self.patient.ct.plot.plot0.ctd = [self.system.solver._leftCentroid[1],self.system.solver._leftCentroid[2]]
-				self.patient.ct.plot.plot90.ctd = [self.system.solver._leftCentroid[0],self.system.solver._leftCentroid[2]]
 
 		elif treatmentIndex != -1:
 			'''Align to RTPLAN[index]'''
@@ -720,27 +694,51 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 
 			# Calcualte alignment requirement
 			if success:
+				# Re-align the points with the synchrotron axes.
+				# Use the extent to get the axes directions.
+				if (self.patient.rtplan.image[treatmentIndex].extent[4] < self.patient.rtplan.image[treatmentIndex].extent[5]):
+					xd = 1
+				else:
+					xd = -1
+				if (self.patient.rtplan.image[treatmentIndex].extent[0] < self.patient.rtplan.image[treatmentIndex].extent[1]):
+					yd = 1
+				else:
+					yd = -1
+				if (self.patient.rtplan.image[treatmentIndex].extent[2] < self.patient.rtplan.image[treatmentIndex].extent[3]):
+					zd = 1
+				else:
+					zd = -1
+				# Dicom axes are:
+				# np.sign(self.patient.rtplan.image[treatmentIndex].pixelSize)
+				dicomAxes = np.array([xd,yd,zd])
+				# Synchrotron axes are fixed:
+				synchrotronAxes = np.array([1,-1,1])
+				# Divide to get the direction difference.
+				changeAxes = dicomAxes/synchrotronAxes
 				# Solve.
 				self.system.solver.updateVariable(
 					left=l,
 					right=r,
-					patientIsoc=self.patient.rtplan.image[treatmentIndex].isocenter)
+					patientIsoc=self.patient.rtplan.image[treatmentIndex].isocenter,
+					axesDirection=changeAxes)
 				self.system.solver.solve()
 
 				# Update centroids.
-				self.patient.rtplan.plot[treatmentIndex].plot0.ctd = [self.system.solver._leftCentroid[1],self.system.solver._leftCentroid[2]]
-				self.patient.rtplan.plot[treatmentIndex].plot90.ctd = [self.system.solver._leftCentroid[0],self.system.solver._leftCentroid[2]]
-
+				self.patient.rtplan.plot[treatmentIndex].plot0.ctd = self.system.solver._leftCentroid
+				self.patient.rtplan.plot[treatmentIndex].plot90.ctd = self.system.solver._leftCentroid
+				# Update x-ray patient isocenter.
+				self.patient.xr.plot.plot0.patientIsocenter = self.system.solver._syncPatientIsocenter
+				self.patient.xr.plot.plot90.patientIsocenter = self.system.solver._syncPatientIsocenter
 		else:
 			pass
 
 		# Update x-ray centroid position.
-		self.patient.xr.plot.plot0.ctd = [self.system.solver._rightCentroid[1],self.system.solver._rightCentroid[2]]
-		self.patient.xr.plot.plot90.ctd = [self.system.solver._rightCentroid[0],self.system.solver._rightCentroid[2]]
+		self.patient.xr.plot.plot0.ctd = self.system.solver._rightCentroid
+		self.patient.xr.plot.plot90.ctd = self.system.solver._rightCentroid
 
 		# Update ct centroid position.
-		self.patient.ct.plot.plot0.ctd = [self.system.solver._leftCentroid[1],self.system.solver._leftCentroid[2]]
-		self.patient.ct.plot.plot90.ctd = [self.system.solver._leftCentroid[0],self.system.solver._leftCentroid[2]]
+		self.patient.ct.plot.plot0.ctd = self.system.solver._leftCentroid
+		self.patient.ct.plot.plot90.ctd = self.system.solver._leftCentroid
 
 		# If table already exists, update information...
 		self.property.updateVariable('Alignment',['Rotation','x','y','z'],[float(self.system.solver.solution[3]),float(self.system.solver.solution[4]),float(self.system.solver.solution[5])])

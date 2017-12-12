@@ -8,6 +8,7 @@ motorList = cwd+'/resources/motorList.csv'
 s = stage(motorList)
 s.load('DynMRT')
 
+np.set_printoptions(formatter={'float': lambda x: "{0:0.2f}".format(x)})
 
 # Left Points: [[ -0.57354312  26.35644294  26.81580788]
 #  [-35.83045567 -30.31917351  25.71836707]
@@ -21,12 +22,12 @@ s.load('DynMRT')
 # Machine Isoc: [ 0.  0.  0.]
 
 
-tx = -9.15837
-ty = 12.6422
-tz = -6.82076
-x = np.deg2rad(-1.05386)
-y = np.deg2rad(-0.661558)
-z = np.deg2rad(1.73174)
+tx = 21.89
+ty = -0.84
+tz = -18.33
+x = np.deg2rad(1.57)
+y = np.deg2rad(-1.15)
+z = np.deg2rad(-2.21)
 
 rx = np.array([[1,0,0,0],[0,np.cos(x),-np.sin(x),0],[0,np.sin(x),np.cos(x),0],[0,0,0,1]])
 ry = np.array([[np.cos(y),0,-np.sin(y),0],[0,1,0,0],[np.sin(y),0,np.cos(y),0],[0,0,0,1]])
