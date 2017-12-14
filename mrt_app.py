@@ -428,10 +428,10 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 			self.patient.rtplan.plot[i].plot90.imageLoad(self.patient.rtplan.image[i].array,extent=self.patient.rtplan.image[i].extent,imageIndex=1)
 
 			# Add isocenters to plots.
-			x1,y1,x2 = self.patient.rtplan.image[i].isocenter
-			mpl_iso = np.array([x2,x1,y1])
-			self.patient.rtplan.plot[i].plot0.patientIsocenter = mpl_iso
-			self.patient.rtplan.plot[i].plot90.patientIsocenter = mpl_iso
+			# x1,y1,x2 = self.patient.rtplan.image[i].isocenter
+			# mpl_iso = np.array([x2,x1,y1])
+			self.patient.rtplan.plot[i].plot0.patientIsocenter = self.patient.rtplan.image[i].isocenter
+			self.patient.rtplan.plot[i].plot90.patientIsocenter = self.patient.rtplan.image[i].isocenter
 
 			# Update property table.
 			# labels = ['BEV%i'%(i+1),'Gantry Angle','Patient Support Angle','Collimator Angle']
