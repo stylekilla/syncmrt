@@ -15,7 +15,7 @@ ary0 = tif.imread(fn[0])
 ary1 = tif.imread(fn[1])
 
 # Isoc as (image shape) - (coordinate from top left corner in Y X (as per imageJ)). This gives isoc in reference to bottom left position.
-isoc = np.absolute( np.array([ary0.shape[0],0]) - np.array([231.875,324.00]) )
+isoc = np.absolute( np.array([ary0.shape[0],0]) - np.array([233.438,319.406]) )
 isoc = np.around(isoc).astype(int)
 
 # Open HDF5 file.

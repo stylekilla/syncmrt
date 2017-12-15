@@ -727,8 +727,11 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 				self.patient.rtplan.plot[treatmentIndex].plot0.ctd = self.system.solver._leftCentroid
 				self.patient.rtplan.plot[treatmentIndex].plot90.ctd = self.system.solver._leftCentroid
 				# Update x-ray patient isocenter.
-				self.patient.xr.plot.plot0.patientIsocenter = self.system.solver._syncPatientIsocenter
-				self.patient.xr.plot.plot90.patientIsocenter = self.system.solver._syncPatientIsocenter
+				temp = self.system.solver._syncPatientIsocenter
+				# Convert back to x1,y1,x2 plot.
+				_syncPatientIsocenter = np.array([temp[1],temp[2],temp[0]])
+				self.patient.xr.plot.plot0.patientIsocenter = _syncPatientIsocenter
+				self.patient.xr.plot.plot90.patientIsocenter = _syncPatientIsocenter
 		else:
 			pass
 
