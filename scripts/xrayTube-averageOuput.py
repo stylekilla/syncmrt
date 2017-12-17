@@ -74,13 +74,24 @@ image[39,:] = image[38,:]
 
 outputPretext = "{:%y%m%d-%Hh%Mm%Ss}".format(datetime.datetime.now())
 outputFolder = '/mnt/datahdd/mrt/xray'+slash
-np.save(outputFolder+outputPretext,image.astype('float32'))
+# np.save(outputFolder+outputPretext,image.astype('float32'))
 tif.imsave(outputFolder+outputPretext+'.tif',image.astype('float32'))
 
+# Remove files in folder.
 # os.remove(fol)
+import shutil
+# folder = '/path/to/folder'
+for the_file in os.listdir(fol):
+    file_path = os.path.join(fol, the_file)
+    try:
+        if os.path.isfile(file_path):
+            os.unlink(file_path)
+        #elif os.path.isdir(file_path): shutil.rmtree(file_path)
+    except Exception as e:
+        print(e)
 
-import matplotlib
-matplotlib.use('Agg')
-from matplotlib import pyplot as plt
-plt.imshow(image,cmap='bone_r')
-plt.show()
+# import matplotlib
+# matplotlib.use('Agg')
+# from matplotlib import pyplot as plt
+# plt.imshow(image,cmap='bone_r')
+# plt.show()

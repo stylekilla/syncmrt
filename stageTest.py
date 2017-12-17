@@ -22,12 +22,12 @@ np.set_printoptions(formatter={'float': lambda x: "{0:0.2f}".format(x)})
 # Machine Isoc: [ 0.  0.  0.]
 
 
-tx = 21.89
-ty = -0.84
-tz = -18.33
-x = np.deg2rad(1.57)
-y = np.deg2rad(-1.15)
-z = np.deg2rad(-2.21)
+tx = 1.76
+ty = -0.04
+tz = 0.12
+x = np.deg2rad(0)
+y = np.deg2rad(0)
+z = np.deg2rad(0)
 
 rx = np.array([[1,0,0,0],[0,np.cos(x),-np.sin(x),0],[0,np.sin(x),np.cos(x),0],[0,0,0,1]])
 ry = np.array([[np.cos(y),0,-np.sin(y),0],[0,1,0,0],[np.sin(y),0,np.cos(y),0],[0,0,0,1]])
@@ -38,3 +38,4 @@ G = t@rz@ry@rx
 variables = np.array([tx,ty,tz,np.rad2deg(x),np.rad2deg(y),np.rad2deg(z)])
 
 s.calculateMotion(G,variables)
+s.applyMotion()

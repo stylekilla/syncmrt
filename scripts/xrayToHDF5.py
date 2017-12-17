@@ -5,21 +5,26 @@ import glob
 
 name = 'Block1'
 detector = 'Hamamatsu'
-pixsize = 0.166
+pixsize = 5/(320.417-289.062)
 
 # Locate the files.
 path = '/mnt/datahdd/mrt/xray/set/'
+savePath = '/home/imbl/Documents/Micah/Data/xray/'
 fn = glob.glob(path+'*.tif')
 # Read in TIFF's.
 ary0 = tif.imread(fn[0])
 ary1 = tif.imread(fn[1])
 
 # Isoc as (image shape) - (coordinate from top left corner in Y X (as per imageJ)). This gives isoc in reference to bottom left position.
-isoc = np.absolute( np.array([ary0.shape[0],0]) - np.array([233.438,319.406]) )
-isoc = np.around(isoc).astype(int)
+imagej_x = 320.417
+imagej_y = 234.625
+isoc = np.absolute( np.array([0,ary0.shape[0]]) - np.array([-imagej_x,imagej_y]) )
 
 # Open HDF5 file.
-f = hdf.File('xray_dataset.hdf5','w')
+import datetime as dt
+now = dt.datetime.now()
+fileName = str(savePath)+'xray_dataset'+str(now.hour)+'h-'+str(now.minute)+'m.hdf5'
+f = hdf.File(fileName,'w')
 f.attrs['NumberOfImages'] = 2
 f.attrs['Detector'] = detector
 f.attrs['PixelSize'] = pixsize
