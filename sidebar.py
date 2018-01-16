@@ -1,10 +1,15 @@
 from PyQt5 import QtWidgets, QtGui, QtCore, uic
 from functools import partial
 import numpy as np
+from syncmrt import widgets
+
+import logging
+
+logging.basicConfig(level=logging.DEBUG)
 
 resourceFilepath = "resources/"
 
-class sidebarStack(QtWidgets.QStackedWidget):
+class stack(QtWidgets.QStackedWidget):
 	def __init__(self,parent):
 		super().__init__()
 		self.parent = parent
@@ -45,7 +50,7 @@ class sidebarStack(QtWidgets.QStackedWidget):
 		self.removeWidget(self.stackDict[pageName])
 		if delete: del self.stackDict[pageName]
 
-class sidebarList(QtWidgets.QListWidget):
+class stackList(QtWidgets.QListWidget):
 	def __init__(self,parent):
 		# List initialisation.
 		super().__init__()
@@ -95,9 +100,9 @@ class sidebarList(QtWidgets.QListWidget):
 		if delete:
 			del self.listDict[pageName]
 
-class sidebarSelector:
+class selector:
 	def __init__(self,listWidget,stackWidget):
-		self.list = sidebarList(listWidget)
+		self.list = stackList(listWidget)
 		self.stack = stackWidget
 		self._previousListItem = None
 
@@ -141,7 +146,7 @@ class sidebarSelector:
 		# return self.list.listDict['ImageProperties']
 		return self.list.listDict[key]
 
-class sbAlignment:
+class alignment:
 	def __init__(self,parent):
 		self.parent = parent
 		self.widget = {}
@@ -249,7 +254,7 @@ class sbAlignment:
 			del key
 		del self.layout
 
-class sbTreatment:
+class treatment:
 	def __init__(self,parent):
 		self.parent = parent
 		self.widget = {}
@@ -330,7 +335,7 @@ class sbTreatment:
 			del key
 		del self.layout
 
-class sbSettings(QtCore.QObject):
+class settings(QtCore.QObject):
 	modeChanged = QtCore.pyqtSignal('QString')
 	stageChanged = QtCore.pyqtSignal('QString')
 	detectorChanged = QtCore.pyqtSignal('QString')
@@ -434,35 +439,35 @@ class sbSettings(QtCore.QObject):
 			del key
 		del self.layout
 
-class sbXrayProperties:
+class xrayProperties:
 	def __init__(self,parent):
 		self.parent = parent
 		self.widget = {}
 		self.layout = QtWidgets.QVBoxLayout()
 
-		# Group 1: Alignment callibration.
-		callibrationGroup = QtWidgets.QGroupBox()
-		callibrationGroup.setTitle('Hardware Callibration')
-		label1 = QtWidgets.QLabel('Beam Isocenter (pixels)')
-		label2 = QtWidgets.QLabel('x: ')
-		self.widget['alignIsocX'] = QtWidgets.QLineEdit()
-		label3 = QtWidgets.QLabel('y: ')
-		self.widget['alignIsocY'] = QtWidgets.QLineEdit()
-		# Layout
-		callibrationGroupLayout = QtWidgets.QFormLayout()
-		callibrationGroupLayout.addRow(label1)
-		callibrationGroupLayout.addRow(label2,self.widget['alignIsocX'])
-		callibrationGroupLayout.addRow(label3,self.widget['alignIsocY'])
-		# Defaults
-		validator = QtGui.QDoubleValidator()
-		validator.setBottom(0)
-		validator.setDecimals(4)
-		self.widget['alignIsocX'].setValidator(validator)
-		self.widget['alignIsocY'].setValidator(validator)
-		# Signals and Slots
-		# Group inclusion to page
-		callibrationGroup.setLayout(callibrationGroupLayout)
-		self.layout.addWidget(callibrationGroup)
+		# # Group 1: Editable Isocenter
+		# editIsocenter = QtWidgets.QGroupBox()
+		# editIsocenter.setTitle('Edit Treatment Isocenter')
+		# label1 = QtWidgets.QLabel('Isocenter (mm)')
+		# label2 = QtWidgets.QLabel('x: ')
+		# self.widget['alignIsocX'] = QtWidgets.QLineEdit()
+		# label3 = QtWidgets.QLabel('y: ')
+		# self.widget['alignIsocY'] = QtWidgets.QLineEdit()
+		# # Layout
+		# editIsocenterLayout = QtWidgets.QFormLayout()
+		# editIsocenterLayout.addRow(label1)
+		# editIsocenterLayout.addRow(label2,self.widget['alignIsocX'])
+		# editIsocenterLayout.addRow(label3,self.widget['alignIsocY'])
+		# # Defaults
+		# validator = QtGui.QDoubleValidator()
+		# validator.setBottom(0)
+		# validator.setDecimals(4)
+		# self.widget['alignIsocX'].setValidator(validator)
+		# self.widget['alignIsocY'].setValidator(validator)
+		# # Signals and Slots
+		# # Group inclusion to page
+		# editIsocenter.setLayout(editIsocenterLayout)
+		# self.layout.addWidget(editIsocenter)
 
 		# Group 2: Overlays.
 		overlayGroup = QtWidgets.QGroupBox()
@@ -485,75 +490,80 @@ class sbXrayProperties:
 		self.window = {}
 		windowGroup = QtWidgets.QGroupBox()
 		windowGroup.setTitle('X-ray Windowing')
-		header = QtWidgets.QLabel('No. Windows:')
-		self.window['numWindows'] = QtWidgets.QSpinBox()
-		self.window['pbApply'] = QtWidgets.QPushButton('Apply')
-		self.window['pbReset'] = QtWidgets.QPushButton('Reset')
-		self.window['window'] = {}
-		lower = QtWidgets.QLabel('Lower Limit') 
-		upper = QtWidgets.QLabel('Upper Limit')
-		self.window['window'][1] = XraySpinBox()
-		self.window['window'][0] = XraySpinBox()
-		# Layout
-		self.window['layout'] = QtWidgets.QFormLayout()
-		self.window['layout'].addRow(header,self.window['numWindows'])
-		self.window['layout'].addRow(lower,upper)
-		self.window['layout'].addRow(self.window['window'][0],self.window['window'][1])
-		self.window['layout'].addRow(self.window['pbApply'],self.window['pbReset'])
-		# Defaults
-		self.window['numWindows'].setMinimum(1)
-		self.window['numWindows'].setMaximum(10)
-		self.window['numWindows'].setValue(1)
-		self.window['numWindows'].setSingleStep(1)
-		self.window['window'][1].setValue(65535)
-		# Signals and Slots
-		self.window['numWindows'].valueChanged.connect(self.addWindows)
-		# Group inclusion to page
+		self.window['layout'] = QtWidgets.QVBoxLayout()
+		# Add two widgets to layout.
+		self.window['window'] = [QtWidgets.QWidget(),QtWidgets.QWidget()]
+		# self.window['window'] = QtWidgets.QWidget()
+		# Layouts for widgets.
+		self.window['layout'].addWidget(self.window['window'][0])
+		self.window['layout'].addWidget(self.window['window'][1])
+		self.window['histogram'] = [None,None]
+		# self.window['layouts'] = [QtWidgets.QFormLayout(),QtWidgets.QFormLayout()]
+		# self.window['window1'].setLayout(self.window['layouts'][0])
+		# self.window['window2'].setLayout(self.window['layouts'][1])
+		# Set the layout of group.
 		windowGroup.setLayout(self.window['layout'])
+		# Add group to sidebar layout.
 		self.layout.addWidget(windowGroup)
 
 		# Finish page.
+		# spacer = QtWidgets.QSpacerItem(0,0)
+		# self.layout.addSpacerItem(spacer)
 		self.layout.addStretch(1)
 		self.parent.setLayout(self.layout)
 
-	def addWindows(self):
-		'''Add or remove windowing fields as required.'''
-		difference = int(self.window['numWindows'].value() - len(self.window['window'])/2)
+	def addPlotWindow(self,plot,index):
+		self.window['histogram'][index] = widgets.mpl.window(self.window['window'][index],plot)
 
-		# If number greater than, then add windows.
-		if difference > 0:
-			length = len(self.window['window'])
-			for i in range(difference):
-				# Add to dict, add to layout.
-				self.window['window'][length+i*2] = XraySpinBox()
-				self.window['window'][length+i*2+1] = XraySpinBox()
-				self.window['window'][length+i*2+1].setValue(10000)
-				self.window['layout'].insertRow(self.window['layout'].rowCount()-1,
-					self.window['window'][length+i],self.window['window'][length+i*2+1])
+	# def plotSettings(self,plot):
+		# Add histogram and sliders to widget for plot control.
+		# self.window['histogram'] = widgets.window(windowGroup,)
 
-		# If number less than, remove windows.
-		if difference < 0:
-			length = len(self.window['window'])
-			for i in range(abs(difference)):
-				# Remove from layout, remove from dict.
-				self.window['window'][length-i*2-1].deleteLater()
-				self.window['window'][length-i*2-2].deleteLater()
-				del self.window['window'][length-i*2-1]
-				del self.window['window'][length-i*2-2]
+	# def addWindows(self):
+	# 	'''Add or remove windowing fields as required.'''
+	# 	difference = int(self.window['numWindows'].value() - len(self.window['window'])/2)
 
-	def getWindows(self):
-		'''Get window values as list of lists. Need scale slope and intercept.'''
-		windows = []
+	# 	# If number greater than, then add windows.
+	# 	if difference > 0:
+	# 		length = len(self.window['window'])
+	# 		for i in range(difference):
+	# 			# Add to dict, add to layout.
+	# 			self.window['window'][length+i*2] = XraySpinBox()
+	# 			self.window['window'][length+i*2+1] = XraySpinBox()
+	# 			self.window['window'][length+i*2+1].setValue(10000)
+	# 			self.window['layout'].insertRow(self.window['layout'].rowCount()-1,
+	# 				self.window['window'][length+i],self.window['window'][length+i*2+1])
 
-		for i in range(int(len(self.window['window'])/2)):
-			window = [self.window['window'][i*2].value(),self.window['window'][i*2+1].value()]
-			windows.append(window)
+	# 	# If number less than, remove windows.
+	# 	if difference < 0:
+	# 		length = len(self.window['window'])
+	# 		for i in range(abs(difference)):
+	# 			# Remove from layout, remove from dict.
+	# 			self.window['window'][length-i*2-1].deleteLater()
+	# 			self.window['window'][length-i*2-2].deleteLater()
+	# 			del self.window['window'][length-i*2-1]
+	# 			del self.window['window'][length-i*2-2]
 
-		return windows
+	# def getWindows(self):
+	# 	'''Get window values as list of lists. Need scale slope and intercept.'''
+	# 	windows = []
 
-class sbCTProperties:
+	# 	for i in range(int(len(self.window['window'])/2)):
+	# 		window = [self.window['window'][i*2].value(),self.window['window'][i*2+1].value()]
+	# 		windows.append(window)
+
+	# 	return windows
+
+class ctProperties(QtCore.QObject):
+	# Qt signals.
+	isocenterChanged = QtCore.pyqtSignal(float,float,float)
+
 	def __init__(self,parent):
+		# Init QObject class.
+		super().__init__()
+		# Continue with sub-class initialisation.
 		self.parent = parent
+		self.group = {}
 		self.widget = {}
 		self.layout = QtWidgets.QVBoxLayout()
 
@@ -572,79 +582,73 @@ class sbCTProperties:
 		overlayGroup.setLayout(overlayGroupLayout)
 		self.layout.addWidget(overlayGroup)
 
-		# Group 2: Windowing
+		# Group 2: Editable Isocenter
+		# self.group['editIsocenter'] = editIsocenter = QtWidgets.QGroupBox()
+		self.group['editIsocenter'] = QtWidgets.QGroupBox()
+		self.group['editIsocenter'].setTitle('Edit Treatment Isocenter')
+		label1 = QtWidgets.QLabel('Isocenter (mm)')
+		label2 = QtWidgets.QLabel('x: ')
+		self.widget['isocX'] = QtWidgets.QLineEdit()
+		label3 = QtWidgets.QLabel('y: ')
+		self.widget['isocY'] = QtWidgets.QLineEdit()
+		label4 = QtWidgets.QLabel('z: ')
+		self.widget['isocZ'] = QtWidgets.QLineEdit()
+		# Layout
+		editIsocenterLayout = QtWidgets.QFormLayout()
+		editIsocenterLayout.addRow(label1)
+		editIsocenterLayout.addRow(label2,self.widget['isocX'])
+		editIsocenterLayout.addRow(label3,self.widget['isocY'])
+		editIsocenterLayout.addRow(label4,self.widget['isocZ'])
+		# Defaults
+		self.group['editIsocenter'].setEnabled(False)
+		doubleValidator = QtGui.QDoubleValidator()
+		# doubleValidator.setBottom(0)
+		doubleValidator.setDecimals(3)
+		self.widget['isocX'].setText('0')
+		self.widget['isocY'].setText('0')
+		self.widget['isocZ'].setText('0')
+		self.widget['isocX'].setValidator(doubleValidator)
+		self.widget['isocY'].setValidator(doubleValidator)
+		self.widget['isocZ'].setValidator(doubleValidator)
+		# Signals and Slots
+		self.widget['isocX'].returnPressed.connect(self.updateIsocenter)
+		self.widget['isocY'].returnPressed.connect(self.updateIsocenter)
+		self.widget['isocZ'].returnPressed.connect(self.updateIsocenter)
+		# Group inclusion to page
+		self.group['editIsocenter'].setLayout(editIsocenterLayout)
+		self.layout.addWidget(self.group['editIsocenter'])
+
+		# Group 3: Windowing.
 		self.window = {}
 		windowGroup = QtWidgets.QGroupBox()
 		windowGroup.setTitle('CT Windowing')
-		header = QtWidgets.QLabel('No. Windows:')
-		self.window['numWindows'] = QtWidgets.QSpinBox()
-		self.window['rbMax'] = QtWidgets.QRadioButton('Max')
-		self.window['rbSum'] = QtWidgets.QRadioButton('Sum')
-		self.window['pbApply'] = QtWidgets.QPushButton('Apply')
-		self.window['pbReset'] = QtWidgets.QPushButton('Reset')
-		self.window['window'] = {}
-		lower = QtWidgets.QLabel('Lower Limit') 
-		upper = QtWidgets.QLabel('Upper Limit')
-		self.window['window'][1] = HUSpinBox()
-		self.window['window'][0] = HUSpinBox()
-		# Layout
-		self.window['layout'] = QtWidgets.QFormLayout()
-		self.window['layout'].addRow(header,self.window['numWindows'])
-		self.window['layout'].addRow(lower,upper)
-		self.window['layout'].addRow(self.window['window'][0],self.window['window'][1])
-		self.window['layout'].addRow(self.window['rbMax'],self.window['rbSum'])
-		self.window['layout'].addRow(self.window['pbApply'],self.window['pbReset'])
-		# Defaults
-		self.window['numWindows'].setMinimum(1)
-		self.window['numWindows'].setMaximum(10)
-		self.window['numWindows'].setValue(1)
-		self.window['numWindows'].setSingleStep(1)
-		self.window['window'][1].setValue(5000)
-		self.window['rbSum'].setChecked(True)
-		# Signals and Slots
-		self.window['numWindows'].valueChanged.connect(self.addWindows)
-		# Group inclusion to page
+		self.window['layout'] = QtWidgets.QVBoxLayout()
+		# Add two widgets to layout.
+		self.window['window'] = [QtWidgets.QWidget(),QtWidgets.QWidget()]
+		# Layouts for widgets.
+		self.window['layout'].addWidget(self.window['window'][0])
+		self.window['layout'].addWidget(self.window['window'][1])
+		self.window['histogram'] = [None,None]
+		# Set the layout of group.
 		windowGroup.setLayout(self.window['layout'])
+		# Add group to sidebar layout.
 		self.layout.addWidget(windowGroup)
 
 		# Finish page.
 		self.layout.addStretch(1)
 		self.parent.setLayout(self.layout)
 
-	def addWindows(self):
-		'''Add or remove windowing fields as required.'''
-		difference = int(self.window['numWindows'].value() - len(self.window['window'])/2)
+	def addPlotWindow(self,plot,index):
+		self.window['histogram'][index] = widgets.mpl.window(self.window['window'][index],plot,advanced=True)
 
-		# If number greater than, then add windows.
-		if difference > 0:
-			length = len(self.window['window'])
-			for i in range(difference):
-				# Add to dict, add to layout.
-				self.window['window'][length+i*2] = HUSpinBox()
-				self.window['window'][length+i*2+1] = HUSpinBox()
-				self.window['window'][length+i*2+1].setValue(5000)
-				self.window['layout'].insertRow(self.window['layout'].rowCount()-2,
-					self.window['window'][length+i],self.window['window'][length+i*2+1])
-
-		# If number less than, remove windows.
-		if difference < 0:
-			length = len(self.window['window'])
-			for i in range(abs(difference)):
-				# Remove from layout, remove from dict.
-				self.window['window'][length-i*2-1].deleteLater()
-				self.window['window'][length-i*2-2].deleteLater()
-				del self.window['window'][length-i*2-1]
-				del self.window['window'][length-i*2-2]
-
-	def getWindows(self):
-		'''Get window values as list of lists.'''
-		windows = []
-
-		for i in range(int(len(self.window['window'])/2)):
-			window = [self.window['window'][i*2].value(),self.window['window'][i*2+1].value()]
-			windows.append(window)
-
-		return windows
+	def updateIsocenter(self):
+		# Get all three coordinates.
+		x = float( self.widget['isocX'].text() )
+		y = float( self.widget['isocY'].text() )
+		z = float( self.widget['isocZ'].text() )
+		# Emit signal with all three coordinates.
+		logging.debug('Emitting updateIsocenter signal.')
+		self.isocenterChanged.emit(x,y,z)
 
 class HUSpinBox(QtWidgets.QSpinBox):
 	'''CT HU windowing spinbox'''
