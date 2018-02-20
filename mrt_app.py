@@ -5,7 +5,6 @@ import sidebar
 # Sitepackages
 import os
 import sys
-import logging
 from functools import partial
 import numpy as np
 # Pyqt5
@@ -18,12 +17,14 @@ qtCreatorFile = "main.ui"
 qtStyleSheet = open("stylesheet.css")
 Ui_MainWindow, QtBaseClass = uic.loadUiType(qtCreatorFile)
 
+import logging
+# Debug levels: NOTSET, DEBUG, INFO, WARNING, ERROR, CRITICAL
+logging.basicConfig(level=logging.CRITICAL)
+
 '''
 MAIN CLASS
 - def openFiles(self, modality): Imports files, gathers variables and plots. 
 '''
-
-logging.basicConfig(level=logging.WARNING)
 
 class main(QtWidgets.QMainWindow, Ui_MainWindow):
 	def __init__(self):
