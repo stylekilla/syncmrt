@@ -1,0 +1,32 @@
+QTreeView {
+    /*alternate-background-color: #f6fafb;*/
+    /*background: #e8f4fc;*/
+}
+
+QTreeView::Item {
+    /*border: 0.5px;*/
+    /*border-style: solid;*/
+    border-color: darkgray;
+}
+
+QStatusBar {
+	/*background: black ;*/
+	padding: 0px;
+}
+
+QHBoxLayout {
+	padding: 0px;
+	margin: 0px;
+}
+
+QVBoxLayout {
+	padding: 0px;
+}
+
+QGridLayout {
+	padding: 0px;
+}
+
+QSplitter {
+	padding: 0px;
+}

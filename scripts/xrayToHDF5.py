@@ -1,23 +1,27 @@
 import h5py as hdf
 import numpy as np
-import tifffile as tif
+from skimage.external import tifffile as tif
 import glob
 
-name = 'Block1'
+name = 'Rats'
 detector = 'Hamamatsu'
-pixsize = 5/(320.417-289.062)
+pixsize = 0.1589
 
 # Locate the files.
-path = '/mnt/datahdd/mrt/xray/set/'
-savePath = '/home/imbl/Documents/Micah/Data/xray/'
+# path = '/mnt/datahdd/mrt/xray/set/'
+path = '/home/imbl/Documents/Data/XR/set/'
+savePath = '/home/imbl/Documents/Data/XR/hdf5/'
+# fn = glob.glob(path+'*.npy')
 fn = glob.glob(path+'*.tif')
 # Read in TIFF's.
 ary0 = tif.imread(fn[0])
 ary1 = tif.imread(fn[1])
+# ary0 = np.load(fn[0])
+# ary1 = np.load(fn[1])
 
 # Isoc as (image shape) - (coordinate from top left corner in Y X (as per imageJ)). This gives isoc in reference to bottom left position.
-imagej_x = 320.417
-imagej_y = 234.625
+imagej_x = 551.875
+imagej_y = 230.375+3.583
 isoc = np.absolute( np.array([0,ary0.shape[0]]) - np.array([-imagej_x,imagej_y]) )
 
 # Open HDF5 file.
@@ -51,3 +55,16 @@ im1.attrs['isocenter'] = np.array([0,0,0])
 
 # Close and save file.
 f.close()
+
+# # Remove files in folder.
+# # os.remove(fol)
+# import shutil
+# # folder = '/path/to/folder'
+# for the_file in os.listdir(path):
+#     file_path = os.path.join(path, the_file)
+#     try:
+#         if os.path.isfile(file_path):
+#             os.unlink(file_path)
+#         #elif os.path.isdir(file_path): shutil.rmtree(file_path)
+#     except Exception as e:
+#         print(e)
