@@ -11,10 +11,10 @@ import numpy as np
 from PyQt5.QtCore import pyqtSlot as Slot
 from PyQt5 import QtCore, QtGui, QtWidgets, uic
 # SyncMRT Tools.
-import syncmrt as mrt
+import syncmrtBackend as mrt
 # Select Qt5 user interface.
-qtCreatorFile = "main.ui"
-qtStyleSheet = open("stylesheet.css")
+qtCreatorFile = "./resources/main.ui"
+qtStyleSheet = open("./resources/stylesheet.css")
 Ui_MainWindow, QtBaseClass = uic.loadUiType(qtCreatorFile)
 
 import logging
@@ -780,7 +780,8 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		print('in mrt app, system motion is:',self.system.stage._motion)
 
 		# Apply alignment.
-		self.system.applyAlignment()
+		# self.system.applyAlignment()
+		print('mrtapp.py Line 784: commented out alignment')
 
 		# completion = self.system.movePatient(self.system.solver.solution)
 		# print('This should be updating the values as they move and reduce to zero.')

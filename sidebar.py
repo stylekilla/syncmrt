@@ -1,7 +1,7 @@
 from PyQt5 import QtWidgets, QtGui, QtCore, uic
 from functools import partial
 import numpy as np
-from syncmrt import widgets
+from syncmrtBackend import widgets
 
 import logging
 

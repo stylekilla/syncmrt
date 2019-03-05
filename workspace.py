@@ -3,7 +3,7 @@ from functools import partial
 import numpy as np
 
 # imports for class plot():
-from syncmrt import widgets
+from syncmrtBackend import widgets
 import matplotlib as mpl
 mpl.use('Qt5Agg')
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT
