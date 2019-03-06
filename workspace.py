@@ -3,7 +3,7 @@ from functools import partial
 import numpy as np
 
 # imports for class plot():
-from syncmrtBackend import widgets
+from synctools import widgets
 import matplotlib as mpl
 mpl.use('Qt5Agg')
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT
@@ -87,7 +87,7 @@ class xray:
 	'''
 	def __init__(self,parent):
 		kwargs = {
-			'xLabel': 'X'
+			'xLabel': 'X',
 			'yLabel': 'Y'
 		}
 		self.plotWidget = QPlotWidget(parentWidget,kwargs)
@@ -98,8 +98,12 @@ class QPlotWidget:
 	It has a navbar, plot and table.
 	'''
 	def __init__(self,parent,**kwargs):
+		labels = {
+			'xLabel':kwargs.get('xLabel','X'),
+			'yLabel':kwargs.get('yLabel','Y')
+		}
 		# A table model is required for the table view.
-		self.tableModel = plotTableModel()
+		self.tableModel = QPlotTableModel(labels)
 		self.tableView = QtWidgets.QTableView()
 		# The plot needs the table model for data.
 		self.plot = widgets.mpl.plot(self.tableModel)
@@ -134,8 +138,8 @@ class plot:
 	'''
 	def __init__(self,widget):
 		self.layout = QtWidgets.QGridLayout(widget)
-		self.model0 = plotTableModel()
-		self.model90 = plotTableModel()
+		self.model0 = QPlotTableModel()
+		self.model90 = QPlotTableModel()
 		self.plot0 = widgets.mpl.plot(self.model0)
 		self.plot90 = widgets.mpl.plot(self.model90)
 		self.nav0 = navigationBar(self.plot0.canvas,widget)
@@ -178,11 +182,6 @@ class plot:
 		self.plot0.canvas.setCursor(QtGui.QCursor(QtCore.Qt.CrossCursor))
 		self.plot90.canvas.setCursor(QtGui.QCursor(QtCore.Qt.CrossCursor))
 
-	# def setWindows(self,windows):
-	# 	'''Set windows for all plots. Take windows as list of lists with upper and lower limits per window [[upper,lower],].'''
-	# 	self.plot0.imageWindow(windows)
-	# 	self.plot90.imageWindow(windows)
-
 	def setRadiographMode(self,mode):
 		'''Set radiograph mode to 'sum' or 'max.''' 
 		self.plot0._radiographMode = mode
@@ -207,23 +206,27 @@ class plot:
 		self.plot0.toggleOverlay(2,True)
 		self.plot90.toggleOverlay(2,True)
 
-class plotTableModel(QtGui.QStandardItemModel):
+class QPlotTableModel(QtGui.QStandardItemModel):
 	'''
 	Table model for plot points inside the MPL canvas. This is designed to dynamically add and remove data points as they 
 	are selected or removed.
 	Markers are stored in dict with x,y vals.
 	The model will always have a limit of rows set by the maximum marker condition/setting.
 	'''
-	def __init__(self):
+	def __init__(self,labels):
+		# Initialise the standard item model first.
 		super().__init__()
+		# Set column and row count.
 		self.setColumnCount(3)
 		self.setMarkerRows(0)
-		# self.markers = {}
 		self.items = {}
 		self._locked = False
 
-		self.setHorizontalHeaderLabels(['#','x','y'])
-		# Set column 0 editable(false)
+		self.setHorizontalHeaderLabels([
+			'#',
+			labels.get('xLabel','x'),
+			labels.get('yLabel','y')
+		])
 
 	def addPoint(self,row,x,y):
 		'''Write a point to the model. This is specified by the point number (identifier), and it's x and y coord.'''
