@@ -15,7 +15,8 @@ savePath = '/home/imbl/Documents/Data/XR/hdf5/'
 fn = glob.glob(path+'*.tif')
 # Read in TIFF's.
 ary0 = tif.imread(fn[0])
-ary1 = tif.imread(fn[1])
+ary1 = tif.imread(fn[0])
+# ary1 = tif.imread(fn[1])
 # ary0 = np.load(fn[0])
 # ary1 = np.load(fn[1])
 

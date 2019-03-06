@@ -12,9 +12,20 @@ from PyQt5.QtCore import pyqtSlot as Slot
 from PyQt5 import QtCore, QtGui, QtWidgets, uic
 # SyncMRT Tools.
 import syncmrtBackend as mrt
+
+
+# For PyInstaller:
+if getattr(sys, 'frozen', False):
+    # If the application is run as a bundle, the pyInstaller bootloader
+    # extends the sys module by a flag frozen=True and sets the app 
+    # path into variable _MEIPASS'.
+    application_path = sys._MEIPASS
+else:
+    application_path = os.path.dirname(os.path.abspath(__file__))
+
 # Select Qt5 user interface.
-qtCreatorFile = "./resources/main.ui"
-qtStyleSheet = open("./resources/stylesheet.css")
+qtCreatorFile = application_path+"/resources/main.ui"
+qtStyleSheet = open(application_path+"/resources/stylesheet.css")
 Ui_MainWindow, QtBaseClass = uic.loadUiType(qtCreatorFile)
 
 import logging
@@ -77,7 +88,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		self.propertyTree = workspace.propertyManager(self.frameVariablePane,self.property)
 
 		# Collapsing button for Property Manager.
-		icon = QtGui.QIcon('resources/CollapseRight.png')
+		icon = QtGui.QIcon(application_path+'/resources/CollapseRight.png')
 		icon.pixmap(20,20)
 		self.pbCollapseProperties = QtWidgets.QPushButton(icon,'')
 		self.pbCollapseProperties.setFlat(True)
@@ -115,7 +126,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		SyncMRT Setup
 		'''
 		# Create a new system, this has a solver, detector and stage.
-		self.system = mrt.system(config.motorList)
+		self.system = mrt.system(application_path+config.motorList)
 		# Create a new patient, this has room for medical scans and synchrotron scans + other data.
 		self.patient = mrt.patient()
 

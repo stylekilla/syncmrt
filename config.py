@@ -6,11 +6,9 @@ Marker Defaults
 markerQuantity = 3
 markerSize = 2.00
 
-# File locations
-import os
-cwd = os.getcwd()
-stageList = cwd+'/resources/stageList.csv'
-motorList = cwd+'/resources/motorList.csv'
+# File locations (relative)
+stageList = '/resources/stageList.csv'
+motorList = '/resources/motorList.csv'
 # detectorList = 
 # maskList = 
 
