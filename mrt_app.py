@@ -95,10 +95,6 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		self.statusBar.addPermanentWidget(self.pbCollapseProperties)
 		self.pbCollapseProperties.clicked.connect(partial(self.propertyTree.toggleFrame,self.frameVariablePane))
 
-		# Temporarily turn off the stacked widget at the bottom.
-		self.stackedWidget.setEnabled(False)
-		self.stackedWidget.setVisible(False)
-
 		# Create alignment table.
 		self.property.addSection('Alignment')
 		self.property.addVariable('Alignment',['Rotation','x','y','z'],[0,0,0])

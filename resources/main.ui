@@ -120,7 +120,7 @@
        <bool>false</bool>
       </property>
       <widget class="QWidget" name="layoutWidget">
-       <layout class="QVBoxLayout" name="layoutWorkspace" stretch="0,0,0">
+       <layout class="QVBoxLayout" name="layoutWorkspace" stretch="0,0">
         <property name="spacing">
          <number>0</number>
         </property>
@@ -170,16 +170,6 @@
            <size>
             <width>800</width>
             <height>500</height>
-           </size>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="QStackedWidget" name="stackedWidget">
-          <property name="minimumSize">
-           <size>
-            <width>800</width>
-            <height>100</height>
            </size>
           </property>
          </widget>

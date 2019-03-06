@@ -117,6 +117,7 @@ class plot:
 		self.table90.verticalHeader().hide()
 		self.table90.horizontalHeader().setStretchLastSection(True)
 
+		# Add widgets to layout.
 		self.layout.addWidget(self.nav0,0,0)
 		self.layout.addWidget(self.plot0.canvas,1,0)
 		self.layout.addWidget(self.table0,2,0)
