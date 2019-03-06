@@ -10,15 +10,6 @@ from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT
 
 resourceFilepath = "resources/"
 
-
-'''
-PLOTTING
-- class: workEnvironment
-- class: plot
-- class: navigationBar
-- class: plotTableModel
-'''
-
 class environment:
 	'''Select the work environment out of the stacked widget via the toolbar buttons.'''
 	def __init__(self,toolbar,stack):
@@ -87,6 +78,55 @@ class environment:
 
 	def showWorkspace(self,index):
 		self.stack.setCurrentIndex(index)
+
+class xray:
+	'''
+	X-ray workspace. It has two flavours.
+	(1) 2D imaging.
+	(2) 3D imaging.
+	'''
+	def __init__(self,parent):
+		kwargs = {
+			'xLabel': 'X'
+			'yLabel': 'Y'
+		}
+		self.plotWidget = QPlotWidget(parentWidget,kwargs)
+
+class QPlotWidget:
+	'''
+	An advanced QWidget specifically designed for plotting with MatPlotLib.
+	It has a navbar, plot and table.
+	'''
+	def __init__(self,parent,**kwargs):
+		# A table model is required for the table view.
+		self.tableModel = plotTableModel()
+		self.tableView = QtWidgets.QTableView()
+		# The plot needs the table model for data.
+		self.plot = widgets.mpl.plot(self.tableModel)
+		# The navbar needs the plot widget and the parent widget.
+		self.navbar = navigationBar(self.plot,parent)
+
+		# Configure table view.
+		self.tableView.setAlternatingRowColors(True)
+		self.tableView.setModel(self.tableModel)
+		self.tableView.setColumnWidth(0,200)
+		self.tableView.verticalHeader().setDefaultSectionSize(20)
+		self.tableView.verticalHeader().hide()
+		self.tableView.horizontalHeader().setStretchLastSection(True)
+
+		# Add layout to parent.
+		layout = QtWidgets.QVBoxLayout(parent)
+		# Add widgets to layout.
+		layout.addWidget(self.navbar)
+		# QSplitter for resizing between plot and table.
+		splitter = QtWidgets.QSplitter(QtCore.Qt.Vertical)
+		splitter.addWidget(self.plot)
+		splitter.addWidget(self.tableView)
+		# Set stretch factors.
+		splitter.setStretchFactor(0,3)
+		splitter.setStretchFactor(1,1)
+		# Add splitter to layout.
+		layout.addWidget(splitter)
 
 class plot:
 	'''

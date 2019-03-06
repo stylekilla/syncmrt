@@ -3,7 +3,7 @@
 *.pyc
 *.pyo
 env/
-syncmrtBackend
+synctools
 
 # QT Creator #
 ##############

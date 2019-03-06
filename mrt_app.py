@@ -11,7 +11,7 @@ import numpy as np
 from PyQt5.QtCore import pyqtSlot as Slot
 from PyQt5 import QtCore, QtGui, QtWidgets, uic
 # SyncMRT Tools.
-import syncmrtBackend as mrt
+import synctool as mrt
 
 
 # For PyInstaller:
