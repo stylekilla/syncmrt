@@ -31,66 +31,59 @@ class environment:
 		self.toolbarLayout.addStretch()
 
 	def addWorkspace(self,name,alignment=None):
-		'''Add environments to work environment. Can be in form of list.'''
+		'''Add environments to work environment.'''
 		if name in self.stackPage:
 			# Do nothing if it already exists.
 			return
 
+		# Specify the button size.
 		size = QtCore.QSize()
 		size.setHeight(30)
 		size.setWidth(75)
 
-		if type(name) == list:
-			# Enumerate list and add workspaces.
-			for index, name in enumerate(name):
-				button = QtWidgets.QToolButton()
-				button.setText(name)
-				button.setFixedSize(size)
-				if alignment is not None:
-					self.toolbarLayout.addWidget(button)
-				else:
-					self.toolbarLayout.insertWidget(0,button)
-				self.button[name] = button
-
-				page = QtWidgets.QWidget()
-				self.stack.addWidget(page)
-				self.stackPage[name] = page
-
-				index = self.stack.indexOf(page)
-				self.button[name].clicked.connect(partial(self.showWorkspace,index))
-		else:
-			# Assume singular workspace addition.
+		if type(name) == str:
+			# Single entry as a string, make it a list.
+			name = [name]
+		if type(name) != list:
+			# Didn't get a list... why?
+			print('workspace.environment.addWorkspace: Expected list, but got '+type(name))
+			return -1
+		# Enumerate list and add workspaces.
+		for index, name in enumerate(name):
+			# Create a button.
 			button = QtWidgets.QToolButton()
 			button.setText(name)
 			button.setFixedSize(size)
+			# The alignment specifies the left or the right hand side the bar.
 			if alignment is not None:
 				self.toolbarLayout.addWidget(button)
 			else:
 				self.toolbarLayout.insertWidget(0,button)
+			# Add the button to the workspace.
 			self.button[name] = button
-
+			# Create a new widget for the stack.
 			page = QtWidgets.QWidget()
 			self.stack.addWidget(page)
 			self.stackPage[name] = page
-
+			# Link the button to the widget position in the stack.
 			index = self.stack.indexOf(page)
-			button.clicked.connect(partial(self.showWorkspace,index))
+			self.button[name].clicked.connect(partial(self.showWorkspace,index))
 
 	def showWorkspace(self,index):
 		self.stack.setCurrentIndex(index)
 
-class xray:
-	'''
-	X-ray workspace. It has two flavours.
-	(1) 2D imaging.
-	(2) 3D imaging.
-	'''
-	def __init__(self,parent):
-		kwargs = {
-			'xLabel': 'X',
-			'yLabel': 'Y'
-		}
-		self.plotWidget = QPlotWidget(parentWidget,kwargs)
+# class xray:
+# 	'''
+# 	X-ray workspace. It has two flavours.
+# 	(1) 2D imaging.
+# 	(2) 3D imaging.
+# 	'''
+# 	def __init__(self,parent):
+# 		kwargs = {
+# 			'xLabel': 'X',
+# 			'yLabel': 'Y'
+# 		}
+# 		self.plotWidget = QPlotWidget(parentWidget,kwargs)
 
 class QPlotWidget:
 	'''
@@ -108,7 +101,7 @@ class QPlotWidget:
 		# The plot needs the table model for data.
 		self.plot = widgets.mpl.plot(self.tableModel)
 		# The navbar needs the plot widget and the parent widget.
-		self.navbar = navigationBar(self.plot,parent)
+		self.navbar = navigationBar(self.plot.canvas,parent)
 
 		# Configure table view.
 		self.tableView.setAlternatingRowColors(True)
@@ -117,18 +110,19 @@ class QPlotWidget:
 		self.tableView.verticalHeader().setDefaultSectionSize(20)
 		self.tableView.verticalHeader().hide()
 		self.tableView.horizontalHeader().setStretchLastSection(True)
-
+		
 		# Add layout to parent.
 		layout = QtWidgets.QVBoxLayout(parent)
 		# Add widgets to layout.
 		layout.addWidget(self.navbar)
 		# QSplitter for resizing between plot and table.
 		splitter = QtWidgets.QSplitter(QtCore.Qt.Vertical)
-		splitter.addWidget(self.plot)
+		splitter.addWidget(self.plot.canvas)
 		splitter.addWidget(self.tableView)
 		# Set stretch factors.
-		splitter.setStretchFactor(0,3)
-		splitter.setStretchFactor(1,1)
+		splitter.setSizes([200,100])
+		# splitter.setStretchFactor(0,0.5)
+		# splitter.setStretchFactor(1,0.5)
 		# Add splitter to layout.
 		layout.addWidget(splitter)
 

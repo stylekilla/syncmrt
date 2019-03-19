@@ -140,20 +140,23 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		self.sbSettings.loadStages(self.system.stageList)
 		# self.sbSettings.loadDetectors(self.system.detectorList)
 
+		self.testing()
+
 	def testing(self):
-		self.openFiles('folder')
-		self.patient.xr.plot.plot0.markerAdd(-27.036,45.995)
-		self.patient.xr.plot.plot0.markerAdd(32.8665,45.001)
-		self.patient.xr.plot.plot0.markerAdd(34.6091,-15.0564)
-		self.patient.xr.plot.plot90.markerAdd(-23.2147,46.0205)
-		self.patient.xr.plot.plot90.markerAdd(-57.9952,43.4355)
-		self.patient.xr.plot.plot90.markerAdd(43.1843,-15.4921)
-		self.patient.rtplan.plot[0].plot0.markerAdd(25.527,-27.8264)
-		self.patient.rtplan.plot[0].plot0.markerAdd(-29.334,-25.1335)
-		self.patient.rtplan.plot[0].plot0.markerAdd(-34.1097,32.0152)
-		self.patient.rtplan.plot[0].plot90.markerAdd(-0.3594,-27.2985)
-		self.patient.rtplan.plot[0].plot90.markerAdd(-35.9191,-25.8618)
-		self.patient.rtplan.plot[0].plot90.markerAdd(63.9358,31.6087)
+		# self.openFiles('folder')
+		# self.patient.xr.plot.plot0.markerAdd(-27.036,45.995)
+		# self.patient.xr.plot.plot0.markerAdd(32.8665,45.001)
+		# self.patient.xr.plot.plot0.markerAdd(34.6091,-15.0564)
+		# self.patient.xr.plot.plot90.markerAdd(-23.2147,46.0205)
+		# self.patient.xr.plot.plot90.markerAdd(-57.9952,43.4355)
+		# self.patient.xr.plot.plot90.markerAdd(43.1843,-15.4921)
+		# self.patient.rtplan.plot[0].plot0.markerAdd(25.527,-27.8264)
+		# self.patient.rtplan.plot[0].plot0.markerAdd(-29.334,-25.1335)
+		# self.patient.rtplan.plot[0].plot0.markerAdd(-34.1097,32.0152)
+		# self.patient.rtplan.plot[0].plot90.markerAdd(-0.3594,-27.2985)
+		# self.patient.rtplan.plot[0].plot90.markerAdd(-35.9191,-25.8618)
+		# self.patient.rtplan.plot[0].plot90.markerAdd(63.9358,31.6087)
+		self.createWorkEnvironmentXray()
 
 	@QtCore.pyqtSlot(float,float,float)
 	def ctUpdateIsocenter(self,x,y,z):
@@ -310,13 +313,14 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 	def createWorkEnvironmentXray(self):
 		# Main Xray plot workspace.
 		self.workEnvironment.addWorkspace('X-RAY')
-		self.workEnvironment.workspaceWidget['X-RAY'] = workspace.plot(self.workEnvironment.stackPage['X-RAY'])
+		self.workEnvironment.workspaceWidget['X-RAY'] = workspace.QPlotWidget(self.workEnvironment.stackPage['X-RAY'])
+		# self.workEnvironment.workspaceWidget['X-RAY'] = workspace.plot(self.workEnvironment.stackPage['X-RAY'])
 		# Sidebar page for Xray image properties.
 		self.sbStack.addPage('xrImageProperties')
 		self.sbXrayProperties = sidebar.xrayProperties(self.sbStack.stackDict['xrImageProperties'])
 		# Add windowing controls to sidebar.
-		self.sbXrayProperties.addPlotWindow(self.workEnvironment.workspaceWidget['X-RAY'].plot0,0)
-		self.sbXrayProperties.addPlotWindow(self.workEnvironment.workspaceWidget['X-RAY'].plot90,1)
+		# self.sbXrayProperties.addPlotWindow(self.workEnvironment.workspaceWidget['X-RAY'].plot0,0)
+		# self.sbXrayProperties.addPlotWindow(self.workEnvironment.workspaceWidget['X-RAY'].plot90,1)
 		# Connect UI buttons.
 		self.sbXrayProperties.widget['cbBeamIsoc'].stateChanged.connect(partial(self.xrayOverlay,overlay='beam'))
 		self.sbXrayProperties.widget['cbPatIsoc'].stateChanged.connect(partial(self.xrayOverlay,overlay='patient'))
