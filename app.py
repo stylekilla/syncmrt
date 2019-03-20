@@ -1,7 +1,9 @@
 # Program imports
 import config
 import workspace
-import sidebar
+from sidebar import Sidebar
+from synctools import QsWidgets
+
 # Sitepackages
 import os
 import sys
@@ -12,7 +14,6 @@ from PyQt5.QtCore import pyqtSlot as Slot
 from PyQt5 import QtCore, QtGui, QtWidgets, uic
 # SyncMRT Tools.
 import synctools as mrt
-
 
 # For PyInstaller:
 if getattr(sys, 'frozen', False):
@@ -30,7 +31,7 @@ Ui_MainWindow, QtBaseClass = uic.loadUiType(qtCreatorFile)
 
 import logging
 # Debug levels: NOTSET, DEBUG, INFO, WARNING, ERROR, CRITICAL
-logging.basicConfig(level=logging.CRITICAL)
+logging.basicConfig(level=logging.INFO)
 
 '''
 MAIN CLASS
@@ -55,33 +56,28 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		self.layoutSidebar.setContentsMargins(0,0,0,0)
 		self.layoutWorkspace.setContentsMargins(0,0,0,0)
 
-		# Sidebar panels
-		self.sbStack = sidebar.stack(self.frameSidebarStack)
-		self.sbList = sidebar.stackList(self.widgetSidebarList)
-		self.sbSelector = sidebar.selector(self.sbList,self.sbStack)
-
-		# Add alignment section to sidebar (list+stack).
-		self.sbSelector.addPage('Alignment',before='all')
-		self.sbAlignment = sidebar.alignment(self.sbStack.stackDict['Alignment'])
+		# Sidebar panel.
+		self.sidebar = Sidebar(self.frameSidebarStack,self.frameSidebarList)
+		# Sidebar: Alignment.
+		self.sbAlignment = self.sidebar.addPage('Alignment',QsWidgets.QAlignment(),before='all')
+		# self.sbAlignment = self.sidebar.getPage('Alignment')
+		# self.sbAlignment = sidebar.alignment(self.sidebar.stack.stackDict['Alignment'])
 		self.sbAlignment.widget['maxMarkers'].setValue(3)
 		self.sbAlignment.widget['maxMarkers'].valueChanged.connect(partial(self.updateSettings,'global',self.sbAlignment.widget['maxMarkers']))
 		self.sbAlignment.widget['calcAlignment'].clicked.connect(partial(self.patientCalculateAlignment,treatmentIndex=-1))
 		self.sbAlignment.widget['doAlignment'].clicked.connect(partial(self.patientApplyAlignment,treatmentIndex=-1))
 		self.sbAlignment.widget['optimise'].toggled.connect(partial(self.toggleOptimise))
-
 		# Add treatment section to sidebar.
-		self.sbSelector.addPage('Treatment',after='Alignment')
-		self.sbTreatment = sidebar.treatment(self.sbStack.stackDict['Treatment'])
-
+		self.sidebar.addPage('Treatment',QsWidgets.QTreatment(),after='Alignment')
+		self.sbTreatment = self.sidebar.getPage('Treatment')
 		# Add image properties section to sidebar.
-		self.sbSelector.addPage('ImageProperties',after='Treatment')
-
+		self.sidebar.addPage('ImageProperties',None,after='Treatment')
 		# Add settings section to sidebar.
-		self.sbSelector.addPage('Settings',after='all')
-		self.sbSettings = sidebar.settings(self.sbStack.stackDict['Settings'])
+		self.sidebar.addPage('Settings',QsWidgets.QSettings(),after='all')
+		self.sbSettings = self.sidebar.getPage('Settings')
 
 		# Create work environment
-		self.workEnvironment = workspace.environment(self.toolbarPane,self.workStack)
+		self.environment = workspace.environment(self.toolbarPane,self.workStack)
 
 		# PropertyManager
 		self.property = workspace.propertyModel()
@@ -130,8 +126,8 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		More GUI linking from System and Patient.
 		'''
 		# Create controls work environment.
-		self.workEnvironment.addWorkspace('Controls',alignment='Right')
-		# self.controls = mrt.widgets.controls.controlsPage(parent=self.workEnvironment.stackPage['Controls'])
+		# self.environment.addPage('Controls',alignment='Right')
+		# self.controls = mrt.widgets.controls.controlsPage(parent=self.environment.stackPage['Controls'])
 		self.sbSettings.modeChanged.connect(self.setControlsComplexity)
 		self.sbSettings.stageChanged.connect(self.setStage)
 		# self.sbSettings.detectorChanged.connect(self.setControlsComplexity)
@@ -144,19 +140,20 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 
 	def testing(self):
 		# self.openFiles('folder')
-		# self.patient.xr.plot.plot0.markerAdd(-27.036,45.995)
-		# self.patient.xr.plot.plot0.markerAdd(32.8665,45.001)
-		# self.patient.xr.plot.plot0.markerAdd(34.6091,-15.0564)
-		# self.patient.xr.plot.plot90.markerAdd(-23.2147,46.0205)
-		# self.patient.xr.plot.plot90.markerAdd(-57.9952,43.4355)
-		# self.patient.xr.plot.plot90.markerAdd(43.1843,-15.4921)
+		# self.envXray.plot.plot0.markerAdd(-27.036,45.995)
+		# self.envXray.plot.plot0.markerAdd(32.8665,45.001)
+		# self.envXray.plot.plot0.markerAdd(34.6091,-15.0564)
+		# self.envXray.plot.plot90.markerAdd(-23.2147,46.0205)
+		# self.envXray.plot.plot90.markerAdd(-57.9952,43.4355)
+		# self.envXray.plot.plot90.markerAdd(43.1843,-15.4921)
 		# self.patient.rtplan.plot[0].plot0.markerAdd(25.527,-27.8264)
 		# self.patient.rtplan.plot[0].plot0.markerAdd(-29.334,-25.1335)
 		# self.patient.rtplan.plot[0].plot0.markerAdd(-34.1097,32.0152)
 		# self.patient.rtplan.plot[0].plot90.markerAdd(-0.3594,-27.2985)
 		# self.patient.rtplan.plot[0].plot90.markerAdd(-35.9191,-25.8618)
 		# self.patient.rtplan.plot[0].plot90.markerAdd(63.9358,31.6087)
-		self.createWorkEnvironmentXray()
+		self.openXray(['/home/imbl/Documents/Software/testdata/test-xray.hdf5'])
+		# pass
 
 	@QtCore.pyqtSlot(float,float,float)
 	def ctUpdateIsocenter(self,x,y,z):
@@ -245,45 +242,43 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 			if len(dataset) > 0:
 				self.openRTP(dataset)
 
-			self.workEnvironment.button['CT'].clicked.emit()
+			self.environment.button['CT'].clicked.emit()
 
 	def openXray(self,files):
 		'''Open Xray modality files.'''
 		# Create new Xray workspace if required.
 		if self._isXrayOpen == False:
-			self.createWorkEnvironmentXray()
-			logging.info('Created Xray Work Environment')
-
+			self.createEnvironmentXray()
+			logging.info('Syncmrt:app.py: Created X-RAY Work Environment')
 		# Load Xray Dataset.
 		self.patient.loadXR(files)
 		# Connect Xray plots to workspace.
-		self.patient.xr.plot = self.workEnvironment.workspaceWidget['X-RAY']
+		# self.envXray.plot = self.environment.workspaceWidget['X-RAY']
+		# self.environment.workspaceWidget['X-RAY']
 		# Set maximum markers according to settings.
-		self.patient.xr.plot.settings('maxMarkers',config.markerQuantity)
+		# self.envXray.plot.settings('maxMarkers',config.markerQuantity)
 		# Load Xray images into plot areas.
-		self.patient.xr.plot.plot0.imageLoad(self.patient.xr.image[0].array,extent=self.patient.xr.image[0].extent,imageIndex=0)
-		self.patient.xr.plot.plot90.imageLoad(self.patient.xr.image[0].array,extent=self.patient.xr.image[0].extent,imageIndex=1)
+		# self.envXray.plot.plot.imageLoad(self.envXray.image.array,extent=self.envXray.image.extent,imageIndex=0)
 		# Refresh image property tools.
-		self.sbXrayProperties.window['histogram'][0].refreshControls()
-		self.sbXrayProperties.window['histogram'][1].refreshControls()
+		# self.sbXrayProperties.window['histogram'].refreshControls()
 
 		# Finalise import. Set open status to true and open the workspace.
 		self._isXrayOpen = True
-		self.workEnvironment.button['X-RAY'].clicked.emit()
+		self.environment.button['X-RAY'].clicked.emit()
 
 
 		# If no xray is open... do stuff.
 		# if self._isXrayOpen is False:
 			# Add the x-ray workspace.
-			# self.workEnvironment.addWorkspace('X-RAY')
+			# self.environment.addPage('X-RAY')
 			# Load the files.
 			# self.patient.loadXR(files)
 			# Plot data.
-			# self.patient.xr.plot = workspace.plot(self.workEnvironment.stackPage['X-RAY'])
-			# self.patient.xr.plot.settings('maxMarkers',config.markerQuantity)
+			# self.envXray.plot = workspace.plot(self.environment.stackPage['X-RAY'])
+			# self.envXray.plot.settings('maxMarkers',config.markerQuantity)
 			# Create stack page for xray image properties and populate.
-			# self.sbStack.addPage('xrImageProperties')
-			# self.sbXrayProperties = sidebar.xrayProperties(self.sbStack.stackDict['xrImageProperties'])
+			# self.sidebar.stack.addPage('xrImageProperties')
+			# self.sbXrayProperties = sidebar.xrayProperties(self.sidebar.stack.stackDict['xrImageProperties'])
 			# self.sbXrayProperties.widget['cbBeamIsoc'].stateChanged.connect(partial(self.xrayOverlay,overlay='beam'))
 			# self.sbXrayProperties.widget['cbPatIsoc'].stateChanged.connect(partial(self.xrayOverlay,overlay='patient'))
 			# self.sbXrayProperties.widget['cbCentroid'].stateChanged.connect(partial(self.xrayOverlay,overlay='centroid'))
@@ -291,7 +286,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 			# self.sbXrayProperties.widget['alignIsocX'].editingFinished.connect(partial(self.updateSettings,'xr',self.sbXrayProperties.widget['alignIsocX']))
 			# self.sbXrayProperties.widget['alignIsocY'].editingFinished.connect(partial(self.updateSettings,'xr',self.sbXrayProperties.widget['alignIsocY']))
 			# Set image properties in sidebar to x-ray image properties whenever the workspace is open.
-			# self.workEnvironment.stack.currentChanged.connect(self.setImagePropertiesStack)
+			# self.environment.stack.currentChanged.connect(self.setImagePropertiesStack)
 			# self.setImagePropertiesStack()
 			# Do other stuff.
 			# self.sbAlignment.widget['checkXray'].setStyleSheet("color: green")
@@ -299,59 +294,58 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 
 		# elif self._isXrayOpen is True:
 			# If an xray is already open, clear the environments and load the new data.
-			# self.patient.xr.reloadFiles(files)
+			# self.envXray.reloadFiles(files)
 
 		# Set plots.
-		# self.patient.xr.plot.plot0.imageLoad(self.patient.xr.image[0].array,extent=self.patient.xr.image[0].extent,imageIndex=0)
-		# self.patient.xr.plot.plot90.imageLoad(self.patient.xr.image[1].array,extent=self.patient.xr.image[1].extent,imageIndex=1)
-		# self.sbXrayProperties.addPlotWindow(self.sbXrayProperties.window['window'][0],self.patient.xr.plot.plot0)
-		# self.sbXrayProperties.addPlotWindow(self.patient.xr.plot.plot0,0)
-		# self.sbXrayProperties.addPlotWindow(self.patient.xr.plot.plot90,1)
+		# self.envXray.plot.plot0.imageLoad(self.envXray.image[0].array,extent=self.envXray.image[0].extent,imageIndex=0)
+		# self.envXray.plot.plot90.imageLoad(self.envXray.image[1].array,extent=self.envXray.image[1].extent,imageIndex=1)
+		# self.sbXrayProperties.addPlotWindow(self.sbXrayProperties.window['window'][0],self.envXray.plot.plot0)
+		# self.sbXrayProperties.addPlotWindow(self.envXray.plot.plot0,0)
+		# self.sbXrayProperties.addPlotWindow(self.envXray.plot.plot90,1)
 		# Set to current working environment (in widget stack).
-		# self.workEnvironment.button['X-RAY'].clicked.emit()
+		# self.environment.button['X-RAY'].clicked.emit()
 
-	def createWorkEnvironmentXray(self):
-		# Main Xray plot workspace.
-		self.workEnvironment.addWorkspace('X-RAY')
-		self.workEnvironment.workspaceWidget['X-RAY'] = workspace.QPlotWidget(self.workEnvironment.stackPage['X-RAY'])
-		# self.workEnvironment.workspaceWidget['X-RAY'] = workspace.plot(self.workEnvironment.stackPage['X-RAY'])
+	def createEnvironmentXray(self):
+		# Make a widget for plot stuff.
+		self.envXray = self.environment.addPage('X-RAY',QsWidgets.QPlotEnvironment())
+		self.envXray.settings('maxMarkers',config.markerQuantity)
 		# Sidebar page for Xray image properties.
-		self.sbStack.addPage('xrImageProperties')
-		self.sbXrayProperties = sidebar.xrayProperties(self.sbStack.stackDict['xrImageProperties'])
-		# Add windowing controls to sidebar.
-		# self.sbXrayProperties.addPlotWindow(self.workEnvironment.workspaceWidget['X-RAY'].plot0,0)
-		# self.sbXrayProperties.addPlotWindow(self.workEnvironment.workspaceWidget['X-RAY'].plot90,1)
-		# Connect UI buttons.
-		self.sbXrayProperties.widget['cbBeamIsoc'].stateChanged.connect(partial(self.xrayOverlay,overlay='beam'))
-		self.sbXrayProperties.widget['cbPatIsoc'].stateChanged.connect(partial(self.xrayOverlay,overlay='patient'))
-		self.sbXrayProperties.widget['cbCentroid'].stateChanged.connect(partial(self.xrayOverlay,overlay='centroid'))
-		# Connect image properties stack to work environment.
-		self.workEnvironment.stack.currentChanged.connect(self.setImagePropertiesStack)
-		self.setImagePropertiesStack()
+		self.sidebar.addPage('xrayImageProperties',QsWidgets.QXrayProperties(),addList=False)
+		# self.sbXrayProperties = sidebar.xrayProperties(self.sidebar.stack.stackDict['xrImageProperties'])
+		# # Add windowing controls to sidebar.
+		# # self.sbXrayProperties.addPlotWindow(self.environment.workspaceWidget['X-RAY'].plot0,0)
+		# # self.sbXrayProperties.addPlotWindow(self.environment.workspaceWidget['X-RAY'].plot90,1)
+		# # Connect UI buttons.
+		# self.sbXrayProperties.widget['cbBeamIsoc'].stateChanged.connect(partial(self.xrayOverlay,overlay='beam'))
+		# self.sbXrayProperties.widget['cbPatIsoc'].stateChanged.connect(partial(self.xrayOverlay,overlay='patient'))
+		# self.sbXrayProperties.widget['cbCentroid'].stateChanged.connect(partial(self.xrayOverlay,overlay='centroid'))
+		# # Connect image properties stack to work environment.
+		# self.environment.stack.currentChanged.connect(self.setImagePropertiesStack)
+		# self.setImagePropertiesStack()
 
 	def xrayOverlay(self,overlay):
 		'''Control x-ray plot overlays.'''
 		if overlay == 'beam':
 			if self.sbXrayProperties.widget['cbBeamIsoc'].isChecked():
-				self.patient.xr.plot.plot0.toggleOverlay(1,state=True)
-				self.patient.xr.plot.plot90.toggleOverlay(1,state=True)
+				self.envXray.plot.plot0.toggleOverlay(1,state=True)
+				self.envXray.plot.plot90.toggleOverlay(1,state=True)
 			else:
-				self.patient.xr.plot.plot0.toggleOverlay(1,state=False)
-				self.patient.xr.plot.plot90.toggleOverlay(1,state=False)
+				self.envXray.plot.plot0.toggleOverlay(1,state=False)
+				self.envXray.plot.plot90.toggleOverlay(1,state=False)
 		elif overlay == 'patient':
 			if self.sbXrayProperties.widget['cbPatIsoc'].isChecked():
-				self.patient.xr.plot.plot0.toggleOverlay(2,state=True)
-				self.patient.xr.plot.plot90.toggleOverlay(2,state=True)
+				self.envXray.plot.plot0.toggleOverlay(2,state=True)
+				self.envXray.plot.plot90.toggleOverlay(2,state=True)
 			else:
-				self.patient.xr.plot.plot0.toggleOverlay(2,state=False)
-				self.patient.xr.plot.plot90.toggleOverlay(2,state=False)
+				self.envXray.plot.plot0.toggleOverlay(2,state=False)
+				self.envXray.plot.plot90.toggleOverlay(2,state=False)
 		elif overlay == 'centroid':
 			if self.sbXrayProperties.widget['cbCentroid'].isChecked():
-				self.patient.xr.plot.plot0.toggleOverlay(0,state=True)
-				self.patient.xr.plot.plot90.toggleOverlay(0,state=True)
+				self.envXray.plot.plot0.toggleOverlay(0,state=True)
+				self.envXray.plot.plot90.toggleOverlay(0,state=True)
 			else:
-				self.patient.xr.plot.plot0.toggleOverlay(0,state=False)
-				self.patient.xr.plot.plot90.toggleOverlay(0,state=False)
+				self.envXray.plot.plot0.toggleOverlay(0,state=False)
+				self.envXray.plot.plot90.toggleOverlay(0,state=False)
 		else:
 			pass
 
@@ -364,7 +358,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		# Load CT Dataset.
 		self.patient.loadCT(files)
 		# Connect CT plots to workspace.
-		self.patient.ct.plot = self.workEnvironment.workspaceWidget['CT']
+		self.patient.ct.plot = self.environment.workspaceWidget['CT']
 		# Set maximum markers according to settings.
 		self.patient.ct.plot.settings('maxMarkers',config.markerQuantity)
 		# Load CT images into plot areas.
@@ -377,24 +371,24 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		self.sbCTProperties.group['editIsocenter'].setEnabled(True)
 		# Finalise import. Set open status to true and open the workspace.
 		self._isCTOpen = True
-		self.workEnvironment.button['CT'].clicked.emit()
+		self.environment.button['CT'].clicked.emit()
 
 	def createWorkEnvironmentCT(self):
 		# Main CT plot workspace.
-		self.workEnvironment.addWorkspace('CT')
-		self.workEnvironment.workspaceWidget['CT'] = workspace.plot(self.workEnvironment.stackPage['CT'])
+		self.environment.addPage('CT')
+		self.environment.workspaceWidget['CT'] = workspace.plot(self.environment.stackPage['CT'])
 		# Sidebar page for CT image properties.
-		self.sbStack.addPage('ctImageProperties')
-		self.sbCTProperties = sidebar.ctProperties(self.sbStack.stackDict['ctImageProperties'])
+		self.sidebar.stack.addPage('ctImageProperties')
+		self.sbCTProperties = sidebar.ctProperties(self.sidebar.stack.stackDict['ctImageProperties'])
 		# Add windowing controls to sidebar.
-		self.sbCTProperties.addPlotWindow(self.workEnvironment.workspaceWidget['CT'].plot0,0)
-		self.sbCTProperties.addPlotWindow(self.workEnvironment.workspaceWidget['CT'].plot90,1)
+		self.sbCTProperties.addPlotWindow(self.environment.workspaceWidget['CT'].plot0,0)
+		self.sbCTProperties.addPlotWindow(self.environment.workspaceWidget['CT'].plot90,1)
 		# Connect UI buttons/signals.
 		self.sbCTProperties.widget['cbPatIsoc'].stateChanged.connect(partial(self.ctOverlay,overlay='patient'))
 		self.sbCTProperties.widget['cbCentroid'].stateChanged.connect(partial(self.ctOverlay,overlay='centroid'))
 		self.sbCTProperties.isocenterChanged.connect(partial(self.ctUpdateIsocenter))
 		# Connect image properties stack to work environment.
-		self.workEnvironment.stack.currentChanged.connect(self.setImagePropertiesStack)
+		self.environment.stack.currentChanged.connect(self.setImagePropertiesStack)
 		self.setImagePropertiesStack()
 
 	def ctOverlay(self,overlay):
@@ -420,7 +414,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		'''Open RTP modality files.'''
 		# self.rtp.ds = mrt.fileHandler.dicom.importDicom(files,'RTPLAN')
 		# Create a work environment in the application.
-		self.workEnvironment.addWorkspace('RTPLAN')
+		self.environment.addPage('RTPLAN')
 		# Load the ct dataset into the patient.
 		self.patient.loadRTPLAN(files,self.patient.ct.image[0])
 
@@ -441,11 +435,11 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		for i in range(len(self.patient.rtplan.image)):
 
 			# Create stack page for rtplan image properties and populate.
-			self.sbStack.addPage('bev%iImageProperties'%(i+1))
-			self.workEnvironment.addWorkspace('BEV%i'%(i+1))
-			self.patient.rtplan.plot[i] = workspace.plot(self.workEnvironment.stackPage['BEV%i'%(i+1)])
+			self.sidebar.stack.addPage('bev%iImageProperties'%(i+1))
+			self.environment.addPage('BEV%i'%(i+1))
+			self.patient.rtplan.plot[i] = workspace.plot(self.environment.stackPage['BEV%i'%(i+1)])
 			self.patient.rtplan.plot[i].settings('maxMarkers',config.markerQuantity)
-			self.patient.rtplan.guiInterface[i] = sidebar.ctProperties(self.sbStack.stackDict['bev%iImageProperties'%(i+1)])
+			self.patient.rtplan.guiInterface[i] = sidebar.ctProperties(self.sidebar.stack.stackDict['bev%iImageProperties'%(i+1)])
 			self.patient.rtplan.guiInterface[i].widget['cbPatIsoc'].stateChanged.connect(partial(self.rtpOverlay,overlay='patient'))
 			self.patient.rtplan.guiInterface[i].widget['cbCentroid'].stateChanged.connect(partial(self.rtpOverlay,overlay='centroid'))
 
@@ -484,7 +478,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		self.patient.ct.plot.plot90.patientIsocenter = self.patient.ct.isocenter
 
 		self._isRTPOpen = True
-		self.workEnvironment.button['RTPLAN'].clicked.emit()
+		self.environment.button['RTPLAN'].clicked.emit()
 
 	def rtpOverlay(self,overlay):
 		'''Control rtplan plot overlays.'''
@@ -509,19 +503,19 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 
 	def setImagePropertiesStack(self):
 		if self._isXrayOpen:
-			if self.workEnvironment.stack.indexOf(self.workEnvironment.stackPage['X-RAY']) == self.workEnvironment.stack.currentIndex():
-				self.sbStack.stackDict['ImageProperties'] = self.sbStack.stackDict['xrImageProperties']
+			if self.environment.stack.indexOf(self.environment.stackPage['X-RAY']) == self.environment.stack.currentIndex():
+				self.sidebar.stack.stackDict['ImageProperties'] = self.sidebar.stack.stackDict['xrImageProperties']
 		if self._isCTOpen:
-			if self.workEnvironment.stack.indexOf(self.workEnvironment.stackPage['CT']) == self.workEnvironment.stack.currentIndex():
-				self.sbStack.stackDict['ImageProperties'] = self.sbStack.stackDict['ctImageProperties']
+			if self.environment.stack.indexOf(self.environment.stackPage['CT']) == self.environment.stack.currentIndex():
+				self.sidebar.stack.stackDict['ImageProperties'] = self.sidebar.stack.stackDict['ctImageProperties']
 		if self._isRTPOpen:
 			for i in range(len(self.patient.rtplan.image)):
-				if self.workEnvironment.stack.indexOf(self.workEnvironment.stackPage['BEV%i'%(i+1)]) == self.workEnvironment.stack.currentIndex():
-						self.sbStack.stackDict['ImageProperties'] = self.sbStack.stackDict['bev%iImageProperties'%(i+1)]
+				if self.environment.stack.indexOf(self.environment.stackPage['BEV%i'%(i+1)]) == self.environment.stack.currentIndex():
+						self.sidebar.stack.stackDict['ImageProperties'] = self.sidebar.stack.stackDict['bev%iImageProperties'%(i+1)]
 
 		# Force refresh.
-		if (self.sbSelector.list.currentItem() == self.sbSelector.getListItem('ImageProperties')):
-			self.sbStack.setCurrentWidget(self.sbStack.stackDict['ImageProperties'])
+		if (self.sidebar.list.currentItem() == self.sidebar.list.getListItem('ImageProperties')):
+			self.sidebar.stack.setCurrentWidget(self.sidebar.stack.stackDict['ImageProperties'])
 
 	def updateSettings(self,mode,origin,idx=0):
 		'''Update variable based of changed data in property model (in some cases, external sources).'''
@@ -553,8 +547,8 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 				mode = 'radiograph'
 				# Get the windows and apply them.
 				windows = self.sbXrayProperties.getWindows()
-				self.patient.xr.plot.setRadiographMode(mode)
-				self.patient.xr.plot.setWindows(windows)
+				self.envXray.setRadiographMode(mode)
+				self.envXray.plot.setWindows(windows)
 
 		elif (mode == 'ct') & (self._isCTOpen):
 			'''Update ct specific properties.'''
@@ -589,7 +583,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 				# Update settings.
 				config.markerQuantity = value
 				# Update plot tables.
-				if self._isXrayOpen: self.patient.xr.plot.settings('maxMarkers',value)
+				if self._isXrayOpen: self.envXray.settings('maxMarkers',value)
 				if self._isCTOpen: self.patient.ct.plot.settings('maxMarkers',value)
 				if self._isRTPOpen: 
 					for i in range(len(self.patient.rtplan.plot)):
@@ -641,13 +635,13 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 
 		if treatmentIndex == -1:
 			'''Align to CT'''
-			if len(self.patient.xr.plot.plot0.pointsX)>0:
+			if len(self.envXray.plot.plot0.pointsX)>0:
 				if self.sbAlignment.widget['optimise'].isChecked():
 					markerSize = self.sbAlignment.widget['markerSize'].value()
 					threshold = self.sbAlignment.widget['threshold'].value()
 					'''Optimise points.'''
-					self.patient.xr.plot.plot0.markerOptimise(markerSize,threshold)
-					self.patient.xr.plot.plot90.markerOptimise(markerSize,threshold)
+					self.envXray.plot.plot0.markerOptimise(markerSize,threshold)
+					self.envXray.plot.plot90.markerOptimise(markerSize,threshold)
 					self.patient.ct.plot.plot0.markerOptimise(markerSize,threshold)
 					self.patient.ct.plot.plot90.markerOptimise(markerSize,threshold)
 					# log(self.logFile,"Successfully optimised points.","event")
@@ -655,17 +649,17 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 					l[:,1] = self.patient.ct.plot.plot0.pointsXoptimised
 					l[:,2] = self.patient.ct.plot.plot0.pointsYoptimised
 					l[:,0] = self.patient.ct.plot.plot90.pointsXoptimised
-					r[:,1] = self.patient.xr.plot.plot0.pointsXoptimised
-					r[:,2] = self.patient.xr.plot.plot0.pointsYoptimised
-					r[:,0] = self.patient.xr.plot.plot90.pointsXoptimised
+					r[:,1] = self.envXray.plot.plot0.pointsXoptimised
+					r[:,2] = self.envXray.plot.plot0.pointsYoptimised
+					r[:,0] = self.envXray.plot.plot90.pointsXoptimised
 				else:
 					'''Do not optimise anything.'''
 					l[:,1] = self.patient.ct.plot.plot0.pointsX
 					l[:,2] = self.patient.ct.plot.plot0.pointsY
 					l[:,0] = self.patient.ct.plot.plot90.pointsX
-					r[:,1] = self.patient.xr.plot.plot0.pointsX
-					r[:,2] = self.patient.xr.plot.plot0.pointsY
-					r[:,0] = self.patient.xr.plot.plot90.pointsX
+					r[:,1] = self.envXray.plot.plot0.pointsX
+					r[:,2] = self.envXray.plot.plot0.pointsY
+					r[:,0] = self.envXray.plot.plot90.pointsX
 
 				# Re-align the points with the synchrotron axes.
 				# Use the extent to get the axes directions.
@@ -702,8 +696,8 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 			if len(self.patient.rtplan.plot[treatmentIndex].plot0.pointsX)>0:
 				# Optimise Points
 				if self.sbAlignment.widget['optimise'].isChecked():
-					self.patient.xr.plot.plot0.markerOptimise(self.sbAlignment.widget['markerSize'].value(),threshold)
-					self.patient.xr.plot.plot90.markerOptimise(self.sbAlignment.widget['markerSize'].value(),threshold)
+					self.envXray.plot.plot0.markerOptimise(self.sbAlignment.widget['markerSize'].value(),threshold)
+					self.envXray.plot.plot90.markerOptimise(self.sbAlignment.widget['markerSize'].value(),threshold)
 					self.patient.rtplan.plot[treatmentIndex].plot0.markerOptimise(self.sbAlignment.widget['markerSize'].value(),threshold)
 					self.patient.rtplan.plot[treatmentIndex].plot90.markerOptimise(self.sbAlignment.widget['markerSize'].value(),threshold)
 					# log(self.logFile,"Successfully optimised points.","event")
@@ -711,17 +705,17 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 					l[:,1] = self.patient.rtplan.plot[treatmentIndex].plot0.pointsXoptimised
 					l[:,2] = self.patient.rtplan.plot[treatmentIndex].plot0.pointsYoptimised
 					l[:,0] = self.patient.rtplan.plot[treatmentIndex].plot90.pointsXoptimised
-					r[:,1] = self.patient.xr.plot.plot0.pointsXoptimised
-					r[:,2] = self.patient.xr.plot.plot0.pointsYoptimised
-					r[:,0] = self.patient.xr.plot.plot90.pointsXoptimised
+					r[:,1] = self.envXray.plot.plot0.pointsXoptimised
+					r[:,2] = self.envXray.plot.plot0.pointsYoptimised
+					r[:,0] = self.envXray.plot.plot90.pointsXoptimised
 				else:
 					'''Do not optimise anyting.'''
 					l[:,1] = self.patient.rtplan.plot[treatmentIndex].plot0.pointsX
 					l[:,2] = self.patient.rtplan.plot[treatmentIndex].plot0.pointsY
 					l[:,0] = self.patient.rtplan.plot[treatmentIndex].plot90.pointsX
-					r[:,1] = self.patient.xr.plot.plot0.pointsX
-					r[:,2] = self.patient.xr.plot.plot0.pointsY
-					r[:,0] = self.patient.xr.plot.plot90.pointsX
+					r[:,1] = self.envXray.plot.plot0.pointsX
+					r[:,2] = self.envXray.plot.plot0.pointsY
+					r[:,0] = self.envXray.plot.plot90.pointsX
 
 				success = True
 
@@ -763,12 +757,12 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 				temp = self.system.solver._syncPatientIsocenter
 				# Convert back to x1,y1,x2 plot.
 				_syncPatientIsocenter = np.array([temp[1],temp[2],temp[0]])
-				self.patient.xr.plot.plot0.patientIsocenter = _syncPatientIsocenter
-				self.patient.xr.plot.plot90.patientIsocenter = _syncPatientIsocenter
+				self.envXray.plot.plot0.patientIsocenter = _syncPatientIsocenter
+				self.envXray.plot.plot90.patientIsocenter = _syncPatientIsocenter
 
 		# Update x-ray centroid position.
-		self.patient.xr.plot.plot0.ctd = self.system.solver._rightCentroid
-		self.patient.xr.plot.plot90.ctd = self.system.solver._rightCentroid
+		self.envXray.plot.plot0.ctd = self.system.solver._rightCentroid
+		self.envXray.plot.plot90.ctd = self.system.solver._rightCentroid
 
 		# Update ct centroid position.
 		self.patient.ct.plot.plot0.ctd = self.system.solver._leftCentroid

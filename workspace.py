@@ -2,330 +2,71 @@ from PyQt5 import QtWidgets, QtGui, QtCore, uic
 from functools import partial
 import numpy as np
 
-# imports for class plot():
-from synctools import widgets
-import matplotlib as mpl
-mpl.use('Qt5Agg')
-from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT
-
-resourceFilepath = "resources/"
+# from widgets import *
 
 class environment:
 	'''Select the work environment out of the stacked widget via the toolbar buttons.'''
 	def __init__(self,toolbar,stack):
+		# Stack widget.
 		self.stack = stack
-		self.stackPage = {}
+		# Page in stack.
+		self.page = {}
+		# Button for stack page.
 		self.button = {}
-
-		# Dict of workspace widgets.
-		self.workspaceWidget = {}
-
+		# Toolbar Layout.
 		layout = QtWidgets.QHBoxLayout()
 		layout.setAlignment(QtCore.Qt.AlignLeft)
 		layout.setContentsMargins(0,0,0,0)
 		layout.setSpacing(0)
-
+		# Add toolbar layout to toolbar.
 		self.toolbarLayout = layout
 		toolbar.setLayout(self.toolbarLayout)
-
+		# Stretch end of toolbar.
 		self.toolbarLayout.addStretch()
 
-	def addWorkspace(self,name,alignment=None):
+	def addPage(self,name,widget,alignment=None):
 		'''Add environments to work environment.'''
-		if name in self.stackPage:
+		if name in self.page:
 			# Do nothing if it already exists.
 			return
-
 		# Specify the button size.
 		size = QtCore.QSize()
 		size.setHeight(30)
 		size.setWidth(75)
 
-		if type(name) == str:
-			# Single entry as a string, make it a list.
-			name = [name]
-		if type(name) != list:
-			# Didn't get a list... why?
-			print('workspace.environment.addWorkspace: Expected list, but got '+type(name))
-			return -1
+		# if type(name) == str:
+		# 	# Single entry as a string, make it a list.
+		# 	name = [name]
+		# if type(name) != list:
+		# 	# Didn't get a list... why?
+		# 	print('workspace.environment.addPage: Expected list, but got '+type(name))
+		# 	return -1
 		# Enumerate list and add workspaces.
-		for index, name in enumerate(name):
-			# Create a button.
-			button = QtWidgets.QToolButton()
-			button.setText(name)
-			button.setFixedSize(size)
-			# The alignment specifies the left or the right hand side the bar.
-			if alignment is not None:
-				self.toolbarLayout.addWidget(button)
-			else:
-				self.toolbarLayout.insertWidget(0,button)
-			# Add the button to the workspace.
-			self.button[name] = button
-			# Create a new widget for the stack.
-			page = QtWidgets.QWidget()
-			self.stack.addWidget(page)
-			self.stackPage[name] = page
-			# Link the button to the widget position in the stack.
-			index = self.stack.indexOf(page)
-			self.button[name].clicked.connect(partial(self.showWorkspace,index))
+		# for index, name in enumerate(name):
 
-	def showWorkspace(self,index):
+		# Create a button.
+		button = QtWidgets.QToolButton()
+		button.setText(name)
+		button.setFixedSize(size)
+		# The alignment specifies the left or the right hand side the bar.
+		if alignment is not None:
+			self.toolbarLayout.addWidget(button)
+		else:
+			self.toolbarLayout.insertWidget(0,button)
+		# Add the button to the workspace.
+		self.button[name] = button
+		# Add widget to the stack.
+		self.stack.addWidget(widget)
+		# Get the index of the widget.
+		index = self.stack.indexOf(widget)
+		# Link the button and page name to the widget position in the stack.
+		self.page[name] = index
+		self.button[name].clicked.connect(partial(self.showPage,index))
+		# Return the widget if wanted.
+		return widget
+
+	def showPage(self,index):
 		self.stack.setCurrentIndex(index)
-
-# class xray:
-# 	'''
-# 	X-ray workspace. It has two flavours.
-# 	(1) 2D imaging.
-# 	(2) 3D imaging.
-# 	'''
-# 	def __init__(self,parent):
-# 		kwargs = {
-# 			'xLabel': 'X',
-# 			'yLabel': 'Y'
-# 		}
-# 		self.plotWidget = QPlotWidget(parentWidget,kwargs)
-
-class QPlotWidget:
-	'''
-	An advanced QWidget specifically designed for plotting with MatPlotLib.
-	It has a navbar, plot and table.
-	'''
-	def __init__(self,parent,**kwargs):
-		labels = {
-			'xLabel':kwargs.get('xLabel','X'),
-			'yLabel':kwargs.get('yLabel','Y')
-		}
-		# A table model is required for the table view.
-		self.tableModel = QPlotTableModel(labels)
-		self.tableView = QtWidgets.QTableView()
-		# The plot needs the table model for data.
-		self.plot = widgets.mpl.plot(self.tableModel)
-		# The navbar needs the plot widget and the parent widget.
-		self.navbar = navigationBar(self.plot.canvas,parent)
-
-		# Configure table view.
-		self.tableView.setAlternatingRowColors(True)
-		self.tableView.setModel(self.tableModel)
-		self.tableView.setColumnWidth(0,200)
-		self.tableView.verticalHeader().setDefaultSectionSize(20)
-		self.tableView.verticalHeader().hide()
-		self.tableView.horizontalHeader().setStretchLastSection(True)
-		
-		# Add layout to parent.
-		layout = QtWidgets.QVBoxLayout(parent)
-		# Add widgets to layout.
-		layout.addWidget(self.navbar)
-		# QSplitter for resizing between plot and table.
-		splitter = QtWidgets.QSplitter(QtCore.Qt.Vertical)
-		splitter.addWidget(self.plot.canvas)
-		splitter.addWidget(self.tableView)
-		# Set stretch factors.
-		splitter.setSizes([200,100])
-		# splitter.setStretchFactor(0,0.5)
-		# splitter.setStretchFactor(1,0.5)
-		# Add splitter to layout.
-		layout.addWidget(splitter)
-
-class plot:
-	'''
-	All things plot. Navbars, plot canvas, table view/model (x2)
-	'''
-	def __init__(self,widget):
-		self.layout = QtWidgets.QGridLayout(widget)
-		self.model0 = QPlotTableModel()
-		self.model90 = QPlotTableModel()
-		self.plot0 = widgets.mpl.plot(self.model0)
-		self.plot90 = widgets.mpl.plot(self.model90)
-		self.nav0 = navigationBar(self.plot0.canvas,widget)
-		self.nav90 = navigationBar(self.plot90.canvas,widget)
-
-		self.table0 = QtWidgets.QTableView()
-		self.table0.setAlternatingRowColors(True)
-		self.table0.setModel(self.model0)
-		self.table0.setColumnWidth(0,200)
-		self.table0.verticalHeader().setDefaultSectionSize(20)
-		self.table0.verticalHeader().hide()
-		self.table0.horizontalHeader().setStretchLastSection(True)
-
-		self.table90 = QtWidgets.QTableView()
-		self.table90.setAlternatingRowColors(True)
-		self.table90.setModel(self.model90)
-		self.table90.setColumnWidth(0,200)
-		self.table90.verticalHeader().setDefaultSectionSize(20)
-		self.table90.verticalHeader().hide()
-		self.table90.horizontalHeader().setStretchLastSection(True)
-
-		# Add widgets to layout.
-		self.layout.addWidget(self.nav0,0,0)
-		self.layout.addWidget(self.plot0.canvas,1,0)
-		self.layout.addWidget(self.table0,2,0)
-		self.layout.addWidget(self.nav90,0,1)
-		self.layout.addWidget(self.plot90.canvas,1,1)
-		self.layout.addWidget(self.table90,2,1)
-
-		self.nav0.actionClearMarkers.triggered.connect(partial(self.plot0.markerRemove,-1))
-		self.nav0.actionPickMarkers.triggered.connect(self.nav0.pick)
-		self.nav90.actionClearMarkers.triggered.connect(partial(self.plot90.markerRemove,-1))
-		self.nav90.actionPickMarkers.triggered.connect(self.nav90.pick)
-
-		# Enable point updating through editing table values.
-		self.model0.itemChanged.connect(self.plot0.markerUpdate)
-		self.model90.itemChanged.connect(self.plot90.markerUpdate)
-
-		# Blank Qt cursor in figures.
-		self.plot0.canvas.setCursor(QtGui.QCursor(QtCore.Qt.CrossCursor))
-		self.plot90.canvas.setCursor(QtGui.QCursor(QtCore.Qt.CrossCursor))
-
-	def setRadiographMode(self,mode):
-		'''Set radiograph mode to 'sum' or 'max.''' 
-		self.plot0._radiographMode = mode
-		self.plot90._radiographMode = mode
-
-	def settings(self,setting,value):
-		if setting == 'maxMarkers':
-			self.plot0.markerModel.setMarkerRows(value)
-			self.plot90.markerModel.setMarkerRows(value)
-			self.plot0.markersMaximum = value
-			self.plot90.markersMaximum = value
-		else:
-			pass
-
-	def updatePatientIsocenter(self,newIsoc):
-		# Update value in plot.
-		self.plot0.patientIsocenter = newIsoc
-		self.plot90.patientIsocenter = newIsoc
-		# Refresh plot by toggling overlay off/on.
-		self.plot0.toggleOverlay(2,False)
-		self.plot90.toggleOverlay(2,False)
-		self.plot0.toggleOverlay(2,True)
-		self.plot90.toggleOverlay(2,True)
-
-class QPlotTableModel(QtGui.QStandardItemModel):
-	'''
-	Table model for plot points inside the MPL canvas. This is designed to dynamically add and remove data points as they 
-	are selected or removed.
-	Markers are stored in dict with x,y vals.
-	The model will always have a limit of rows set by the maximum marker condition/setting.
-	'''
-	def __init__(self,labels):
-		# Initialise the standard item model first.
-		super().__init__()
-		# Set column and row count.
-		self.setColumnCount(3)
-		self.setMarkerRows(0)
-		self.items = {}
-		self._locked = False
-
-		self.setHorizontalHeaderLabels([
-			'#',
-			labels.get('xLabel','x'),
-			labels.get('yLabel','y')
-		])
-
-	def addPoint(self,row,x,y):
-		'''Write a point to the model. This is specified by the point number (identifier), and it's x and y coord.'''
-		self._locked = True
-		column0 = QtGui.QStandardItem()
-		column0.setData('Marker '+str(row),QtCore.Qt.DisplayRole)
-		column0.setEditable(False)
-
-		column1 = QtGui.QStandardItem()
-		column1.setData(float(x),QtCore.Qt.DisplayRole)
-
-		column2 = QtGui.QStandardItem()
-		column2.setData(float(y),QtCore.Qt.DisplayRole)
-
-		self.items[row-1] = [column1, column2]
-		# self.markers[row-1] = [x,y]
-
-		data = [column0, column1, column2]
-
-		for index, element in enumerate(data):
-			self.setItem(row-1,index,element)
-
-		self.layoutChanged.emit()
-		self._locked = False
-
-	def removePoint(self,index):
-		'''Remove a specific point in the list.'''
-		pass
-
-	def setMarkerRows(self,rows):
-		'''Defines the maximum number of rows according to the maximum number of markers.'''
-		current = self.rowCount()
-		difference = abs(current-rows)
-
-		if rows < current:
-			self.removeRows(current-1-difference, difference)
-		elif rows > current:
-			self.insertRows(current,difference)
-		else:
-			pass
-
-		self.layoutChanged.emit()
-
-	def clearMarkers(self,newRows):
-		'''Clear the model of all it's rows and re-add empty rows in their place.'''
-		currentRows = self.rowCount()
-		self.removeRows(0,currentRows)
-		self.setMarkerRows(newRows)
-
-class navigationBar(NavigationToolbar2QT):
-	def __init__(self,canvas,parent):
-		NavigationToolbar2QT.__init__(self,canvas,parent)
-		self.canvas = canvas
-
-		actions = self.findChildren(QtWidgets.QAction)
-		toolsBlacklist = ['Customize','Forward','Back','Subplots','Save']
-		for a in actions:
-			if a.text() in toolsBlacklist:
-				self.removeAction(a)
-
-		# Remove the labels (x,y,val).
-		self.locLabel.deleteLater()
-
-		self.actionPickMarkers = self.addAction('Pick')
-		self.actionClearMarkers = self.addAction('Clear')
-		self.actionImageSettings = self.addAction('Image Settings')
-		self.insertSeparator(self.actionImageSettings)
-		self.actionPickMarkers.setCheckable(True)
-
-		# Pick should disable when ZOOM or PAN is enabled.
-
-	def set_message(self, s):
-		# Set empty message method to stop it from trying to use self.locLabel
-		pass 
-
-	def pick(self):
-		if self._active == 'PICK':
-			self._active = None
-		else:
-			self._active = 'PICK'
-
-		if self._idPress is not None:
-			self._idPress = self.canvas.mpl_disconnect(self._idPress)
-			self.mode = ''
-
-		if self._active:
-			self.canvas._pickerActive = True
-			self._idPress = self.canvas.mpl_connect(
-				'button_press_event', self.press_pick)
-			self.canvas.widgetlock(self)
-		else:
-			self.canvas.widgetlock.release(self)
-			self.canvas._pickerActive = False
-
-	def press_pick(self, event):
-		"""the press mouse button in pick mode callback"""
-
-		if event.button == 1:
-			self._button_pressed = 1
-		else:
-			self._button_pressed = None
-			return
-
-		self.press(event)
-		self.release(event)
 
 '''
 PROPERTY MANAGER
