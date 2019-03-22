@@ -9,7 +9,7 @@ class environment:
 	def __init__(self,toolbar,stack):
 		# Stack widget.
 		self.stack = stack
-		# Page in stack.
+		# Page in stack (stored as index (int)).
 		self.page = {}
 		# Button for stack page.
 		self.button = {}

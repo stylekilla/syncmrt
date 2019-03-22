@@ -69,8 +69,8 @@ class QsListWidget(QtWidgets.QListWidget):
 		sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Fixed,QtWidgets.QSizePolicy.MinimumExpanding)
 		self.setSizePolicy(sizePolicy)
 		self.setIconSize(QtCore.QSize(50,50))
-		# A list of pageNames in the stacked widget (of pages to show and hide).
-		self.listDict = {}
+		# A list of names in the stacked widget (of pages to show and hide).
+		self.page = {}
 
 		# Add self to parent layout.
 		layout = QtWidgets.QGridLayout()
@@ -78,34 +78,34 @@ class QsListWidget(QtWidgets.QListWidget):
 		layout.setContentsMargins(0,0,0,0)
 		parent.setLayout(layout)
 
-	def addPage(self,pageName,before=None,after=None):
+	def addPage(self,name,before=None,after=None):
 		'''Before and after must be names of other pages.'''
-		self.listDict[pageName] = QtWidgets.QListWidgetItem()
-		self.listDict[pageName].setText(pageName)
+		self.page[name] = QtWidgets.QListWidgetItem()
+		self.page[name].setText(name)
 		# Add Icon.
-		icon = QtGui.QIcon(resourceFilepath+pageName+'.png')
+		icon = QtGui.QIcon(resourceFilepath+name+'.png')
 		icon.pixmap(50,50)
-		self.listDict[pageName].setIcon(icon)
-		self.listDict[pageName].setSizeHint(QtCore.QSize(60,60))
+		self.page[name].setIcon(icon)
+		self.page[name].setSizeHint(QtCore.QSize(60,60))
 
 		if before is not None:
 			if before == 'all':
 				index = 0
 			else:
-				index = self.row(self.listDict[before]) - 1
+				index = self.row(self.page[before]) - 1
 		elif after is not None:
 			if after == 'all':
 				index = self.count()
 			else:
-				index = self.row(self.listDict[after]) + 1
+				index = self.row(self.page[after]) + 1
 		else:
 			index = self.count()
 
-		self.insertItem(index,self.listDict[pageName])
+		self.insertItem(index,self.page[name])
 
-	def removePage(self,pageName,delete=False):
+	def removePage(self,name,delete=False):
 		'''Remove page from list, delete from memory if required.'''
-		self.removeItemWidget(self.listDict[pageName])
+		self.removeItemWidget(self.page[name])
 
 		if delete:
-			del self.listDict[pageName]
+			del self.page[name]

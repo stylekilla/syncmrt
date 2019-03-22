@@ -72,6 +72,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		self.sbTreatment = self.sidebar.getPage('Treatment')
 		# Add image properties section to sidebar.
 		self.sidebar.addPage('ImageProperties',None,after='Treatment')
+		self.sidebar.stack.currentChanged.connect(partial(self.setImagePropertiesPage))
 		# Add settings section to sidebar.
 		self.sidebar.addPage('Settings',QsWidgets.QSettings(),after='all')
 		self.sbSettings = self.sidebar.getPage('Settings')
@@ -152,7 +153,8 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		# self.patient.rtplan.plot[0].plot90.markerAdd(-0.3594,-27.2985)
 		# self.patient.rtplan.plot[0].plot90.markerAdd(-35.9191,-25.8618)
 		# self.patient.rtplan.plot[0].plot90.markerAdd(63.9358,31.6087)
-		self.openXray(['/home/imbl/Documents/Software/testdata/test-xray.hdf5'])
+		# self.openXray(['/home/imbl/Documents/Software/testdata/test-xray.hdf5'])
+		self.openXray(['/Users/micahbarnes/Documents/scratch/xray_2images.hdf5'])
 		# pass
 
 	@QtCore.pyqtSlot(float,float,float)
@@ -245,13 +247,25 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 			self.environment.button['CT'].clicked.emit()
 
 	def openXray(self,files):
-		'''Open Xray modality files.'''
-		# Create new Xray workspace if required.
+		'''Open XR (x-ray) modality files.'''
+		# Load x-ray dataset.
+		self.patient.loadXR(files)
+		# Create new x-ray workspace if required.
 		if self._isXrayOpen == False:
+			# Create the base widgets for x-rays.
 			self.createEnvironmentXray()
 			logging.info('Syncmrt:app.py: Created X-RAY Work Environment')
-		# Load Xray Dataset.
-		self.patient.loadXR(files)
+		# Send x-ray dataset to plot.
+		self.envXray.loadImage(self.patient.xr.image)
+		# Get the plot histogram widgets and give them to the sidebar widget.
+		histogram = self.envXray.getPlotHistogram()
+		self.sidebar.widget['xrayImageProperties'].addPlotHistogramWindow(histogram)
+		# for i in range(len(histogram)):
+			# self.sidebar.page['xrayImageProperties']
+
+		# Force marker update for table.
+		self.envXray.settings('maxMarkers',config.markerQuantity)
+
 		# Connect Xray plots to workspace.
 		# self.envXray.plot = self.environment.workspaceWidget['X-RAY']
 		# self.environment.workspaceWidget['X-RAY']
@@ -265,7 +279,8 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		# Finalise import. Set open status to true and open the workspace.
 		self._isXrayOpen = True
 		self.environment.button['X-RAY'].clicked.emit()
-
+		# Update the image properties page.
+		self.setImagePropertiesPage()
 
 		# If no xray is open... do stuff.
 		# if self._isXrayOpen is False:
@@ -287,8 +302,8 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 			# self.sbXrayProperties.widget['alignIsocY'].editingFinished.connect(partial(self.updateSettings,'xr',self.sbXrayProperties.widget['alignIsocY']))
 			# Set image properties in sidebar to x-ray image properties whenever the workspace is open.
 			# self.environment.stack.currentChanged.connect(self.setImagePropertiesStack)
-			# self.setImagePropertiesStack()
-			# Do other stuff.
+			# self.setImagePropertiePagek()
+			# Do othePageff.
 			# self.sbAlignment.widget['checkXray'].setStyleSheet("color: green")
 			# self._isXrayOpen = True
 
@@ -309,8 +324,9 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		# Make a widget for plot stuff.
 		self.envXray = self.environment.addPage('X-RAY',QsWidgets.QPlotEnvironment())
 		self.envXray.settings('maxMarkers',config.markerQuantity)
-		# Sidebar page for Xray image properties.
+		# Sidebar page for x-ray image properties.
 		self.sidebar.addPage('xrayImageProperties',QsWidgets.QXrayProperties(),addList=False)
+
 		# self.sbXrayProperties = sidebar.xrayProperties(self.sidebar.stack.stackDict['xrImageProperties'])
 		# # Add windowing controls to sidebar.
 		# # self.sbXrayProperties.addPlotWindow(self.environment.workspaceWidget['X-RAY'].plot0,0)
@@ -321,7 +337,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		# self.sbXrayProperties.widget['cbCentroid'].stateChanged.connect(partial(self.xrayOverlay,overlay='centroid'))
 		# # Connect image properties stack to work environment.
 		# self.environment.stack.currentChanged.connect(self.setImagePropertiesStack)
-		# self.setImagePropertiesStack()
+		# self.setImagePropertiePage()
 
 	def xrayOverlay(self,overlay):
 		'''Control x-ray plot overlays.'''
@@ -389,7 +405,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		self.sbCTProperties.isocenterChanged.connect(partial(self.ctUpdateIsocenter))
 		# Connect image properties stack to work environment.
 		self.environment.stack.currentChanged.connect(self.setImagePropertiesStack)
-		self.setImagePropertiesStack()
+		self.setImagePropertiePage()
 
 	def ctOverlay(self,overlay):
 		'''Control ct plot overlays.'''
@@ -501,21 +517,21 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		else:
 			pass
 
-	def setImagePropertiesStack(self):
-		if self._isXrayOpen:
-			if self.environment.stack.indexOf(self.environment.stackPage['X-RAY']) == self.environment.stack.currentIndex():
-				self.sidebar.stack.stackDict['ImageProperties'] = self.sidebar.stack.stackDict['xrImageProperties']
-		if self._isCTOpen:
-			if self.environment.stack.indexOf(self.environment.stackPage['CT']) == self.environment.stack.currentIndex():
-				self.sidebar.stack.stackDict['ImageProperties'] = self.sidebar.stack.stackDict['ctImageProperties']
-		if self._isRTPOpen:
-			for i in range(len(self.patient.rtplan.image)):
-				if self.environment.stack.indexOf(self.environment.stackPage['BEV%i'%(i+1)]) == self.environment.stack.currentIndex():
-						self.sidebar.stack.stackDict['ImageProperties'] = self.sidebar.stack.stackDict['bev%iImageProperties'%(i+1)]
+	def setImagePropertiesPage(self):
+		if ((self._isXrayOpen) & (self.environment.page['X-RAY'] == self.environment.stack.currentIndex())):
+			self.sidebar.setPage('ImageProperties','xrayImageProperties')
+				# print('setting shit')
+				# self.sidebar.stack.page['ImageProperties'] = self.sidebar.stack.page['xrayImageProperties']
+		# if (self._isCTOpen) & (self.environment.stack.page['CT'] == self.environment.stack.currentIndex()):
+		# 		self.sidebar.stack.page['ImageProperties'] = self.sidebar.stack.page['ctImageProperties']
+		# if self._isRTPOpen:
+		# 	for i in range(len(self.patient.rtplan.image)):
+		# 		if self.environment.stack.indexOf(self.environment.stackPage['BEV%i'%(i+1)]) == self.environment.stack.currentIndex():
+		# 				self.sidebar.stack.page['ImageProperties'] = self.sidebar.stack.page['bev%iImageProperties'%(i+1)]
 
 		# Force refresh.
-		if (self.sidebar.list.currentItem() == self.sidebar.list.getListItem('ImageProperties')):
-			self.sidebar.stack.setCurrentWidget(self.sidebar.stack.stackDict['ImageProperties'])
+		# if (self.sidebar.list.currentItem() == self.sidebar.getListItem('ImageProperties')):
+			# self.sidebar.stack.setCurrentWidget(self.sidebar.list.page['ImageProperties'])
 
 	def updateSettings(self,mode,origin,idx=0):
 		'''Update variable based of changed data in property model (in some cases, external sources).'''
@@ -782,14 +798,11 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 
 		# Calculate alignment for stage.
 		self.system.calculateAlignment()
-		print('in mrt app, system motion is:',self.system.stage._motion)
 
 		# Apply alignment.
 		# self.system.applyAlignment()
-		print('mrtapp.py Line 784: commented out alignment')
 
 		# completion = self.system.movePatient(self.system.solver.solution)
-		# print('This should be updating the values as they move and reduce to zero.')
 		# self.property.updateVariable('Alignment',['Rotation','x','y','z'],[float(completion[3]),float(completion[4]),float(completion[5])])
 		# self.property.updateVariable('Alignment',['Translation','x','y','z'],[float(completion[0]),float(completion[1]),float(completion[2])])
 
