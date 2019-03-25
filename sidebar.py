@@ -43,21 +43,24 @@ class Sidebar:
 	def showStack(self,listWidgetItem):
 		'''Show workspace based on item clicked/called item. If the active one is re-called, toggle the view on/off.'''
 		name = None
+		print(listWidgetItem)
 		if type(listWidgetItem) == str:
 			# We have a name.
-			pass
+			name = listWidgetItem
 		else:
 			# Find name in dictionary that matches listWidgetItem.
 			for key, value in self.list.page.items():
 				if value == listWidgetItem:
 					name = key
+
 		if name is None: return
+
 		if self.list.currentItem() == self._previousListItem:
 			self.stack.parent.setVisible(not self.stack.parent.isVisible())
 		else:
 			self.stack.setCurrentIndex(self.stack.page[name])
 			self.stack.parent.setVisible(True)
-			self._previousListItem = listWidgetItem
+			self._previousListItem = listWidgetItem 
 
 	def getListItem(self,key):
 		return self.list.page[key]

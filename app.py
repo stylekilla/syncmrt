@@ -324,8 +324,11 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		# Make a widget for plot stuff.
 		self.envXray = self.environment.addPage('X-RAY',QsWidgets.QPlotEnvironment())
 		self.envXray.settings('maxMarkers',config.markerQuantity)
+		self.envXray.toggleSettings.connect(partial(self.sidebar.showStack,'ImageProperties'))
 		# Sidebar page for x-ray image properties.
-		self.sidebar.addPage('xrayImageProperties',QsWidgets.QXrayProperties(),addList=False)
+		widget = self.sidebar.addPage('xrayImageProperties',QsWidgets.QXrayProperties(),addList=False)
+		# Signals and slots.
+		widget.toggleOverlay.connect(partial(self.envXray.toggleOverlay))
 
 		# self.sbXrayProperties = sidebar.xrayProperties(self.sidebar.stack.stackDict['xrImageProperties'])
 		# # Add windowing controls to sidebar.
