@@ -153,9 +153,17 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		# self.patient.rtplan.plot[0].plot90.markerAdd(-0.3594,-27.2985)
 		# self.patient.rtplan.plot[0].plot90.markerAdd(-35.9191,-25.8618)
 		# self.patient.rtplan.plot[0].plot90.markerAdd(63.9358,31.6087)
-		# self.openXray(['/home/imbl/Documents/Software/testdata/test-xray.hdf5'])
+		# Xray
 		self.openXray(['/Users/micahbarnes/Documents/scratch/xray_2images.hdf5'])
-		# pass
+		# CT
+		folder = '/Users/micahbarnes/Documents/scratch/ct-lamb/'
+		dataset = []
+		for root, subdir, fp in os.walk(folder):
+			for fn in fp:
+				if (fn.endswith(tuple('.dcm'))) & (fn[:len('ct')] == 'CT'):
+					dataset.append(os.path.join(root,fn))
+		if len(dataset) > 0:
+			self.openCT(dataset)
 
 	@QtCore.pyqtSlot(float,float,float)
 	def ctUpdateIsocenter(self,x,y,z):
@@ -192,9 +200,18 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		if modality == 'ct':
 			fileFormat = 'DICOM (*.dcm)'
 			fileDialogue = QtWidgets.QFileDialog()
-			fileDialogue.setFileMode(QtWidgets.QFileDialog.ExistingFiles)
-			files, dtype = fileDialogue.getOpenFileNames(self, "Open CT dataset", "", fileFormat)
-			self.openCT(files)
+			# fileDialogue.setFileMode(QtWidgets.QFileDialog.ExistingFiles)
+			# files, dtype = fileDialogue.getOpenFileNames(self, "Open CT dataset", "", fileFormat)
+			# self.openCT(folder)
+			fileDialogue.setFileMode(QtWidgets.QFileDialog.Directory)
+			folder = fileDialogue.getExistingDirectory(self, "Open CT dataset", "")
+			dataset = []
+			for root, subdir, fp in os.walk(folder):
+				for fn in fp:
+					if (fn.endswith(tuple('.dcm'))) & (fn[:len(modality)] == 'CT'):
+						dataset.append(os.path.join(root,fn))
+			if len(dataset) > 0:
+				self.openCT(dataset)
 
 		elif modality == 'xray':
 			fileFormat = 'HDF5 (*.hdf5)'
@@ -260,65 +277,13 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		# Get the plot histogram widgets and give them to the sidebar widget.
 		histogram = self.envXray.getPlotHistogram()
 		self.sidebar.widget['xrayImageProperties'].addPlotHistogramWindow(histogram)
-		# for i in range(len(histogram)):
-			# self.sidebar.page['xrayImageProperties']
-
 		# Force marker update for table.
 		self.envXray.settings('maxMarkers',config.markerQuantity)
-
-		# Connect Xray plots to workspace.
-		# self.envXray.plot = self.environment.workspaceWidget['X-RAY']
-		# self.environment.workspaceWidget['X-RAY']
-		# Set maximum markers according to settings.
-		# self.envXray.plot.settings('maxMarkers',config.markerQuantity)
-		# Load Xray images into plot areas.
-		# self.envXray.plot.plot.imageLoad(self.envXray.image.array,extent=self.envXray.image.extent,imageIndex=0)
-		# Refresh image property tools.
-		# self.sbXrayProperties.window['histogram'].refreshControls()
-
 		# Finalise import. Set open status to true and open the workspace.
 		self._isXrayOpen = True
 		self.environment.button['X-RAY'].clicked.emit()
 		# Update the image properties page.
 		self.setImagePropertiesPage()
-
-		# If no xray is open... do stuff.
-		# if self._isXrayOpen is False:
-			# Add the x-ray workspace.
-			# self.environment.addPage('X-RAY')
-			# Load the files.
-			# self.patient.loadXR(files)
-			# Plot data.
-			# self.envXray.plot = workspace.plot(self.environment.stackPage['X-RAY'])
-			# self.envXray.plot.settings('maxMarkers',config.markerQuantity)
-			# Create stack page for xray image properties and populate.
-			# self.sidebar.stack.addPage('xrImageProperties')
-			# self.sbXrayProperties = sidebar.xrayProperties(self.sidebar.stack.stackDict['xrImageProperties'])
-			# self.sbXrayProperties.widget['cbBeamIsoc'].stateChanged.connect(partial(self.xrayOverlay,overlay='beam'))
-			# self.sbXrayProperties.widget['cbPatIsoc'].stateChanged.connect(partial(self.xrayOverlay,overlay='patient'))
-			# self.sbXrayProperties.widget['cbCentroid'].stateChanged.connect(partial(self.xrayOverlay,overlay='centroid'))
-			# Signals and slots.
-			# self.sbXrayProperties.widget['alignIsocX'].editingFinished.connect(partial(self.updateSettings,'xr',self.sbXrayProperties.widget['alignIsocX']))
-			# self.sbXrayProperties.widget['alignIsocY'].editingFinished.connect(partial(self.updateSettings,'xr',self.sbXrayProperties.widget['alignIsocY']))
-			# Set image properties in sidebar to x-ray image properties whenever the workspace is open.
-			# self.environment.stack.currentChanged.connect(self.setImagePropertiesStack)
-			# self.setImagePropertiePagek()
-			# Do othePageff.
-			# self.sbAlignment.widget['checkXray'].setStyleSheet("color: green")
-			# self._isXrayOpen = True
-
-		# elif self._isXrayOpen is True:
-			# If an xray is already open, clear the environments and load the new data.
-			# self.envXray.reloadFiles(files)
-
-		# Set plots.
-		# self.envXray.plot.plot0.imageLoad(self.envXray.image[0].array,extent=self.envXray.image[0].extent,imageIndex=0)
-		# self.envXray.plot.plot90.imageLoad(self.envXray.image[1].array,extent=self.envXray.image[1].extent,imageIndex=1)
-		# self.sbXrayProperties.addPlotWindow(self.sbXrayProperties.window['window'][0],self.envXray.plot.plot0)
-		# self.sbXrayProperties.addPlotWindow(self.envXray.plot.plot0,0)
-		# self.sbXrayProperties.addPlotWindow(self.envXray.plot.plot90,1)
-		# Set to current working environment (in widget stack).
-		# self.environment.button['X-RAY'].clicked.emit()
 
 	def createEnvironmentXray(self):
 		# Make a widget for plot stuff.
@@ -330,104 +295,69 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		# Signals and slots.
 		widget.toggleOverlay.connect(partial(self.envXray.toggleOverlay))
 
-		# self.sbXrayProperties = sidebar.xrayProperties(self.sidebar.stack.stackDict['xrImageProperties'])
-		# # Add windowing controls to sidebar.
-		# # self.sbXrayProperties.addPlotWindow(self.environment.workspaceWidget['X-RAY'].plot0,0)
-		# # self.sbXrayProperties.addPlotWindow(self.environment.workspaceWidget['X-RAY'].plot90,1)
-		# # Connect UI buttons.
-		# self.sbXrayProperties.widget['cbBeamIsoc'].stateChanged.connect(partial(self.xrayOverlay,overlay='beam'))
-		# self.sbXrayProperties.widget['cbPatIsoc'].stateChanged.connect(partial(self.xrayOverlay,overlay='patient'))
-		# self.sbXrayProperties.widget['cbCentroid'].stateChanged.connect(partial(self.xrayOverlay,overlay='centroid'))
-		# # Connect image properties stack to work environment.
-		# self.environment.stack.currentChanged.connect(self.setImagePropertiesStack)
-		# self.setImagePropertiePage()
-
-	def xrayOverlay(self,overlay):
-		'''Control x-ray plot overlays.'''
-		if overlay == 'beam':
-			if self.sbXrayProperties.widget['cbBeamIsoc'].isChecked():
-				self.envXray.plot.plot0.toggleOverlay(1,state=True)
-				self.envXray.plot.plot90.toggleOverlay(1,state=True)
-			else:
-				self.envXray.plot.plot0.toggleOverlay(1,state=False)
-				self.envXray.plot.plot90.toggleOverlay(1,state=False)
-		elif overlay == 'patient':
-			if self.sbXrayProperties.widget['cbPatIsoc'].isChecked():
-				self.envXray.plot.plot0.toggleOverlay(2,state=True)
-				self.envXray.plot.plot90.toggleOverlay(2,state=True)
-			else:
-				self.envXray.plot.plot0.toggleOverlay(2,state=False)
-				self.envXray.plot.plot90.toggleOverlay(2,state=False)
-		elif overlay == 'centroid':
-			if self.sbXrayProperties.widget['cbCentroid'].isChecked():
-				self.envXray.plot.plot0.toggleOverlay(0,state=True)
-				self.envXray.plot.plot90.toggleOverlay(0,state=True)
-			else:
-				self.envXray.plot.plot0.toggleOverlay(0,state=False)
-				self.envXray.plot.plot90.toggleOverlay(0,state=False)
-		else:
-			pass
-
 	def openCT(self,files):
+		'''Open CT modality files.'''
+		# Load CT Dataset.
+		self.patient.loadCT(files)
 		# Create new CT workspace if required.
 		if self._isCTOpen == False:
 			self.createWorkEnvironmentCT()
 			logging.info('Created CT Work Environment')
-
-		# Load CT Dataset.
-		self.patient.loadCT(files)
-		# Connect CT plots to workspace.
-		self.patient.ct.plot = self.environment.workspaceWidget['CT']
-		# Set maximum markers according to settings.
-		self.patient.ct.plot.settings('maxMarkers',config.markerQuantity)
-		# Load CT images into plot areas.
-		self.patient.ct.plot.plot0.imageLoad(self.patient.ct.image[0].array,extent=self.patient.ct.image[0].extent,imageIndex=0)
-		self.patient.ct.plot.plot90.imageLoad(self.patient.ct.image[0].array,extent=self.patient.ct.image[0].extent,imageIndex=1)
-		# Refresh image property tools.
-		self.sbCTProperties.window['histogram'][0].refreshControls()
-		self.sbCTProperties.window['histogram'][1].refreshControls()
-		# Enable Isocenter group.
-		self.sbCTProperties.group['editIsocenter'].setEnabled(True)
+		# Send ct dataset to plot.
+		self.envCt.loadImage(self.patient.ct.image)
+		# Get the plot histogram widgets and give them to the sidebar widget.
+		histogram = self.envCt.getPlotHistogram()
+		self.sidebar.widget['ctImageProperties'].addPlotHistogramWindow(histogram)
+		# Force marker update for table.
+		self.envCt.settings('maxMarkers',config.markerQuantity)
 		# Finalise import. Set open status to true and open the workspace.
-		self._isCTOpen = True
+		self._isCtOpen = True
 		self.environment.button['CT'].clicked.emit()
+		# Update the image properties page.
+		self.setImagePropertiesPage()
+
+		# Connect CT plots to workspace.
+		# self.patient.ct.plot = self.environment.workspaceWidget['CT']
+		# # Set maximum markers according to settings.
+		# self.patient.ct.plot.settings('maxMarkers',config.markerQuantity)
+		# # Load CT images into plot areas.
+		# self.patient.ct.plot.plot0.imageLoad(self.patient.ct.image[0].array,extent=self.patient.ct.image[0].extent,imageIndex=0)
+		# self.patient.ct.plot.plot90.imageLoad(self.patient.ct.image[0].array,extent=self.patient.ct.image[0].extent,imageIndex=1)
+		# # Refresh image property tools.
+		# self.sbCTProperties.window['histogram'][0].refreshControls()
+		# self.sbCTProperties.window['histogram'][1].refreshControls()
+		# # Enable Isocenter group.
+		# self.sbCTProperties.group['editIsocenter'].setEnabled(True)
+		# # Finalise import. Set open status to true and open the workspace.
+		# self._isCTOpen = True
+		# self.environment.button['CT'].clicked.emit()
 
 	def createWorkEnvironmentCT(self):
-		# Main CT plot workspace.
-		self.environment.addPage('CT')
-		self.environment.workspaceWidget['CT'] = workspace.plot(self.environment.stackPage['CT'])
-		# Sidebar page for CT image properties.
-		self.sidebar.stack.addPage('ctImageProperties')
-		self.sbCTProperties = sidebar.ctProperties(self.sidebar.stack.stackDict['ctImageProperties'])
-		# Add windowing controls to sidebar.
-		self.sbCTProperties.addPlotWindow(self.environment.workspaceWidget['CT'].plot0,0)
-		self.sbCTProperties.addPlotWindow(self.environment.workspaceWidget['CT'].plot90,1)
-		# Connect UI buttons/signals.
-		self.sbCTProperties.widget['cbPatIsoc'].stateChanged.connect(partial(self.ctOverlay,overlay='patient'))
-		self.sbCTProperties.widget['cbCentroid'].stateChanged.connect(partial(self.ctOverlay,overlay='centroid'))
-		self.sbCTProperties.isocenterChanged.connect(partial(self.ctUpdateIsocenter))
-		# Connect image properties stack to work environment.
-		self.environment.stack.currentChanged.connect(self.setImagePropertiesStack)
-		self.setImagePropertiePage()
+		# Make a widget for plot stuff.
+		self.envCt = self.environment.addPage('CT',QsWidgets.QPlotEnvironment())
+		self.envCt.settings('maxMarkers',config.markerQuantity)
+		self.envCt.toggleSettings.connect(partial(self.sidebar.showStack,'ImageProperties'))
+		# Sidebar page for x-ray image properties.
+		widget = self.sidebar.addPage('ctImageProperties',QsWidgets.QCtProperties(),addList=False)
+		# Signals and slots.
+		widget.toggleOverlay.connect(partial(self.envCt.toggleOverlay))
 
-	def ctOverlay(self,overlay):
-		'''Control ct plot overlays.'''
-		if overlay == 'patient':
-			if self.sbCTProperties.widget['cbPatIsoc'].isChecked():
-				self.patient.ct.plot.plot0.toggleOverlay(2,state=True)
-				self.patient.ct.plot.plot90.toggleOverlay(2,state=True)
-			else:
-				self.patient.ct.plot.plot0.toggleOverlay(2,state=False)
-				self.patient.ct.plot.plot90.toggleOverlay(2,state=False)
-		elif overlay == 'centroid':
-			if self.sbCTProperties.widget['cbCentroid'].isChecked():
-				self.patient.ct.plot.plot0.toggleOverlay(0,state=True)
-				self.patient.ct.plot.plot90.toggleOverlay(0,state=True)
-			else:
-				self.patient.ct.plot.plot0.toggleOverlay(0,state=False)
-				self.patient.ct.plot.plot90.toggleOverlay(0,state=False)
-		else:
-			pass
+		# # Main CT plot workspace.
+		# self.environment.addPage('CT')
+		# self.environment.workspaceWidget['CT'] = workspace.plot(self.environment.stackPage['CT'])
+		# # Sidebar page for CT image properties.
+		# self.sidebar.stack.addPage('ctImageProperties')
+		# self.sbCTProperties = sidebar.ctProperties(self.sidebar.stack.stackDict['ctImageProperties'])
+		# # Add windowing controls to sidebar.
+		# self.sbCTProperties.addPlotWindow(self.environment.workspaceWidget['CT'].plot0,0)
+		# self.sbCTProperties.addPlotWindow(self.environment.workspaceWidget['CT'].plot90,1)
+		# # Connect UI buttons/signals.
+		# self.sbCTProperties.widget['cbPatIsoc'].stateChanged.connect(partial(self.ctOverlay,overlay='patient'))
+		# self.sbCTProperties.widget['cbCentroid'].stateChanged.connect(partial(self.ctOverlay,overlay='centroid'))
+		# self.sbCTProperties.isocenterChanged.connect(partial(self.ctUpdateIsocenter))
+		# # Connect image properties stack to work environment.
+		# self.environment.stack.currentChanged.connect(self.setImagePropertiesStack)
+		# self.setImagePropertiePage()
 
 	def openRTP(self,files):
 		'''Open RTP modality files.'''
@@ -498,27 +428,6 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 
 		self._isRTPOpen = True
 		self.environment.button['RTPLAN'].clicked.emit()
-
-	def rtpOverlay(self,overlay):
-		'''Control rtplan plot overlays.'''
-		if overlay == 'patient':
-			for i in range(len(self.patient.rtplan.guiInterface)):
-				if self.patient.rtplan.guiInterface[i].widget['cbPatIsoc'].isChecked():
-					self.patient.rtplan.plot[i].plot0.toggleOverlay(2,state=True)
-					self.patient.rtplan.plot[i].plot90.toggleOverlay(2,state=True)
-				else:
-					self.patient.rtplan.plot[i].plot0.toggleOverlay(2,state=False)
-					self.patient.rtplan.plot[i].plot90.toggleOverlay(2,state=False)
-		elif overlay == 'centroid':
-			for i in range(len(self.patient.rtplan.guiInterface)):
-				if self.patient.rtplan.guiInterface[i].widget['cbCentroid'].isChecked():
-					self.patient.rtplan.plot[i].plot0.toggleOverlay(0,state=True)
-					self.patient.rtplan.plot[i].plot90.toggleOverlay(0,state=True)
-				else:
-					self.patient.rtplan.plot[i].plot0.toggleOverlay(0,state=False)
-					self.patient.rtplan.plot[i].plot90.toggleOverlay(0,state=False)
-		else:
-			pass
 
 	def setImagePropertiesPage(self):
 		if ((self._isXrayOpen) & (self.environment.page['X-RAY'] == self.environment.stack.currentIndex())):
