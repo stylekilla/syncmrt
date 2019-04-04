@@ -11,7 +11,8 @@ else:
     application_path = os.path.dirname(os.path.abspath(__file__))
 
 resourceFilepath = application_path+'/resources/'
-	
+
+# This is specifically for the sidebar....
 class QsStackedWidget(QtWidgets.QStackedWidget):
 	def __init__(self,parent):
 		super().__init__()

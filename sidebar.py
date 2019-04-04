@@ -1,5 +1,6 @@
 from PyQt5 import QtWidgets
 import syncmrtWidgets as QsWidgets
+from functools import partial
 import logging
 
 class Sidebar:
@@ -31,9 +32,34 @@ class Sidebar:
 		# Return the widget attached to the page (via the index).
 		return self.stack.widget(self.stack.page[name])
 
-	def setPage(self,destination,source):
+	def setPage(self,source,destination):
 		# There are multiple image properties pages, so this allows the generic blank one to be set to a specific one.
-		self.stack.page[destination] = self.stack.page[source]
+		# self.stack.page[source] = self.stack.page[destination]
+		try:
+			self.stack.page[destination] = self.stack.page[source]
+			return True
+		except:
+			return False
+
+	def linkPages(self,destination,source):
+		# Get the current item.
+		currItem = self.list.currentItem()
+		# Set the image properties to xray or ct as needed.
+		# Source is where it came from, destination is where it's going to.
+		if source == 'X-RAY': source = 'xrayImageProperties'
+		elif source == 'CT': source = 'ctImageProperties'
+		# Set the page and see if it passed.
+		if self.setPage(source,destination):
+		# If image prop is open, set new widget.
+			if (self.list.currentItem() == self.list.page[destination]) & (self.stack.parent.isVisible() == True):
+				self.stack.setCurrentIndex(self.stack.page[source]) 
+			elif self.list.currentItem() == self.list.page[destination]:
+				# If it is not open, set it without showing it.
+				self.stack.setCurrentIndex(self.stack.page[source]) 
+				self.stack.parent.setVisible(False)
+			else:
+				pass
+
 
 	def previousStack(self,current,previous):
 		'''Keep track of the last item pressed when an item is clicked.'''
@@ -43,7 +69,6 @@ class Sidebar:
 	def showStack(self,listWidgetItem):
 		'''Show workspace based on item clicked/called item. If the active one is re-called, toggle the view on/off.'''
 		name = None
-		print(listWidgetItem)
 		if type(listWidgetItem) == str:
 			# We have a name.
 			name = listWidgetItem

@@ -72,13 +72,14 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		self.sbTreatment = self.sidebar.getPage('Treatment')
 		# Add image properties section to sidebar.
 		self.sidebar.addPage('ImageProperties',None,after='Treatment')
-		self.sidebar.stack.currentChanged.connect(partial(self.setImagePropertiesPage))
+		# self.sidebar.stack.currentChanged.connect(partial(self.setImagePropertiesPage))
 		# Add settings section to sidebar.
 		self.sidebar.addPage('Settings',QsWidgets.QSettings(),after='all')
 		self.sbSettings = self.sidebar.getPage('Settings')
 
 		# Create work environment
 		self.environment = workspace.environment(self.toolbarPane,self.workStack)
+		self.environment.workspaceChanged.connect(partial(self.sidebar.linkPages,'ImageProperties'))
 
 		# PropertyManager
 		self.property = workspace.propertyModel()
@@ -283,13 +284,14 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		self._isXrayOpen = True
 		self.environment.button['X-RAY'].clicked.emit()
 		# Update the image properties page.
-		self.setImagePropertiesPage()
+		# self.setImagePropertiesPage()
 
 	def createEnvironmentXray(self):
 		# Make a widget for plot stuff.
 		self.envXray = self.environment.addPage('X-RAY',QsWidgets.QPlotEnvironment())
-		self.envXray.settings('maxMarkers',config.markerQuantity)
 		self.envXray.toggleSettings.connect(partial(self.sidebar.showStack,'ImageProperties'))
+		# Connect max markers spin box.
+		self.sbAlignment.markersChanged.connect(partial(self.envXray.settings,'maxMarkers'))
 		# Sidebar page for x-ray image properties.
 		widget = self.sidebar.addPage('xrayImageProperties',QsWidgets.QXrayProperties(),addList=False)
 		# Signals and slots.
@@ -314,7 +316,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		self._isCtOpen = True
 		self.environment.button['CT'].clicked.emit()
 		# Update the image properties page.
-		self.setImagePropertiesPage()
+		# self.setImagePropertiesPage()
 
 		# Connect CT plots to workspace.
 		# self.patient.ct.plot = self.environment.workspaceWidget['CT']
@@ -337,6 +339,8 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		self.envCt = self.environment.addPage('CT',QsWidgets.QPlotEnvironment())
 		self.envCt.settings('maxMarkers',config.markerQuantity)
 		self.envCt.toggleSettings.connect(partial(self.sidebar.showStack,'ImageProperties'))
+		# Connect max markers spin box.
+		self.sbAlignment.markersChanged.connect(partial(self.envCt.settings,'maxMarkers'))
 		# Sidebar page for x-ray image properties.
 		widget = self.sidebar.addPage('ctImageProperties',QsWidgets.QCtProperties(),addList=False)
 		# Signals and slots.
@@ -430,10 +434,14 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		self.environment.button['RTPLAN'].clicked.emit()
 
 	def setImagePropertiesPage(self):
-		if ((self._isXrayOpen) & (self.environment.page['X-RAY'] == self.environment.stack.currentIndex())):
-			self.sidebar.setPage('ImageProperties','xrayImageProperties')
-				# print('setting shit')
-				# self.sidebar.stack.page['ImageProperties'] = self.sidebar.stack.page['xrayImageProperties']
+		print(self.environment.stack.currentIndex())
+		try:
+			if ((self._isXrayOpen) & (self.environment.page['X-RAY'] == self.environment.stack.currentIndex())):
+				self.sidebar.setPage('ImageProperties','xrayImageProperties')
+			elif ((self._isCTOpen) & (self.environment.page['CT'] == self.environment.stack.currentIndex())):
+				self.sidebar.setPage('ImageProperties','ctImageProperties')
+		except:
+			pass
 		# if (self._isCTOpen) & (self.environment.stack.page['CT'] == self.environment.stack.currentIndex()):
 		# 		self.sidebar.stack.page['ImageProperties'] = self.sidebar.stack.page['ctImageProperties']
 		# if self._isRTPOpen:
@@ -504,18 +512,18 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 				self.patient.rtplan.plot[idx].setRadiographMode(mode)
 				self.patient.rtplan.plot[idx].setWindows(windows)
 
-		elif mode == 'global':
-			'''Update global variables, applicable to all modes.'''
-			if origin == self.sbAlignment.widget['maxMarkers']:
-				value = self.sbAlignment.widget['maxMarkers'].value()
-				# Update settings.
-				config.markerQuantity = value
-				# Update plot tables.
-				if self._isXrayOpen: self.envXray.settings('maxMarkers',value)
-				if self._isCTOpen: self.patient.ct.plot.settings('maxMarkers',value)
-				if self._isRTPOpen: 
-					for i in range(len(self.patient.rtplan.plot)):
-						self.patient.rtplan.plot[i].settings('maxMarkers',value)
+		# elif mode == 'global':
+		# 	'''Update global variables, applicable to all modes.'''
+		# 	if origin == self.sbAlignment.widget['maxMarkers']:
+		# 		value = self.sbAlignment.widget['maxMarkers'].value()
+		# 		# Update settings.
+		# 		config.markerQuantity = value
+		# 		# Update plot tables.
+		# 		if self._isXrayOpen: self.envXray.settings('maxMarkers',value)
+		# 		if self._isCTOpen: self.patient.ct.plot.settings('maxMarkers',value)
+		# 		if self._isRTPOpen: 
+		# 			for i in range(len(self.patient.rtplan.plot)):
+		# 				self.patient.rtplan.plot[i].settings('maxMarkers',value)
 
 	def toggleOptimise(self,state):
 		'''State(bool) tells you whether you should clear the optimisation plots or not.'''

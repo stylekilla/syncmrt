@@ -4,9 +4,12 @@ import numpy as np
 
 # from widgets import *
 
-class environment:
-	'''Select the work environment out of the stacked widget via the toolbar buttons.'''
+# class environment:
+class environment(QtCore.QObject):
+	workspaceChanged = QtCore.pyqtSignal('QString')
+
 	def __init__(self,toolbar,stack):
+		super().__init__()
 		# Stack widget.
 		self.stack = stack
 		# Page in stack (stored as index (int)).
@@ -23,6 +26,17 @@ class environment:
 		toolbar.setLayout(self.toolbarLayout)
 		# Stretch end of toolbar.
 		self.toolbarLayout.addStretch()
+		# Signals.
+		self.stack.currentChanged.connect(partial(self.stackWidgetChanged))
+
+	def stackWidgetChanged(self,widgetIndex):
+		# Emit the name of the stack widget that is active.
+		pageName = None
+		for name, index in self.page.items():
+			if index == widgetIndex:
+				pageName = name
+		# Tell the rest of the world that the workspace changed.
+		self.workspaceChanged.emit(pageName)
 
 	def addPage(self,name,widget,alignment=None):
 		'''Add environments to work environment.'''
@@ -33,17 +47,6 @@ class environment:
 		size = QtCore.QSize()
 		size.setHeight(30)
 		size.setWidth(75)
-
-		# if type(name) == str:
-		# 	# Single entry as a string, make it a list.
-		# 	name = [name]
-		# if type(name) != list:
-		# 	# Didn't get a list... why?
-		# 	print('workspace.environment.addPage: Expected list, but got '+type(name))
-		# 	return -1
-		# Enumerate list and add workspaces.
-		# for index, name in enumerate(name):
-
 		# Create a button.
 		button = QtWidgets.QToolButton()
 		button.setText(name)
