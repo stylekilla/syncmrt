@@ -155,16 +155,19 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		# self.patient.rtplan.plot[0].plot90.markerAdd(-35.9191,-25.8618)
 		# self.patient.rtplan.plot[0].plot90.markerAdd(63.9358,31.6087)
 		# Xray
-		self.openXray(['/Users/micahbarnes/Documents/scratch/xray_2images.hdf5'])
+		# self.openXray(['/Users/micahbarnes/Documents/scratch/xray_2images.hdf5'])
 		# CT
 		folder = '/Users/micahbarnes/Documents/scratch/ct-lamb/'
-		dataset = []
+		ds_ct = []
+		ds_rtplan = []
 		for root, subdir, fp in os.walk(folder):
 			for fn in fp:
 				if (fn.endswith(tuple('.dcm'))) & (fn[:len('ct')] == 'CT'):
-					dataset.append(os.path.join(root,fn))
-		if len(dataset) > 0:
-			self.openCT(dataset)
+					ds_ct.append(os.path.join(root,fn))
+				elif (fn.endswith(tuple('.dcm'))) & (fn[:len('rp')] == 'RP'):
+					ds_rtplan.append(os.path.join(root,fn))
+		if len(ds_ct) > 0: self.openCT(ds_ct)
+		# if len(ds_rtplan) > 0: self.openRTP(ds_rtplan)
 
 	@QtCore.pyqtSlot(float,float,float)
 	def ctUpdateIsocenter(self,x,y,z):
@@ -267,14 +270,14 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 	def openXray(self,files):
 		'''Open XR (x-ray) modality files.'''
 		# Load x-ray dataset.
-		self.patient.loadXR(files)
+		self.patient.load(files,'DX')
 		# Create new x-ray workspace if required.
 		if self._isXrayOpen == False:
 			# Create the base widgets for x-rays.
 			self.createEnvironmentXray()
 			logging.info('Syncmrt:app.py: Created X-RAY Work Environment')
 		# Send x-ray dataset to plot.
-		self.envXray.loadImage(self.patient.xr.image)
+		self.envXray.loadImage(self.patient.dx.image)
 		# Get the plot histogram widgets and give them to the sidebar widget.
 		histogram = self.envXray.getPlotHistogram()
 		self.sidebar.widget['xrayImageProperties'].addPlotHistogramWindow(histogram)
@@ -283,8 +286,6 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		# Finalise import. Set open status to true and open the workspace.
 		self._isXrayOpen = True
 		self.environment.button['X-RAY'].clicked.emit()
-		# Update the image properties page.
-		# self.setImagePropertiesPage()
 
 	def createEnvironmentXray(self):
 		# Make a widget for plot stuff.
@@ -300,7 +301,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 	def openCT(self,files):
 		'''Open CT modality files.'''
 		# Load CT Dataset.
-		self.patient.loadCT(files)
+		self.patient.load(files,'CT')
 		# Create new CT workspace if required.
 		if self._isCTOpen == False:
 			self.createWorkEnvironmentCT()
@@ -315,24 +316,6 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		# Finalise import. Set open status to true and open the workspace.
 		self._isCtOpen = True
 		self.environment.button['CT'].clicked.emit()
-		# Update the image properties page.
-		# self.setImagePropertiesPage()
-
-		# Connect CT plots to workspace.
-		# self.patient.ct.plot = self.environment.workspaceWidget['CT']
-		# # Set maximum markers according to settings.
-		# self.patient.ct.plot.settings('maxMarkers',config.markerQuantity)
-		# # Load CT images into plot areas.
-		# self.patient.ct.plot.plot0.imageLoad(self.patient.ct.image[0].array,extent=self.patient.ct.image[0].extent,imageIndex=0)
-		# self.patient.ct.plot.plot90.imageLoad(self.patient.ct.image[0].array,extent=self.patient.ct.image[0].extent,imageIndex=1)
-		# # Refresh image property tools.
-		# self.sbCTProperties.window['histogram'][0].refreshControls()
-		# self.sbCTProperties.window['histogram'][1].refreshControls()
-		# # Enable Isocenter group.
-		# self.sbCTProperties.group['editIsocenter'].setEnabled(True)
-		# # Finalise import. Set open status to true and open the workspace.
-		# self._isCTOpen = True
-		# self.environment.button['CT'].clicked.emit()
 
 	def createWorkEnvironmentCT(self):
 		# Make a widget for plot stuff.
@@ -341,97 +324,64 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		self.envCt.toggleSettings.connect(partial(self.sidebar.showStack,'ImageProperties'))
 		# Connect max markers spin box.
 		self.sbAlignment.markersChanged.connect(partial(self.envCt.settings,'maxMarkers'))
-		# Sidebar page for x-ray image properties.
+		# Sidebar page for ct image properties.
 		widget = self.sidebar.addPage('ctImageProperties',QsWidgets.QCtProperties(),addList=False)
 		# Signals and slots.
 		widget.toggleOverlay.connect(partial(self.envCt.toggleOverlay))
 
-		# # Main CT plot workspace.
-		# self.environment.addPage('CT')
-		# self.environment.workspaceWidget['CT'] = workspace.plot(self.environment.stackPage['CT'])
-		# # Sidebar page for CT image properties.
-		# self.sidebar.stack.addPage('ctImageProperties')
-		# self.sbCTProperties = sidebar.ctProperties(self.sidebar.stack.stackDict['ctImageProperties'])
-		# # Add windowing controls to sidebar.
-		# self.sbCTProperties.addPlotWindow(self.environment.workspaceWidget['CT'].plot0,0)
-		# self.sbCTProperties.addPlotWindow(self.environment.workspaceWidget['CT'].plot90,1)
-		# # Connect UI buttons/signals.
-		# self.sbCTProperties.widget['cbPatIsoc'].stateChanged.connect(partial(self.ctOverlay,overlay='patient'))
-		# self.sbCTProperties.widget['cbCentroid'].stateChanged.connect(partial(self.ctOverlay,overlay='centroid'))
-		# self.sbCTProperties.isocenterChanged.connect(partial(self.ctUpdateIsocenter))
-		# # Connect image properties stack to work environment.
-		# self.environment.stack.currentChanged.connect(self.setImagePropertiesStack)
-		# self.setImagePropertiePage()
-
 	def openRTP(self,files):
-		'''Open RTP modality files.'''
-		# self.rtp.ds = mrt.fileHandler.dicom.importDicom(files,'RTPLAN')
-		# Create a work environment in the application.
-		self.environment.addPage('RTPLAN')
-		# Load the ct dataset into the patient.
-		self.patient.loadRTPLAN(files,self.patient.ct.image[0])
-
-		# Assume single fraction.
-		# self.rtp.beam = dicomData.beam		
-
-		self.sbTreatment.widget['quantity'].setText(str(len(self.patient.rtplan.image)))
-		# self.property.addSection('RTPLAN DICOM')
-		# self.property.addVariable('RTPLAN DICOM','Number of Beams',len(self.rtp.beam))
-
-		self.sbTreatment.populateTreatments()
-
-		# Create a plot list the same length as the amount of images.
-		self.patient.rtplan.plot = np.empty(len(self.patient.rtplan.image),dtype=object)
-		self.patient.rtplan.guiInterface = np.empty(len(self.patient.rtplan.image),dtype=object)
-
+		'''Open CT modality files.'''
+		# Load CT Dataset.
+		self.patient.load(files,'RTPLAN')
+		# Create new CT workspace if required.
+		if self._isRTPOpen == False:
+			logging.info('Creating BEV Work Environments')
+			pass
+		else: 
+			logging.info('BEV Work Environments already exist.')
+			return
+		# Create an RTPLAN environment for every beam.
+		self.envRtplan = np.empty(len(self.patient.rtplan.beam),dtype=object)
 		# Iterate through each planned beam.
-		for i in range(len(self.patient.rtplan.image)):
-
-			# Create stack page for rtplan image properties and populate.
-			self.sidebar.stack.addPage('bev%iImageProperties'%(i+1))
-			self.environment.addPage('BEV%i'%(i+1))
-			self.patient.rtplan.plot[i] = workspace.plot(self.environment.stackPage['BEV%i'%(i+1)])
-			self.patient.rtplan.plot[i].settings('maxMarkers',config.markerQuantity)
-			self.patient.rtplan.guiInterface[i] = sidebar.ctProperties(self.sidebar.stack.stackDict['bev%iImageProperties'%(i+1)])
-			self.patient.rtplan.guiInterface[i].widget['cbPatIsoc'].stateChanged.connect(partial(self.rtpOverlay,overlay='patient'))
-			self.patient.rtplan.guiInterface[i].widget['cbCentroid'].stateChanged.connect(partial(self.rtpOverlay,overlay='centroid'))
-
-			# self.patient.rtplan.plot[i].arrayExtent = dicomData.beam[i].arrayExtent
-
-			# Plot.
-			self.patient.rtplan.plot[i].plot0.imageLoad(self.patient.rtplan.image[i].array,extent=self.patient.rtplan.image[i].extent,imageIndex=0)
-			self.patient.rtplan.plot[i].plot90.imageLoad(self.patient.rtplan.image[i].array,extent=self.patient.rtplan.image[i].extent,imageIndex=1)
-			# Add plotting windowing tools to sidebar.
-			self.patient.rtplan.guiInterface[i].addPlotWindow(self.patient.rtplan.plot[i].plot0,0)
-			self.patient.rtplan.guiInterface[i].addPlotWindow(self.patient.rtplan.plot[i].plot90,1)
-
-			# Add isocenters to plots.
-			# x1,y1,x2 = self.patient.rtplan.image[i].isocenter
-			# mpl_iso = np.array([x2,x1,y1])
-			self.patient.rtplan.plot[i].plot0.patientIsocenter = self.patient.rtplan.image[i].isocenter
-			self.patient.rtplan.plot[i].plot90.patientIsocenter = self.patient.rtplan.image[i].isocenter
-
-			# Update property table.
-			# labels = ['BEV%i'%(i+1),'Gantry Angle','Patient Support Angle','Collimator Angle']
-			# values = [self.patient.rtplan.image[i].gantryAngle,self.patient.rtplan.image[i].patientSupportAngle,self.patient.rtplan.image[i].collimatorAngle]
-			# self.property.addVariable('RTPLAN DICOM',labels,values)
-			# labels = ['BEV%i Isocenter (adjusted)'%(i+1),'x','y','z']
-			# values = np.round(self.patient.rtplan.image[i].isocenter,decimals=2).tolist()
-			# self.property.addVariable('RTPLAN DICOM',labels,values)
-
-			# Button connections.
-			self.sbTreatment.widget['beam'][i]['calculate'].clicked.connect(partial(self.patientCalculateAlignment,treatmentIndex=i))
-			self.sbTreatment.widget['beam'][i]['align'].clicked.connect(partial(self.patientApplyAlignment,treatmentIndex=i))
+		# for i in range(len(self.patient.rtplan.beam)):
+		for i in range(1):
+			''' CREATE WORK ENV '''
+			# Make a widget for plot stuff.
+			self.envRtplan[i] = self.environment.addPage('BEV%i'%(i+1),QsWidgets.QPlotEnvironment())
+			self.envRtplan[i].settings('maxMarkers',config.markerQuantity)
+			self.envRtplan[i].toggleSettings.connect(partial(self.sidebar.showStack,'ImageProperties'))
+			# Connect max markers spin box.
+			self.sbAlignment.markersChanged.connect(partial(self.envRtplan[i].settings,'maxMarkers'))
+			# Sidebar page for rtplan image properties.
+			widget = self.sidebar.addPage('bev%iImageProperties'%(i+1),QsWidgets.QCtProperties(),addList=False)
 			# Signals and slots.
-			# self.patient.rtplan.guiInterface[i].window['pbApply'].clicked.connect(partial(self.updateSettings,'rtplan',self.patient.rtplan.guiInterface[i].window['pbApply'],idx=i))
-
-		# Add rtp isoc to ct.
-		self.patient.ct.isocenter = self.patient.rtplan.ctisocenter
-		self.patient.ct.plot.plot0.patientIsocenter = self.patient.ct.isocenter
-		self.patient.ct.plot.plot90.patientIsocenter = self.patient.ct.isocenter
-
+			widget.toggleOverlay.connect(partial(self.envRtplan[i].toggleOverlay))
+			''' POPULATE WORK ENV '''
+			self.envRtplan[i].loadImage(self.patient.rtplan.beam[i].image)
+			# Get the plot histogram widgets and give them to the sidebar widget.
+			histogram = self.envRtplan[i].getPlotHistogram()
+			self.sidebar.widget['bev%iImageProperties'%(i+1)].addPlotHistogramWindow(histogram)
+			# Force marker update for table.
+			self.envRtplan[i].settings('maxMarkers',config.markerQuantity)
+		# Finalise import. Set open status to true and open the first BEV workspace.
 		self._isRTPOpen = True
-		self.environment.button['RTPLAN'].clicked.emit()
+		self.environment.button['BEV1'].clicked.emit()
+
+		# self.sbTreatment.widget['quantity'].setText(str(len(self.patient.rtplan.image)))
+		# # self.property.addSection('RTPLAN DICOM')
+		# # self.property.addVariable('RTPLAN DICOM','Number of Beams',len(self.rtp.beam))
+
+		# self.sbTreatment.populateTreatments()
+
+		# # Create a plot list the same length as the amount of images.
+		# self.patient.rtplan.plot = np.empty(len(self.patient.rtplan.image),dtype=object)
+		# self.patient.rtplan.guiInterface = np.empty(len(self.patient.rtplan.image),dtype=object)
+
+		# 	# Button connections.
+		# 	self.sbTreatment.widget['beam'][i]['calculate'].clicked.connect(partial(self.patientCalculateAlignment,treatmentIndex=i))
+		# 	self.sbTreatment.widget['beam'][i]['align'].clicked.connect(partial(self.patientApplyAlignment,treatmentIndex=i))
+		# 	# Signals and slots.
+		# 	# self.patient.rtplan.guiInterface[i].window['pbApply'].clicked.connect(partial(self.updateSettings,'rtplan',self.patient.rtplan.guiInterface[i].window['pbApply'],idx=i))
 
 	def setImagePropertiesPage(self):
 		print(self.environment.stack.currentIndex())
