@@ -31,7 +31,9 @@ Ui_MainWindow, QtBaseClass = uic.loadUiType(qtCreatorFile)
 
 import logging
 # Debug levels: NOTSET, DEBUG, INFO, WARNING, ERROR, CRITICAL
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(format='%(asctime)s,%(msecs)d %(levelname)-8s [%(filename)s:%(lineno)d] %(message)s',
+    datefmt='%Y-%m-%d:%H:%M:%S',
+    level=logging.INFO)
 
 '''
 MAIN CLASS
@@ -167,7 +169,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 				elif (fn.endswith(tuple('.dcm'))) & (fn[:len('rp')] == 'RP'):
 					ds_rtplan.append(os.path.join(root,fn))
 		if len(ds_ct) > 0: self.openCT(ds_ct)
-		# if len(ds_rtplan) > 0: self.openRTP(ds_rtplan)
+		if len(ds_rtplan) > 0: self.openRTP(ds_rtplan)
 
 	@QtCore.pyqtSlot(float,float,float)
 	def ctUpdateIsocenter(self,x,y,z):
