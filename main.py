@@ -159,7 +159,8 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		# Xray
 		# self.openXray(['/Users/micahbarnes/Documents/scratch/xray_2images.hdf5'])
 		# CT
-		folder = '/Users/micahbarnes/Documents/scratch/ct-lamb/'
+		# folder = '/Users/micahbarnes/Documents/scratch/ct-lamb/'
+		folder = '/Users/micahbarnes/Documents/scratch/head-phant/'
 		ds_ct = []
 		ds_rtplan = []
 		for root, subdir, fp in os.walk(folder):
@@ -345,8 +346,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		# Create an RTPLAN environment for every beam.
 		self.envRtplan = np.empty(len(self.patient.rtplan.beam),dtype=object)
 		# Iterate through each planned beam.
-		# for i in range(len(self.patient.rtplan.beam)):
-		for i in range(1):
+		for i in range(len(self.patient.rtplan.beam)):
 			''' CREATE WORK ENV '''
 			# Make a widget for plot stuff.
 			self.envRtplan[i] = self.environment.addPage('BEV%i'%(i+1),QsWidgets.QPlotEnvironment())
