@@ -48,6 +48,7 @@ class Sidebar:
 		# Source is where it came from, destination is where it's going to.
 		if source == 'X-RAY': source = 'xrayImageProperties'
 		elif source == 'CT': source = 'ctImageProperties'
+		elif source[:3] == 'BEV': source = 'bev'+source[3]+'ImageProperties'
 		# Set the page and see if it passed.
 		if self.setPage(source,destination):
 		# If image prop is open, set new widget.
