@@ -106,6 +106,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		self.menuFileOpenMRI.triggered.connect(partial(self.openFiles,'mri'))
 		self.menuFileOpenRTP.triggered.connect(partial(self.openFiles,'rtp'))
 		self.menuFolderOpen.triggered.connect(partial(self.openFiles,'folder'))
+		self.m_txr.triggered.connect(self.takestupidxray)
 
 		# Switches.
 		self._isXrayOpen = False
@@ -182,6 +183,17 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		self.envRtplan[0].plot[1].markerAdd(0,0)
 		self.envRtplan[0].plot[1].markerAdd(0,0)
 		self.envRtplan[0].plot[1].markerAdd(0,40)
+
+	def takestupidxray(self):
+		# Grab frame from hamamastu.
+		try:
+			import pyepics as epics
+		except:
+			pass
+		arrayData = epics.caget('SR08ID01DET04:IMAGE:ArrayData')
+		arrayData = arrayData.reshape(1216,616)
+		self.envXray.plot[0].image.imshow(arrayData)
+		self.envXray.plot[0].canvas.draw()
 
 	@QtCore.pyqtSlot(int)
 	def calculateAlignment(self,treatmentIndex):
@@ -303,6 +315,9 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 			widget = self.sidebar.addPage('xrayImageProperties',QsWidgets.QXrayProperties(),addList=False)
 			# Signals and slots.
 			widget.toggleOverlay.connect(partial(self.envXray.toggleOverlay))
+		else:
+			# Re-initialise the environment.
+			self.envXray.reset()
 		# Send x-ray dataset to plot.
 		self.envXray.loadImage(self.patient.dx.image)
 		# Get the plot histogram widgets and give them to the sidebar widget.
