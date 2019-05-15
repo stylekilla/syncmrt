@@ -1,6 +1,7 @@
 from PyQt5 import QtWidgets, QtGui, QtCore, uic
 from functools import partial
 import numpy as np
+import logging
 
 # from widgets import *
 
@@ -158,16 +159,16 @@ class propertyModel(QtGui.QStandardItemModel):
 				var.setEditable(False)
 
 				val = QtGui.QStandardItem()
-				val.setData(value[i],QtCore.Qt.DisplayRole)
+				val.setData(str(value[i]),QtCore.Qt.DisplayRole)
 				val.setEditable(True)
 
 				prop.appendRow([var,val])
 
-				string += str(value[i])+','
+				string += str(value[i])+', '
 
 				self.index[name][variable[0]][variable[i+1]] = self.indexFromItem(val)
 
-			string = string[:-1]
+			string = string[:-2]
 			descr.setData(string,QtCore.Qt.DisplayRole)
 
 		else:
@@ -177,7 +178,7 @@ class propertyModel(QtGui.QStandardItemModel):
 			itemVariable.setEditable(False)
 
 			itemValue = QtGui.QStandardItem()
-			itemValue.setData(value,QtCore.Qt.DisplayRole)
+			itemValue.setData(str(value),QtCore.Qt.DisplayRole)
 			itemValue.setEditable(True)
 
 			self.section[name].appendRow([itemVariable,itemValue])
@@ -185,26 +186,29 @@ class propertyModel(QtGui.QStandardItemModel):
 
 	def updateVariable(self,name,variable,value):
 		'''Find variable and update value.'''
+		if type(value) is not str:
+			# Convert to 3dec places, assuming it's a number
+			value = np.around(value,decimals=3)
+
 		if type(variable) is list:
 			# Multiple Entry
 			descr = self.itemFromIndex(self.index[name][variable[0]][0])
 
 			# item description
 			string = ''
-
 			for i in range(len(value)):
 				val = self.itemFromIndex(self.index[name][variable[0]][variable[i+1]])
-				val.setData(value[i],QtCore.Qt.DisplayRole)
+				val.setData(str(value[i]),QtCore.Qt.DisplayRole)
 
-				string += str(value[i])+','
+				string += str(value[i])+', '
 
-			string = string[:-1]
+			string = string[:-2]
 			descr.setData(string,QtCore.Qt.DisplayRole)
 
 		else:
 			# Single Entry
 			itemValue = self.itemFromIndex(self.index[name][variable])
-			itemValue.setData(value,QtCore.Qt.DisplayRole)
+			itemValue.setData(str(value),QtCore.Qt.DisplayRole)
 
 class variablePane:
 	'''

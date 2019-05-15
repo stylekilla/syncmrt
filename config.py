@@ -7,8 +7,8 @@ markerQuantity = 3
 markerSize = 2.00
 
 # File locations (relative)
-stageList = '/resources/stageList.csv'
-motorList = '/resources/motorList.csv'
+patientSupports = '/resources/patientSupports.csv'
+detectors = '/resources/detectors.csv'
 # detectorList = 
 # maskList = 
 

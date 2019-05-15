@@ -106,7 +106,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		self.menuFileOpenMRI.triggered.connect(partial(self.openFiles,'mri'))
 		self.menuFileOpenRTP.triggered.connect(partial(self.openFiles,'rtp'))
 		self.menuFolderOpen.triggered.connect(partial(self.openFiles,'folder'))
-		self.m_txr.triggered.connect(self.takestupidxray)
+		# self.m_txr.triggered.connect(self.takestupidxray)
 
 		# Switches.
 		self._isXrayOpen = False
@@ -121,7 +121,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		SyncMRT Setup
 		'''
 		# Create a new system, this has a solver, detector and stage.
-		self.system = mrt.system(application_path+config.motorList)
+		self.system = mrt.system(application_path+config.patientSupports,application_path+config.detectors)
 		# Create a new patient, this has room for medical scans and synchrotron scans + other data.
 		self.patient = mrt.patient()
 
@@ -133,11 +133,11 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		# self.controls = mrt.widgets.controls.controlsPage(parent=self.environment.stackPage['Controls'])
 		self.sbSettings.modeChanged.connect(self.setControlsComplexity)
 		self.sbSettings.stageChanged.connect(self.setStage)
-		# self.sbSettings.detectorChanged.connect(self.setControlsComplexity)
+		self.sbSettings.detectorChanged.connect(self.setDetector)
 		self.sbSettings.controls['cbReadOnly'].stateChanged.connect(partial(self.setControlsReadOnly))
 		# self.setControlsReadOnly(True)
-		self.sbSettings.loadStages(self.system.stageList)
-		# self.sbSettings.loadDetectors(self.system.detectorList)
+		self.sbSettings.loadStages(self.system.patientSupport.deviceList)
+		self.sbSettings.loadDetectors(self.system.detector.deviceList)
 
 		self.testing()
 
@@ -214,12 +214,12 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		self.controls.setLevel(level)
 
 	@QtCore.pyqtSlot(str)
-	def setDetector(self,level):
-		pass
+	def setDetector(self,name):
+		self.system.setDetector(name)
 
 	@QtCore.pyqtSlot(str)
-	def setStage(self,stage):
-		self.system.setStage(stage)
+	def setStage(self,name):
+		self.system.setStage(name)
 
 	@QtCore.pyqtSlot(bool)
 	def enableDoAlignment(self,state=False):
@@ -328,6 +328,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		# Finalise import. Set open status to true and open the workspace.
 		self._isXrayOpen = True
 		self.environment.button['X-RAY'].clicked.emit()
+		self.sidebar.linkPages('ImageProperties','xrayImageProperties')
 
 	def openCT(self,files):
 		'''Open CT modality files.'''
@@ -348,6 +349,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		# Finalise import. Set open status to true and open the workspace.
 		self._isCtOpen = True
 		self.environment.button['CT'].clicked.emit()
+		self.sidebar.linkPages('ImageProperties','ctImageProperties')
 
 	def createWorkEnvironmentCT(self):
 		# Make a widget for plot stuff.
@@ -406,6 +408,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		# Finalise import. Set open status to true and open the first BEV workspace.
 		self._isRTPOpen = True
 		self.environment.button['BEV1'].clicked.emit()
+		self.sidebar.linkPages('ImageProperties','bev1ImageProperties')
 
 	def updateSettings(self,mode,origin,idx=0):
 		'''Update variable based of changed data in property model (in some cases, external sources).'''
@@ -677,11 +680,9 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		# self.property.updateVariable('Alignment',['Translation','x','y','z'],[float(completion[0]),float(completion[1]),float(completion[2])])
 
 	# def eventFilter(self, source, event):
-	# 	# Update ct and xr points in the table as the widget is clicked.
-	# 	if event.type() == QtCore.QEvent.MouseButtonRelease:
-	# 		self.updateMarkerTable()
-	# 	else:
-	# 		pass
+	# 	if event.type() == QtCore.QEvent.Close:
+	# 		print(event.type)
+	# 		self.close()
 
 	# 	return QtWidgets.QMainWindow.eventFilter(self, source, event)
 
