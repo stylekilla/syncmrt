@@ -203,7 +203,7 @@
     </item>
    </layout>
   </widget>
-  <widget class="QMenuBar" name="menu">
+ <!--  <widget class="QMenuBar" name="menu">
    <property name="geometry">
     <rect>
      <x>0</x>
@@ -241,7 +241,7 @@
    </widget>
    <addaction name="file"/>
    <addaction name="tools"/>
-  </widget>
+  </widget> -->
   <widget class="QStatusBar" name="statusBar">
    <property name="sizePolicy">
     <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">

@@ -1,6 +1,7 @@
 # Program imports
 import config
 import workspace
+import menubar
 from sidebar import Sidebar
 from synctools import QsWidgets
 
@@ -53,6 +54,8 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		'''
 		Qt5 Setup
 		'''
+		# Menu bar.
+		self._menuBar = menubar.populate(self.menuBar())
 		# Layout margins.
 		self.layoutCentralWidget.setContentsMargins(0,0,0,0)
 		self.statusBar.setContentsMargins(0,0,0,0)
@@ -68,8 +71,12 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		self.sbAlignment.widget['calcAlignment'].clicked.connect(partial(self.patientCalculateAlignment,treatmentIndex=-1))
 		self.sbAlignment.widget['doAlignment'].clicked.connect(partial(self.patientApplyAlignment,treatmentIndex=-1))
 		self.sbAlignment.widget['optimise'].toggled.connect(partial(self.toggleOptimise))
+		# Sidebar: Imaging
+		self.sidebar.addPage('Imaging',QsWidgets.QImaging(),after='Alignment')
+		self.sbImaging = self.sidebar.getPage('Imaging')
+		self.sbImaging.acquire.connect(self.acquireXrays)
 		# Add treatment section to sidebar.
-		self.sidebar.addPage('Treatment',QsWidgets.QTreatment(),after='Alignment')
+		self.sidebar.addPage('Treatment',QsWidgets.QTreatment(),after='Imaging')
 		self.sbTreatment = self.sidebar.getPage('Treatment')
 		# Add image properties section to sidebar.
 		self.sidebar.addPage('ImageProperties',None,after='Treatment')
@@ -100,13 +107,12 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		self.property.addVariable('Alignment','Scale',0)
 		self.propertyTree.expandAll()
 
-		# Connect buttons and widgets.
-		self.menuFileOpenCT.triggered.connect(partial(self.openFiles,'ct'))
-		self.menuFileOpenXray.triggered.connect(partial(self.openFiles,'xray'))
-		self.menuFileOpenMRI.triggered.connect(partial(self.openFiles,'mri'))
-		self.menuFileOpenRTP.triggered.connect(partial(self.openFiles,'rtp'))
-		self.menuFolderOpen.triggered.connect(partial(self.openFiles,'folder'))
-		# self.m_txr.triggered.connect(self.takestupidxray)
+		# Connect menubar items.
+		self._menuBar['new_xray'].triggered.connect(partial(self.newFile,'xray'))
+		self._menuBar['load_xray'].triggered.connect(partial(self.openFiles,'xray'))
+		self._menuBar['load_ct'].triggered.connect(partial(self.openFiles,'ct'))
+		self._menuBar['load_rtplan'].triggered.connect(partial(self.openFiles,'rtp'))
+		self._menuBar['load_folder'].triggered.connect(partial(self.openFiles,'folder'))
 
 		# Switches.
 		self._isXrayOpen = False
@@ -124,6 +130,8 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		self.system = mrt.system(application_path+config.patientSupports,application_path+config.detectors)
 		# Create a new patient, this has room for medical scans and synchrotron scans + other data.
 		self.patient = mrt.patient()
+		# Link the system with the patient data.
+		self.system.loadPatient(self.patient)
 
 		'''
 		More GUI linking from System and Patient.
@@ -139,7 +147,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		self.sbSettings.loadStages(self.system.patientSupport.deviceList)
 		self.sbSettings.loadDetectors(self.system.detector.deviceList)
 
-		self.testing()
+		# self.testing()
 
 	def testing(self):
 		# self.openFiles('folder')
@@ -159,32 +167,32 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		self.openXray(['/Users/micahbarnes/Documents/scratch/xray_2images.hdf5'])
 		# CT
 		# folder = '/Users/micahbarnes/Documents/scratch/ct-lamb/'
-		folder = '/Users/micahbarnes/Documents/scratch/head-phant/'
-		ds_ct = []
-		ds_rtplan = []
-		for root, subdir, fp in os.walk(folder):
-			for fn in fp:
-				if (fn.endswith(tuple('.dcm'))) & (fn[:len('ct')] == 'CT'):
-					ds_ct.append(os.path.join(root,fn))
-				elif (fn.endswith(tuple('.dcm'))) & (fn[:len('rp')] == 'RP'):
-					ds_rtplan.append(os.path.join(root,fn))
-		if len(ds_ct) > 0: self.openCT(ds_ct)
-		if len(ds_rtplan) > 0: self.openRTP(ds_rtplan)
+		# folder = '/Users/micahbarnes/Documents/scratch/head-phant/'
+		# ds_ct = []
+		# ds_rtplan = []
+		# for root, subdir, fp in os.walk(folder):
+		# 	for fn in fp:
+		# 		if (fn.endswith(tuple('.dcm'))) & (fn[:len('ct')] == 'CT'):
+		# 			ds_ct.append(os.path.join(root,fn))
+		# 		elif (fn.endswith(tuple('.dcm'))) & (fn[:len('rp')] == 'RP'):
+		# 			ds_rtplan.append(os.path.join(root,fn))
+		# if len(ds_ct) > 0: self.openCT(ds_ct)
+		# if len(ds_rtplan) > 0: self.openRTP(ds_rtplan)
 
-		self.envXray.plot[0].markerAdd(20,0)
-		self.envXray.plot[0].markerAdd(0,0)
-		self.envXray.plot[0].markerAdd(0,40)
-		self.envXray.plot[1].markerAdd(0,0)
-		self.envXray.plot[1].markerAdd(0,0)
-		self.envXray.plot[1].markerAdd(0,40)
-		self.envRtplan[0].plot[0].markerAdd(20,0)
-		self.envRtplan[0].plot[0].markerAdd(0,0)
-		self.envRtplan[0].plot[0].markerAdd(0,40)
-		self.envRtplan[0].plot[1].markerAdd(0,0)
-		self.envRtplan[0].plot[1].markerAdd(0,0)
-		self.envRtplan[0].plot[1].markerAdd(0,40)
+		# self.envXray.plot[0].markerAdd(20,0)
+		# self.envXray.plot[0].markerAdd(0,0)
+		# self.envXray.plot[0].markerAdd(0,40)
+		# self.envXray.plot[1].markerAdd(0,0)
+		# self.envXray.plot[1].markerAdd(0,0)
+		# self.envXray.plot[1].markerAdd(0,40)
+		# self.envRtplan[0].plot[0].markerAdd(20,0)
+		# self.envRtplan[0].plot[0].markerAdd(0,0)
+		# self.envRtplan[0].plot[0].markerAdd(0,40)
+		# self.envRtplan[0].plot[1].markerAdd(0,0)
+		# self.envRtplan[0].plot[1].markerAdd(0,0)
+		# self.envRtplan[0].plot[1].markerAdd(0,40)
 
-	def takestupidxray(self):
+	def takestupidxray(self,theta):
 		# Grab frame from hamamastu.
 		try:
 			import pyepics as epics
@@ -194,6 +202,16 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		arrayData = arrayData.reshape(1216,616)
 		self.envXray.plot[0].image.imshow(arrayData)
 		self.envXray.plot[0].canvas.draw()
+
+	def acquireXrays(self,theta,zTranslation,comment):
+		# Set the amount of images required.
+		self.envXray.createSubplots(len(theta))
+		# Populate new histograms.
+		histogram = self.envXray.getPlotHistogram()
+		self.sidebar.widget['xrayImageProperties'].addPlotHistogramWindow(histogram)
+		# Send command to system.
+		self.system.acquireXray(theta,zTranslation,comment)
+		# Once done, load images.
 
 	@QtCore.pyqtSlot(int)
 	def calculateAlignment(self,treatmentIndex):
@@ -229,6 +247,17 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 	def setControlsReadOnly(self,state):
 		self.controls.setReadOnly(bool(not state))
 
+	def newFile(self,modality):
+		if modality == 'xray':
+			fileFormat = 'HDF5 (*.hdf5)'
+			fileDialogue = QtWidgets.QFileDialog()
+			file, dtype = fileDialogue.getSaveFileName(self, "Create new x-ray dataset", "", fileFormat)
+			# Create the new xray file.
+			self.patient.new(file,'DX')
+			# Create an xray workspace.
+			self.createWorkEnvironmentXray()
+			# self.openXray(file)
+
 	def openFiles(self,modality):
 		# We don't do any importing of pixel data in here; that is left up to the plotter by sending the filepath.
 		if modality == 'ct':
@@ -251,15 +280,16 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 			fileFormat = 'HDF5 (*.hdf5)'
 			fileDialogue = QtWidgets.QFileDialog()
 			fileDialogue.setFileMode(QtWidgets.QFileDialog.ExistingFiles)
-			files, dtype = fileDialogue.getOpenFileNames(self, "Open Xray dataset", "", fileFormat)
-			self.openXray(files)
+			file, dtype = fileDialogue.getOpenFileNames(self, "Open Xray dataset", "", fileFormat)
+			self.patient.load(file,'DX')
+			self.openXray(file)
 
 		elif modality == 'rtp':
 			fileFormat = 'DICOM (*.dcm)'
 			fileDialogue = QtWidgets.QFileDialog()
 			fileDialogue.setFileMode(QtWidgets.QFileDialog.ExistingFiles)
-			files, dtype = fileDialogue.getOpenFileNames(self, "Open RP dataset", "", fileFormat)
-			self.openRTP(files)
+			file, dtype = fileDialogue.getOpenFileNames(self, "Open RP dataset", "", fileFormat)
+			self.openRTP(file)
 
 		elif modality == 'folder':
 			# Try all file types...
@@ -275,6 +305,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 					if (fn.endswith(tuple('.hdf5'))) & (fn[:len(modality)] == modality):
 						dataset.append(os.path.join(root,fn))
 			if len(dataset) > 0:
+				self.patient.load(dataset,'DX')
 				self.openXray(dataset)
 
 			dataset = []
@@ -299,27 +330,15 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 
 	def openXray(self,files):
 		'''Open XR (x-ray) modality files.'''
-		logging.info('Loading X-ray')
-		# Load x-ray dataset.
-		self.patient.load(files,'DX')
+		logging.info('Loading x-ray data into worksapce.')
 		# Create new x-ray workspace if required.
-		if self._isXrayOpen == False:
-			# Create the base widgets for x-rays.
-			logging.debug('Creating X-RAY Work Environment')
-			# Make a widget for plot stuff.
-			self.envXray = self.environment.addPage('X-RAY',QsWidgets.QPlotEnvironment())
-			self.envXray.toggleSettings.connect(partial(self.sidebar.showStack,'ImageProperties'))
-			# Connect max markers spin box.
-			self.sbAlignment.markersChanged.connect(partial(self.envXray.set,'maxMarkers'))
-			# Sidebar page for x-ray image properties.
-			widget = self.sidebar.addPage('xrayImageProperties',QsWidgets.QXrayProperties(),addList=False)
-			# Signals and slots.
-			widget.toggleOverlay.connect(partial(self.envXray.toggleOverlay))
-		else:
+		if self._isXrayOpen:
 			# Re-initialise the environment.
 			self.envXray.reset()
+		else:
+			self.createWorkEnvironmentXray()
 		# Send x-ray dataset to plot.
-		self.envXray.loadImage(self.patient.dx.image)
+		self.envXray.loadImages(self.patient.dx.image)
 		# Get the plot histogram widgets and give them to the sidebar widget.
 		histogram = self.envXray.getPlotHistogram()
 		self.sidebar.widget['xrayImageProperties'].addPlotHistogramWindow(histogram)
@@ -327,8 +346,22 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		self.envXray.set('maxMarkers',config.markerQuantity)
 		# Finalise import. Set open status to true and open the workspace.
 		self._isXrayOpen = True
+		self.sbImaging.enableAcquisition()
 		self.environment.button['X-RAY'].clicked.emit()
 		self.sidebar.linkPages('ImageProperties','xrayImageProperties')
+
+	def createWorkEnvironmentXray(self):
+		# Create the base widgets for x-rays.
+		logging.debug('Creating X-RAY Work Environment')
+		# Make a widget for plot stuff.
+		self.envXray = self.environment.addPage('X-RAY',QsWidgets.QPlotEnvironment())
+		self.envXray.toggleSettings.connect(partial(self.sidebar.showStack,'ImageProperties'))
+		# Connect max markers spin box.
+		self.sbAlignment.markersChanged.connect(partial(self.envXray.set,'maxMarkers'))
+		# Sidebar page for x-ray image properties.
+		widget = self.sidebar.addPage('xrayImageProperties',QsWidgets.QXrayProperties(),addList=False)
+		# Signals and slots.
+		widget.toggleOverlay.connect(partial(self.envXray.toggleOverlay))
 
 	def openCT(self,files):
 		'''Open CT modality files.'''
@@ -340,7 +373,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 			self.createWorkEnvironmentCT()
 			logging.debug('Created CT Work Environment')
 		# Send ct dataset to plot.
-		self.envCt.loadImage(self.patient.ct.image)
+		self.envCt.loadImages(self.patient.ct.image)
 		# Get the plot histogram widgets and give them to the sidebar widget.
 		histogram = self.envCt.getPlotHistogram()
 		self.sidebar.widget['ctImageProperties'].addPlotHistogramWindow(histogram)
@@ -392,7 +425,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 			# Signals and slots.
 			widget.toggleOverlay.connect(partial(self.envRtplan[i].toggleOverlay))
 			''' POPULATE WORK ENV '''
-			self.envRtplan[i].loadImage(self.patient.rtplan.beam[i].image)
+			self.envRtplan[i].loadImages(self.patient.rtplan.beam[i].image)
 			# Set the mask data and isocenter data in the plots.
 			self.envRtplan[i].set('patMask',self.patient.rtplan.beam[i].mask)
 			self.envRtplan[i].set('patIso',self.patient.rtplan.beam[i].isocenter)
