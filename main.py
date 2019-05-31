@@ -141,6 +141,8 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		# self.controls = mrt.widgets.controls.controlsPage(parent=self.environment.stackPage['Controls'])
 		self.sbSettings.modeChanged.connect(self.setControlsComplexity)
 		self.sbSettings.stageChanged.connect(self.setStage)
+		self.sbSettings.refreshConnections.connect(self.system.patientSupport.reconnect)
+		self.sbSettings.refreshConnections.connect(self.system.detector.reconnect)
 		self.sbSettings.detectorChanged.connect(self.setDetector)
 		self.sbSettings.controls['cbReadOnly'].stateChanged.connect(partial(self.setControlsReadOnly))
 		# self.setControlsReadOnly(True)
@@ -212,6 +214,8 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		# Send command to system.
 		self.system.acquireXray(theta,zTranslation,comment)
 		# Once done, load images.
+		for i in range(len(theta)):
+			self.envXray.plot[i].imageLoad(self.system.detector.imageBuffer[0])
 
 	@QtCore.pyqtSlot(int)
 	def calculateAlignment(self,treatmentIndex):
@@ -346,7 +350,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		self.envXray.set('maxMarkers',config.markerQuantity)
 		# Finalise import. Set open status to true and open the workspace.
 		self._isXrayOpen = True
-		self.sbImaging.enableAcquisition()
+		# self.sbImaging.enableAcquisition()
 		self.environment.button['X-RAY'].clicked.emit()
 		self.sidebar.linkPages('ImageProperties','xrayImageProperties')
 
@@ -362,6 +366,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		widget = self.sidebar.addPage('xrayImageProperties',QsWidgets.QXrayProperties(),addList=False)
 		# Signals and slots.
 		widget.toggleOverlay.connect(partial(self.envXray.toggleOverlay))
+		self.sbImaging.enableAcquisition()
 
 	def openCT(self,files):
 		'''Open CT modality files.'''
