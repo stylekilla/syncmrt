@@ -1,27 +1,28 @@
-from PyQt5 import QtCore
+import h5py as h
+import numpy as np
 
-class Test(QtCore.QObject):
-	sig1 = QtCore.pyqtSignal(int)
-	sig2 = QtCore.pyqtSignal(int)
+f = h.File('../scratch/testXray.hdf5')
 
-	def __init__(self):
-		super().__init__()
-		self.a = 1
+f.create_group('Patient')
+f.create_group('Image')
 
-	def emitSig1(self):
-		self.sig1.emit(4)
+for i in range(3):
+	_setName = str(len(f['Image'])+1).zfill(2)
+	_nims = np.random.randint(1,3)
+	# Create the group set.
+	newSet = f['Image'].create_group(_setName)
+	# Add the images to the set one by one.
+	for i in range(_nims):
+		image = newSet.create_dataset(str(i+1),data=np.random.rand(1216,616))
+		metadata = {
+			'Extent': (-50,50,-25,25),
+			'Image Isocenter': (608,308),
+			'Image Angle': np.random.randint(-90,91),
+			'M': np.identity(3),
+			'Mi': np.identity(3),
+		}
+		# Add the image attributes (metadata).
+		for key, val in metadata.items():
+			image.attrs[key] = val
 
-	def emitSig2(self):
-		self.sig2.emit()
-
-# def _sig1(val):
-	# print("Got signal 1.")
-
-def success(val):
-	print("Success! Got signal 2 with value {}.".format(val))
-
-print("starting")
-t = Test()
-t.sig1.connect(t.sig2)
-t.sig2.connect(success)
-t.emitSig1()
+f.close()

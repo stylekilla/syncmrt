@@ -37,10 +37,10 @@ logging.basicConfig(format='%(asctime)s,%(msecs)d %(levelname)-8s [%(filename)s:
     # datefmt='%Y-%m-%d:%H:%M:%S',
     level=logging.INFO)
 
-'''
+"""
 MAIN CLASS
 - def openFiles(self, modality): Imports files, gathers variables and plots. 
-'''
+"""
 
 class main(QtWidgets.QMainWindow, Ui_MainWindow):
 	def __init__(self):
@@ -51,9 +51,9 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		self.setStyleSheet(qtStyleSheet.read())
 		self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
 
-		'''
+		"""
 		Qt5 Setup
-		'''
+		"""
 		# Menu bar.
 		self._menuBar = menubar.populate(self.menuBar())
 		# Layout margins.
@@ -123,9 +123,9 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		# TESTING MENU
 		self.menuTESTING.triggered.connect(self.testing)
 
-		'''
+		"""
 		SyncMRT Setup
-		'''
+		"""
 		# Create a new system, this has a solver, detector and stage.
 		self.system = mrt.system(application_path+config.patientSupports,application_path+config.detectors)
 		# Create a new patient, this has room for medical scans and synchrotron scans + other data.
@@ -133,9 +133,9 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		# Link the system with the patient data.
 		self.system.loadPatient(self.patient)
 
-		'''
+		"""
 		More GUI linking from System and Patient.
-		'''
+		"""
 		# Create controls work environment.
 		# self.environment.addPage('Controls',alignment='Right')
 		# self.controls = mrt.widgets.controls.controlsPage(parent=self.environment.stackPage['Controls'])
@@ -156,7 +156,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		# Tell the system to acquire an x-ray.
 		self.sbImaging.acquire.connect(self.system.acquireXray)
 
-		# self.testing()
+		self.testing()
 
 	def testing(self):
 		# self.openFiles('folder')
@@ -173,7 +173,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		# self.patient.rtplan.plot[0].plot90.markerAdd(-35.9191,-25.8618)
 		# self.patient.rtplan.plot[0].plot90.markerAdd(63.9358,31.6087)
 		# Xray
-		self.openXray(['/Users/micahbarnes/Documents/scratch/xray_2images.hdf5'])
+		self.openXray(['/Users/micahbarnes/Documents/scratch/testXray.hdf5'])
 		# CT
 		# folder = '/Users/micahbarnes/Documents/scratch/ct-lamb/'
 		# folder = '/Users/micahbarnes/Documents/scratch/head-phant/'
@@ -340,7 +340,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 			self.environment.button['CT'].clicked.emit()
 
 	def openXray(self,files):
-		'''Open XR (x-ray) modality files.'''
+		"""Open XR (x-ray) modality files."""
 		logging.info('Loading x-ray data into worksapce.')
 		# Create new x-ray workspace if required.
 		if self._isXrayOpen:
@@ -377,7 +377,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		self.sbImaging.enableAcquisition()
 
 	def openCT(self,files):
-		'''Open CT modality files.'''
+		"""Open CT modality files."""
 		logging.info('Loading CT')
 		# Load CT Dataset.
 		self.patient.load(files,'CT')
@@ -410,7 +410,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		widget.toggleOverlay.connect(partial(self.envCt.toggleOverlay))
 
 	def openRTP(self,files):
-		'''Open CT modality files.'''
+		"""Open CT modality files."""
 		logging.info('Loading RTPLAN')
 		# Load CT Dataset.
 		self.patient.load(files,'RTPLAN')
@@ -425,7 +425,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		self.envRtplan = np.empty(len(self.patient.rtplan.beam),dtype=object)
 		# Iterate through each planned beam.
 		for i in range(len(self.patient.rtplan.beam)):
-			''' CREATE WORK ENV '''
+			""" CREATE WORK ENV """
 			self.sbTreatment.widget['quantity'].setText(str(i+1))
 			# Make a widget for plot stuff.
 			self.envRtplan[i] = self.environment.addPage('BEV%i'%(i+1),QsWidgets.QPlotEnvironment())
@@ -437,7 +437,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 			widget = self.sidebar.addPage('bev%iImageProperties'%(i+1),QsWidgets.QRtplanProperties(),addList=False)
 			# Signals and slots.
 			widget.toggleOverlay.connect(partial(self.envRtplan[i].toggleOverlay))
-			''' POPULATE WORK ENV '''
+			""" POPULATE WORK ENV """
 			self.envRtplan[i].loadImages(self.patient.rtplan.beam[i].image)
 			# Set the mask data and isocenter data in the plots.
 			self.envRtplan[i].set('patMask',self.patient.rtplan.beam[i].mask)
@@ -457,9 +457,9 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		self.sidebar.linkPages('ImageProperties','bev1ImageProperties')
 
 	def updateSettings(self,mode,origin,idx=0):
-		'''Update variable based of changed data in property model (in some cases, external sources).'''
+		"""Update variable based of changed data in property model (in some cases, external sources)."""
 		if (mode == 'xr') & (self._isXrayOpen):
-			'''Update x-ray specific properties.'''
+			"""Update x-ray specific properties."""
 			if origin == self.sbXrayProperties.widget['alignIsocY']:
 				# Overwrite the alignment isoc in settings.
 				# config.hamamatsuAlignmentIsoc[:2] = origin.text()
@@ -490,7 +490,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 				self.envXray.plot.setWindows(windows)
 
 		elif (mode == 'ct') & (self._isCTOpen):
-			'''Update ct specific properties.'''
+			"""Update ct specific properties."""
 			if origin == self.sbCTProperties.window['pbApply']:
 				# Check mode type.
 				if self.sbCTProperties.window['rbMax'].isChecked():
@@ -503,7 +503,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 				self.patient.ct.plot.setWindows(windows)
 
 		elif (mode == 'rtplan') & (self._isRTPOpen):
-			'''Update rtplan specific properties.'''
+			"""Update rtplan specific properties."""
 			if origin == self.patient.rtplan.guiInterface[idx].window['pbApply']:
 				# Check mode type.
 				if self.patient.rtplan.guiInterface[idx].window['rbMax'].isChecked():
@@ -516,7 +516,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 				self.patient.rtplan.plot[idx].setWindows(windows)
 
 		# elif mode == 'global':
-		# 	'''Update global variables, applicable to all modes.'''
+		# 	"""Update global variables, applicable to all modes."""
 		# 	if origin == self.sbAlignment.widget['maxMarkers']:
 		# 		value = self.sbAlignment.widget['maxMarkers'].value()
 		# 		# Update settings.
@@ -529,24 +529,24 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		# 				self.patient.rtplan.plot[i].settings('maxMarkers',value)
 
 	def toggleOptimise(self,state):
-		'''State(bool) tells you whether you should clear the optimisation plots or not.'''
+		"""State(bool) tells you whether you should clear the optimisation plots or not."""
 		if state == True:
 			pass
 		elif state == False:
 			try:
-				'''Remove X-ray optimised points.'''
+				"""Remove X-ray optimised points."""
 				self.xray.plotEnvironment.plot0.markerRemove(marker=-2)
 				self.xray.plotEnvironment.plot90.markerRemove(marker=-2)
 			except:
 				pass
 			try:
-				'''Remove X-ray optimised points.'''
+				"""Remove X-ray optimised points."""
 				self.patient.ct.plotEnvironment.plot0.markerRemove(marker=-2)
 				self.patient.ct.plotEnvironment.plot90.markerRemove(marker=-2)
 			except:
 				pass
 			try:
-				'''Remove X-ray optimised points.'''
+				"""Remove X-ray optimised points."""
 				for i in range(len(self.rtp.beam)):
 					self.rtp.beam[i].plotEnvironment.plot0.markerRemove(marker=-2)
 					self.rtp.beam[i].plotEnvironment.plot90.markerRemove(marker=-2)
@@ -554,7 +554,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 				pass
 
 	def patientCalculateAlignment(self,treatmentIndex=-1):
-		'''Send coordinates to algorithm and align.'''
+		"""Send coordinates to algorithm and align."""
 		logging.info('Calulating patient alignment with condition '+str(treatmentIndex))
 		# Check first if we at least have an x-ray plus CT/RTPLAN open.
 		if (self._isXrayOpen & (self._isCTOpen|self._isRTPOpen)):
@@ -605,7 +605,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 			# 	if self.sbAlignment.widget['optimise'].isChecked():
 			# 		markerSize = self.sbAlignment.widget['markerSize'].value()
 			# 		threshold = self.sbAlignment.widget['threshold'].value()
-			# 		'''Optimise points.'''
+			# 		"""Optimise points."""
 			# 		self.envXray.plot.plot0.markerOptimise(markerSize,threshold)
 			# 		self.envXray.plot.plot90.markerOptimise(markerSize,threshold)
 			# 		self.patient.ct.plot.plot0.markerOptimise(markerSize,threshold)
@@ -619,7 +619,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 			# 		r[:,2] = self.envXray.plot.plot0.pointsYoptimised
 			# 		r[:,0] = self.envXray.plot.plot90.pointsXoptimised
 			# 	else:
-			# 		'''Do not optimise anything.'''
+			# 		"""Do not optimise anything."""
 			# 		l[:,1] = self.patient.ct.plot.plot0.pointsX
 			# 		l[:,2] = self.patient.ct.plot.plot0.pointsY
 			# 		l[:,0] = self.patient.ct.plot.plot90.pointsX
@@ -657,7 +657,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 			# 	self.system.solver.solve()
 
 		else:
-			'''Align to RTPLAN[index]'''
+			"""Align to RTPLAN[index]"""
 			logging.info('Calculating alignment between X-ray and Beams Eye Vew '+str(treatmentIndex+1))
 			# Map x and y points (from plots) to python x and y (axes 0 and 1 respectively).
 			l[:,0] = self.envRtplan[treatmentIndex].plot[0].pointsY
@@ -695,7 +695,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 			# 		r[:,2] = self.envXray.plot.plot0.pointsYoptimised
 			# 		r[:,0] = self.envXray.plot.plot90.pointsXoptimised
 			# 	else:
-			# 		'''Do not optimise anyting.'''
+			# 		"""Do not optimise anyting."""
 			# 		l[:,1] = self.patient.rtplan.plot[treatmentIndex].plot0.pointsX
 			# 		l[:,2] = self.patient.rtplan.plot[treatmentIndex].plot0.pointsY
 			# 		l[:,0] = self.patient.rtplan.plot[treatmentIndex].plot90.pointsX
@@ -712,7 +712,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		# self.system.calculateAlignment()
 
 	def patientApplyAlignment(self,treatmentIndex=-1):
-		'''Calculate alignment first.'''
+		"""Calculate alignment first."""
 		self.patientCalculateAlignment(treatmentIndex=treatmentIndex)
 
 		# Calculate alignment for stage.
