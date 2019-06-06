@@ -8,15 +8,14 @@ Welcome to SyncMRT (Synctools)'s documentation!
 
 .. toctree::
 	:maxdepth: 2
-	:caption: This is a test aye:
 
 .. automodule:: synctools.system
 	:members:
 
 
 
-Indices and tables
-==================
+This should be a test.
+======================
 
 * :ref:`genindex`
 * :ref:`modindex`
