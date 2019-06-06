@@ -8,7 +8,7 @@ Welcome to SyncMRT (Synctools)'s documentation!
 
 .. toctree::
 	:maxdepth: 2
-	:caption: Contents:
+	:caption: This is a test aye:
 
 .. automodule:: synctools.system
 	:members:
