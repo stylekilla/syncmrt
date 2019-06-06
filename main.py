@@ -30,7 +30,9 @@ qtCreatorFile = application_path+"/resources/main.ui"
 qtStyleSheet = open(application_path+"/resources/stylesheet.css")
 Ui_MainWindow, QtBaseClass = uic.loadUiType(qtCreatorFile)
 
-import logging
+import logging, coloredlogs
+coloredlogs.install(fmt='%(asctime)s,%(msecs)d %(levelname)-8s [%(filename)s:%(lineno)d] %(message)s',datefmt='%H:%M:%S',)
+
 # Debug levels: NOTSET, DEBUG, INFO, WARNING, ERROR, CRITICAL
 logging.basicConfig(format='%(asctime)s,%(msecs)d %(levelname)-8s [%(filename)s:%(lineno)d] %(message)s',
     datefmt='%H:%M:%S',
@@ -155,6 +157,8 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		self.sbImaging.imageSetChanged.connect(self.loadXraySet)
 		# Tell the system to acquire an x-ray.
 		self.sbImaging.acquire.connect(self.system.acquireXray)
+		# When the image mode changes tell the system.
+		self.sbImaging.imageModeChanged.connect(self.system.setImagingMode)
 
 		self.testing()
 
@@ -227,7 +231,8 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		# When the current image set is changed, get images and plot them.
 		images = self.patient.dx.getImageSet(_set)
 		# Set the amount of images required.
-		self.envXray.createSubplots(len(theta))
+		self.envXray.loadImages(images)
+		# self.envXray.createSubplots(len(_set))
 		# Populate new histograms.
 		histogram = self.envXray.getPlotHistogram()
 		self.sidebar.widget['xrayImageProperties'].addPlotHistogramWindow(histogram)
@@ -351,6 +356,10 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		# Send x-ray dataset to plot.
 		# self.envXray.loadImages(self.patient.dx.image)
 		self.system.setLocalXrayFile(files)
+		# Get list of existing x-rays in file.
+		_list = self.patient.dx.getImageList()
+		# Add them to the combo box.
+		self.sbImaging.addImageSet(_list)
 		# Get the plot histogram widgets and give them to the sidebar widget.
 		histogram = self.envXray.getPlotHistogram()
 		self.sidebar.widget['xrayImageProperties'].addPlotHistogramWindow(histogram)
