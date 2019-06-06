@@ -9,6 +9,9 @@ Welcome to SyncMRT (Synctools)'s documentation!
 .. toctree::
 	:maxdepth: 2
 
+.. automodule:: syncmrt.main
+
+
 .. automodule:: synctools.system
 	:members:
 
