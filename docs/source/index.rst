@@ -10,16 +10,11 @@ Welcome to SyncMRT (Synctools)'s documentation!
 	:maxdepth: 2
 
 .. automodule:: syncmrt.main
-
-
+	:members:
 .. automodule:: synctools.system
 	:members:
 
-
-
-This should be a test.
-======================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
+synctools.fileHandler.hdf5
+==========================
+.. automodule:: synctools.fileHandler.hdf5
+	:members:
