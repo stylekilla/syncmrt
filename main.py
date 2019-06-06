@@ -74,7 +74,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		# Sidebar: Imaging
 		self.sidebar.addPage('Imaging',QsWidgets.QImaging(),after='Alignment')
 		self.sbImaging = self.sidebar.getPage('Imaging')
-		self.sbImaging.acquire.connect(self.acquireXrays)
+		# self.sbImaging.acquire.connect(self.acquireXrays)
 		# Add treatment section to sidebar.
 		self.sidebar.addPage('Treatment',QsWidgets.QTreatment(),after='Imaging')
 		self.sbTreatment = self.sidebar.getPage('Treatment')
@@ -140,14 +140,21 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		# self.environment.addPage('Controls',alignment='Right')
 		# self.controls = mrt.widgets.controls.controlsPage(parent=self.environment.stackPage['Controls'])
 		self.sbSettings.modeChanged.connect(self.setControlsComplexity)
-		self.sbSettings.stageChanged.connect(self.setStage)
+		self.sbSettings.stageChanged.connect(self.system.setStage)
 		self.sbSettings.refreshConnections.connect(self.system.patientSupport.reconnect)
-		self.sbSettings.refreshConnections.connect(self.system.detector.reconnect)
-		self.sbSettings.detectorChanged.connect(self.setDetector)
-		self.sbSettings.controls['cbReadOnly'].stateChanged.connect(partial(self.setControlsReadOnly))
+		self.sbSettings.refreshConnections.connect(self.system.imager.reconnect)
+		self.sbSettings.detectorChanged.connect(self.system.setDetector)
+		# self.sbSettings.controls['cbReadOnly'].stateChanged.connect(partial(self.setControlsReadOnly))
 		# self.setControlsReadOnly(True)
 		self.sbSettings.loadStages(self.system.patientSupport.deviceList)
-		self.sbSettings.loadDetectors(self.system.detector.deviceList)
+		self.sbSettings.loadDetectors(self.system.imager.deviceList)
+		# When an image set is added to the HDF5 file, add it to the sidebar:QImaging:QComboBox.
+		# self.system.newImageSet.connect(self.updateXraySetList)
+		self.system.newImageSet.connect(self.sbImaging.addImageSet)
+		# When the current xray image setlist set is changed, plot it.
+		self.sbImaging.imageSetChanged.connect(self.loadXraySet)
+		# Tell the system to acquire an x-ray.
+		self.sbImaging.acquire.connect(self.system.acquireXray)
 
 		# self.testing()
 
@@ -194,28 +201,36 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		# self.envRtplan[0].plot[1].markerAdd(0,0)
 		# self.envRtplan[0].plot[1].markerAdd(0,40)
 
-	def takestupidxray(self,theta):
-		# Grab frame from hamamastu.
-		try:
-			import pyepics as epics
-		except:
-			pass
-		arrayData = epics.caget('SR08ID01DET04:IMAGE:ArrayData')
-		arrayData = arrayData.reshape(1216,616)
-		self.envXray.plot[0].image.imshow(arrayData)
-		self.envXray.plot[0].canvas.draw()
+	# def takestupidxray(self,theta):
+	# 	# Grab frame from hamamastu.
+	# 	try:
+	# 		import pyepics as epics
+	# 	except:
+	# 		pass
+	# 	arrayData = epics.caget('SR08ID01DET04:IMAGE:ArrayData')
+	# 	arrayData = arrayData.reshape(1216,616)
+	# 	self.envXray.plot[0].image.imshow(arrayData)
+	# 	self.envXray.plot[0].canvas.draw()
 
-	def acquireXrays(self,theta,zTranslation,comment):
+	# def acquireXrays(self,theta,zTranslation,comment):
+	# 	# Send command to system.
+	# 	self.system.acquireXray(theta,zTranslation,comment)
+		# Once done, load images.
+		# for i in range(len(theta)):
+			# self.envXray.plot[i].imageLoad(self.system.detector.imageBuffer[0])
+
+	# def updateXraySetList(self,newItem):
+		# Get the updated items list.
+		# self.sbImaging.addImageSet(newItem)
+
+	def loadXraySet(self,_set):
+		# When the current image set is changed, get images and plot them.
+		images = self.patient.dx.getImageSet(_set)
 		# Set the amount of images required.
 		self.envXray.createSubplots(len(theta))
 		# Populate new histograms.
 		histogram = self.envXray.getPlotHistogram()
 		self.sidebar.widget['xrayImageProperties'].addPlotHistogramWindow(histogram)
-		# Send command to system.
-		self.system.acquireXray(theta,zTranslation,comment)
-		# Once done, load images.
-		for i in range(len(theta)):
-			self.envXray.plot[i].imageLoad(self.system.detector.imageBuffer[0])
 
 	@QtCore.pyqtSlot(int)
 	def calculateAlignment(self,treatmentIndex):
@@ -234,14 +249,6 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 	@QtCore.pyqtSlot(str)
 	def setControlsComplexity(self,level):
 		self.controls.setLevel(level)
-
-	@QtCore.pyqtSlot(str)
-	def setDetector(self,name):
-		self.system.setDetector(name)
-
-	@QtCore.pyqtSlot(str)
-	def setStage(self,name):
-		self.system.setStage(name)
 
 	@QtCore.pyqtSlot(bool)
 	def enableDoAlignment(self,state=False):
@@ -342,7 +349,8 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		else:
 			self.createWorkEnvironmentXray()
 		# Send x-ray dataset to plot.
-		self.envXray.loadImages(self.patient.dx.image)
+		# self.envXray.loadImages(self.patient.dx.image)
+		self.system.setLocalXrayFile(files)
 		# Get the plot histogram widgets and give them to the sidebar widget.
 		histogram = self.envXray.getPlotHistogram()
 		self.sidebar.widget['xrayImageProperties'].addPlotHistogramWindow(histogram)
