@@ -31,13 +31,13 @@ qtStyleSheet = open(application_path+"/resources/stylesheet.css")
 Ui_MainWindow, QtBaseClass = uic.loadUiType(qtCreatorFile)
 
 import logging, coloredlogs
-coloredlogs.install(fmt='%(asctime)s,%(msecs)d %(levelname)-8s [%(filename)s:%(lineno)d] %(message)s',datefmt='%H:%M:%S',)
+coloredlogs.install(fmt='%(asctime)s,%(msecs)d %(levelname)-8s [%(filename)s:%(lineno)d] %(message)s',datefmt='%H:%M:%S',level=logging.DEBUG)
 
 # Debug levels: NOTSET, DEBUG, INFO, WARNING, ERROR, CRITICAL
-logging.basicConfig(format='%(asctime)s,%(msecs)d %(levelname)-8s [%(filename)s:%(lineno)d] %(message)s',
-    datefmt='%H:%M:%S',
+# logging.basicConfig(format='%(asctime)s,%(msecs)d %(levelname)-8s [%(filename)s:%(lineno)d] %(message)s',
+    # datefmt='%H:%M:%S',
     # datefmt='%Y-%m-%d:%H:%M:%S',
-    level=logging.INFO)
+    # )
 
 """
 MAIN CLASS
@@ -129,8 +129,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		SyncMRT Setup
 		"""
 		# Create a new system, this has a solver, detector and stage.
-		self.system = mrt.system(application_path+config.patientSupports,application_path+config.detectors)
-		# Create a new patient, this has room for medical scans and synchrotron scans + other data.
+		self.system = mrt.system(application_path+config.files.patientSupports,application_path+config.files.detectors,config)		# Create a new patient, this has room for medical scans and synchrotron scans + other data.
 		self.patient = mrt.patient()
 		# Link the system with the patient data.
 		self.system.loadPatient(self.patient)
@@ -151,7 +150,6 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		self.sbSettings.loadStages(self.system.patientSupport.deviceList)
 		self.sbSettings.loadDetectors(self.system.imager.deviceList)
 		# When an image set is added to the HDF5 file, add it to the sidebar:QImaging:QComboBox.
-		# self.system.newImageSet.connect(self.updateXraySetList)
 		self.system.newImageSet.connect(self.sbImaging.addImageSet)
 		# When the current xray image setlist set is changed, plot it.
 		self.sbImaging.imageSetChanged.connect(self.loadXraySet)
@@ -177,7 +175,8 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		# self.patient.rtplan.plot[0].plot90.markerAdd(-35.9191,-25.8618)
 		# self.patient.rtplan.plot[0].plot90.markerAdd(63.9358,31.6087)
 		# Xray
-		self.openXray(['/Users/micahbarnes/Documents/scratch/testXray.hdf5'])
+		# self.openXray(['/Users/micahbarnes/Documents/scratch/testXray.hdf5'])
+		self.openXray(['/home/imbl/Documents/Software/testdata/test.hdf5'])
 		# CT
 		# folder = '/Users/micahbarnes/Documents/scratch/ct-lamb/'
 		# folder = '/Users/micahbarnes/Documents/scratch/head-phant/'
@@ -269,6 +268,8 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 			fileDialogue = QtWidgets.QFileDialog()
 			file, dtype = fileDialogue.getSaveFileName(self, "Create new x-ray dataset", "", fileFormat)
 			# Create the new xray file.
+			if file.endswith('.hdf5') is False:
+				file += '.hdf5'
 			self.patient.new(file,'DX')
 			# Create an xray workspace.
 			self.createWorkEnvironmentXray()
@@ -364,7 +365,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		histogram = self.envXray.getPlotHistogram()
 		self.sidebar.widget['xrayImageProperties'].addPlotHistogramWindow(histogram)
 		# Force marker update for table.
-		self.envXray.set('maxMarkers',config.markerQuantity)
+		self.envXray.set('maxMarkers',config.markers.quantity)
 		# Finalise import. Set open status to true and open the workspace.
 		self._isXrayOpen = True
 		# self.sbImaging.enableAcquisition()
@@ -400,7 +401,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		histogram = self.envCt.getPlotHistogram()
 		self.sidebar.widget['ctImageProperties'].addPlotHistogramWindow(histogram)
 		# Force marker update for table.
-		self.envCt.set('maxMarkers',config.markerQuantity)
+		self.envCt.set('maxMarkers',config.markers.quantity)
 		# Finalise import. Set open status to true and open the workspace.
 		self._isCtOpen = True
 		self.environment.button['CT'].clicked.emit()
@@ -409,7 +410,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 	def createWorkEnvironmentCT(self):
 		# Make a widget for plot stuff.
 		self.envCt = self.environment.addPage('CT',QsWidgets.QPlotEnvironment())
-		self.envCt.set('maxMarkers',config.markerQuantity)
+		self.envCt.set('maxMarkers',config.markers.quantity)
 		self.envCt.toggleSettings.connect(partial(self.sidebar.showStack,'ImageProperties'))
 		# Connect max markers spin box.
 		self.sbAlignment.markersChanged.connect(partial(self.envCt.set,'maxMarkers'))
@@ -455,7 +456,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 			histogram = self.envRtplan[i].getPlotHistogram()
 			self.sidebar.widget['bev%iImageProperties'%(i+1)].addPlotHistogramWindow(histogram)
 			# Force marker update for table.
-			self.envRtplan[i].set('maxMarkers',config.markerQuantity)
+			self.envRtplan[i].set('maxMarkers',config.markers.quantity)
 		# Populate the sidebar with all the treatments.
 		self.sbTreatment.populateTreatments()
 		for i in range(len(self.patient.rtplan.beam)):
