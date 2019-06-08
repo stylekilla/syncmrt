@@ -76,12 +76,11 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		# Sidebar: Imaging
 		self.sidebar.addPage('Imaging',QsWidgets.QImaging(),after='Alignment')
 		self.sbImaging = self.sidebar.getPage('Imaging')
-		# self.sbImaging.acquire.connect(self.acquireXrays)
-		# Add treatment section to sidebar.
-		self.sidebar.addPage('Treatment',QsWidgets.QTreatment(),after='Imaging')
-		self.sbTreatment = self.sidebar.getPage('Treatment')
 		# Add image properties section to sidebar.
-		self.sidebar.addPage('ImageProperties',None,after='Treatment')
+		self.sidebar.addPage('ImageProperties',None,after='Imaging')
+		# Add treatment section to sidebar.
+		self.sidebar.addPage('Treatment',QsWidgets.QTreatment(),after='ImageProperties')
+		self.sbTreatment = self.sidebar.getPage('Treatment')
 		# Add settings section to sidebar.
 		self.sidebar.addPage('Settings',QsWidgets.QSettings(),after='all')
 		self.sbSettings = self.sidebar.getPage('Settings')
@@ -232,6 +231,9 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		# Set the amount of images required.
 		self.envXray.loadImages(images)
 		# self.envXray.createSubplots(len(_set))
+		# Populate new editable isocenters.
+		isocenter = self.envXray.getPlotIsocenter()
+		self.sidebar.widget['xrayImageProperties'].addEditableIsocenter(isocenter)
 		# Populate new histograms.
 		histogram = self.envXray.getPlotHistogram()
 		self.sidebar.widget['xrayImageProperties'].addPlotHistogramWindow(histogram)
@@ -364,6 +366,9 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		# Get the plot histogram widgets and give them to the sidebar widget.
 		histogram = self.envXray.getPlotHistogram()
 		self.sidebar.widget['xrayImageProperties'].addPlotHistogramWindow(histogram)
+		# Get the plot isocenter widgets and give them to the sidebar widget.
+		isocenter = self.envXray.getPlotIsocenter()
+		self.sidebar.widget['xrayImageProperties'].addEditableIsocenter(isocenter)
 		# Force marker update for table.
 		self.envXray.set('maxMarkers',config.markers.quantity)
 		# Finalise import. Set open status to true and open the workspace.
