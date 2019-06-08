@@ -70,9 +70,9 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		self.sbAlignment = self.sidebar.addPage('Alignment',QsWidgets.QAlignment(),before='all')
 		self.sbAlignment.widget['maxMarkers'].setValue(3)
 		self.sbAlignment.widget['maxMarkers'].valueChanged.connect(partial(self.updateSettings,'global',self.sbAlignment.widget['maxMarkers']))
-		self.sbAlignment.widget['calcAlignment'].clicked.connect(partial(self.patientCalculateAlignment,treatmentIndex=-1))
-		self.sbAlignment.widget['doAlignment'].clicked.connect(partial(self.patientApplyAlignment,treatmentIndex=-1))
-		self.sbAlignment.widget['optimise'].toggled.connect(partial(self.toggleOptimise))
+		# self.sbAlignment.widget['calcAlignment'].clicked.connect(partial(self.patientCalculateAlignment,treatmentIndex=-1))
+		# self.sbAlignment.widget['doAlignment'].clicked.connect(partial(self.patientApplyAlignment,treatmentIndex=-1))
+		# self.sbAlignment.widget['optimise'].toggled.connect(partial(self.toggleOptimise))
 		# Sidebar: Imaging
 		self.sidebar.addPage('Imaging',QsWidgets.QImaging(),after='Alignment')
 		self.sbImaging = self.sidebar.getPage('Imaging')
@@ -156,6 +156,12 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		self.sbImaging.acquire.connect(self.system.acquireXray)
 		# When the image mode changes tell the system.
 		self.sbImaging.imageModeChanged.connect(self.system.setImagingMode)
+		# Connect the calculate alignment button to the solver.
+		self.sbTreatment.calculate.connect(partial(self.solve,idx))
+		# Connect the apply alignment button to the patient movement.
+		self.sbTreatment.align.connect(partial(self.align,idx))
+		# Connect the treatment button to the patient treatment delivery.
+
 
 		self.testing()
 
@@ -230,13 +236,17 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		images = self.patient.dx.getImageSet(_set)
 		# Set the amount of images required.
 		self.envXray.loadImages(images)
-		# self.envXray.createSubplots(len(_set))
 		# Populate new editable isocenters.
 		isocenter = self.envXray.getPlotIsocenter()
 		self.sidebar.widget['xrayImageProperties'].addEditableIsocenter(isocenter)
 		# Populate new histograms.
 		histogram = self.envXray.getPlotHistogram()
 		self.sidebar.widget['xrayImageProperties'].addPlotHistogramWindow(histogram)
+		# Populate the treatment delivery sidebar.
+		_angles = []
+		for i in range(len(images)):
+			_angles.append(images[i].view['title'])
+		self.sbTreatment.populateTreatments(_angles)
 
 	@QtCore.pyqtSlot(int)
 	def calculateAlignment(self,treatmentIndex):
@@ -568,165 +578,30 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 			except:
 				pass
 
-	def patientCalculateAlignment(self,treatmentIndex=-1):
-		"""Send coordinates to algorithm and align."""
-		logging.info('Calulating patient alignment with condition '+str(treatmentIndex))
-		# Check first if we at least have an x-ray plus CT/RTPLAN open.
-		if (self._isXrayOpen & (self._isCTOpen|self._isRTPOpen)):
-			pass
+	def solve(self,_index):
+		logging.info("Solving alignment for dataset {}".format(_index))
+		# Get the ptv point.
+		_ptv = self.envXray.plot[_index].patientIsocenter
+		txy = -_ptv[0]
+		i = int(self.widget['numImages'].value())
+		if i == 1:
+			theta = [self.widget['theta1'].value()]
 		else:
-			logging.error('Need at least two datasets open: xray('+str(self._isXrayOpen)+'), ct('+str(self._isCtOpen)+'), rtplan('+str(self._isRTPOpen)+').')
-			return	
-		# Initialise points (l:Dicom, r:Xray).
-		numberOfPoints = self.sbAlignment.widget['maxMarkers'].value()
-		l = np.zeros((numberOfPoints,3))
-		r = np.zeros((numberOfPoints,3))
-		# 2D or 3D? (Default is 2D)
-		_3D = False
-		if len(self.envXray.plot) == 2: _3D = True
-		# Get the x-ray (right) points.
-		r[:,0] = self.envXray.plot[0].pointsY
-		r[:,1] = self.envXray.plot[0].pointsX
-		if _3D: r[:,2] = self.envXray.plot[1].pointsX
+			theta = [self.widget['theta1'].value(),self.widget['theta2'].value()]
+		h1 = -txy*np.sin(np.deg2rad(theta[_index]))
+		h2 = txy*np.cos(np.deg2rad(theta[_index]))
+		tz = -_ptv[1]
 
-		if treatmentIndex == -1:
-			pass
-			# -1: Align to CT.
-			# Check to see if number of markers matches the other plot.
-			# if (
-			# 	(len(self.envXray.plot[0].pointsX) == len(self.envXray.plot[0].pointsY) == len(self.envXray.plot[1].pointsX) == len(self.envXray.plot[1].pointsY) == len(self.envCt.plot[0].pointsX) == len(self.envCt.plot[0].pointsY) == len(self.envCt.plot[1].pointsX) == len(self.envCt.plot[1].pointsY)) & (len(self.envXray.plot[0].pointsX) >= 3)
-			# 	):
-			# 	print("Same number of points in each graph: ",True)
-			# 	# Map x and y points (from plots) to python x and y (axes 0 and 1 respectively).
-			# 	l[:,1] = self.envCt.plot[0].pointsX
-			# 	l[:,0] = self.envCt.plot[0].pointsY
-			# 	l[:,2] = self.envCt.plot[1].pointsX
-			# 	r[:,1] = self.envXray.plot[0].pointsX
-			# 	r[:,0] = self.envXray.plot[0].pointsY
-			# 	r[:,2] = self.envXray.plot[1].pointsX
-			# 	print('l: ',l)
-			# 	print('r: ',r)
-
-			# 	self.system.solver.updateVariable(
-			# 		left=l,
-			# 		right=r,
-			# 		patientIsoc=self.patient.ct.isocenter,
-			# 		axesDirection=changeAxes)
-			# 	self.system.solver.solve()
-
-
-
-			# if len(self.envXray.plot.plot0.pointsX)>0:
-			# 	if self.sbAlignment.widget['optimise'].isChecked():
-			# 		markerSize = self.sbAlignment.widget['markerSize'].value()
-			# 		threshold = self.sbAlignment.widget['threshold'].value()
-			# 		"""Optimise points."""
-			# 		self.envXray.plot.plot0.markerOptimise(markerSize,threshold)
-			# 		self.envXray.plot.plot90.markerOptimise(markerSize,threshold)
-			# 		self.patient.ct.plot.plot0.markerOptimise(markerSize,threshold)
-			# 		self.patient.ct.plot.plot90.markerOptimise(markerSize,threshold)
-			# 		# log(self.logFile,"Successfully optimised points.","event")
-			# 		# Collect points.
-			# 		l[:,1] = self.patient.ct.plot.plot0.pointsXoptimised
-			# 		l[:,2] = self.patient.ct.plot.plot0.pointsYoptimised
-			# 		l[:,0] = self.patient.ct.plot.plot90.pointsXoptimised
-			# 		r[:,1] = self.envXray.plot.plot0.pointsXoptimised
-			# 		r[:,2] = self.envXray.plot.plot0.pointsYoptimised
-			# 		r[:,0] = self.envXray.plot.plot90.pointsXoptimised
-			# 	else:
-			# 		"""Do not optimise anything."""
-			# 		l[:,1] = self.patient.ct.plot.plot0.pointsX
-			# 		l[:,2] = self.patient.ct.plot.plot0.pointsY
-			# 		l[:,0] = self.patient.ct.plot.plot90.pointsX
-			# 		r[:,1] = self.envXray.plot.plot0.pointsX
-			# 		r[:,2] = self.envXray.plot.plot0.pointsY
-			# 		r[:,0] = self.envXray.plot.plot90.pointsX
-
-			# 	# Re-align the points with the synchrotron axes.
-			# 	# Use the extent to get the axes directions.
-			# 	if (self.patient.ct.image[0].extent[4] < self.patient.ct.image[0].extent[5]):
-			# 		xd = 1
-			# 	else:
-			# 		xd = -1
-			# 	if (self.patient.ct.image[0].extent[0] < self.patient.ct.image[0].extent[1]):
-			# 		yd = 1
-			# 	else:
-			# 		yd = -1
-			# 	if (self.patient.ct.image[0].extent[2] < self.patient.ct.image[0].extent[3]):
-			# 		zd = 1
-			# 	else:
-			# 		zd = -1
-			# 	# Dicom axes are:
-			# 	dicomAxes = np.array([xd,yd,zd])
-			# 	# Synchrotron axes are fixed:
-			# 	synchrotronAxes = np.array([1,-1,1])
-			# 	# Divide to get the direction difference.
-			# 	changeAxes = dicomAxes/synchrotronAxes
-
-			# 	# Solve.
-			# 	self.system.solver.updateVariable(
-			# 		left=l,
-			# 		right=r,
-			# 		patientIsoc=self.patient.ct.isocenter,
-			# 		axesDirection=changeAxes)
-			# 	self.system.solver.solve()
-
-		else:
-			"""Align to RTPLAN[index]"""
-			logging.info('Calculating alignment between X-ray and Beams Eye Vew '+str(treatmentIndex+1))
-			# Map x and y points (from plots) to python x and y (axes 0 and 1 respectively).
-			l[:,0] = self.envRtplan[treatmentIndex].plot[0].pointsY
-			l[:,1] = self.envRtplan[treatmentIndex].plot[0].pointsX
-			if _3D: l[:,2] = self.envRtplan[treatmentIndex].plot[1].pointsX
-			# Set the isocenter.
-			self.system.solver.input(patientIsoc= self.patient.rtplan.isocenter)
-
-		# Tell the solver what the points in each system are.
-		self.system.solver.input(left=l,right=r)
-		# We have some points. Calculate the global result.
-		alignment6d = self.system.solver.solve()
-		logging.info('Calculated 6D alignment with values: '+str(alignment6d))
-		# Send centroid locations back to the plots.
-		self.envXray.set('markerCtd',self.system.solver._rightCentroid)
-		if treatmentIndex == -1: self.envCt.set('markerCtd',self.system.solver._leftCentroid)
-		else: self.envRtplan[treatmentIndex].set('markerCtd',self.system.solver._leftCentroid)
-		# Get synchrotron axes alignment.
-		synchrotron6d = [-alignment6d[2],alignment6d[1],-alignment6d[0],-alignment6d[5],alignment6d[4],-alignment6d[3]]
-		logging.info('Synchrotron 6D alignment calculated as: '+str(synchrotron6d))
-
-			# if len(self.patient.rtplan.plot[treatmentIndex].plot0.pointsX)>0:
-			# 	# Optimise Points
-			# 	if self.sbAlignment.widget['optimise'].isChecked():
-			# 		self.envXray.plot.plot0.markerOptimise(self.sbAlignment.widget['markerSize'].value(),threshold)
-			# 		self.envXray.plot.plot90.markerOptimise(self.sbAlignment.widget['markerSize'].value(),threshold)
-			# 		self.patient.rtplan.plot[treatmentIndex].plot0.markerOptimise(self.sbAlignment.widget['markerSize'].value(),threshold)
-			# 		self.patient.rtplan.plot[treatmentIndex].plot90.markerOptimise(self.sbAlignment.widget['markerSize'].value(),threshold)
-			# 		# log(self.logFile,"Successfully optimised points.","event")
-			# 		# Collect points.
-			# 		l[:,1] = self.patient.rtplan.plot[treatmentIndex].plot0.pointsXoptimised
-			# 		l[:,2] = self.patient.rtplan.plot[treatmentIndex].plot0.pointsYoptimised
-			# 		l[:,0] = self.patient.rtplan.plot[treatmentIndex].plot90.pointsXoptimised
-			# 		r[:,1] = self.envXray.plot.plot0.pointsXoptimised
-			# 		r[:,2] = self.envXray.plot.plot0.pointsYoptimised
-			# 		r[:,0] = self.envXray.plot.plot90.pointsXoptimised
-			# 	else:
-			# 		"""Do not optimise anyting."""
-			# 		l[:,1] = self.patient.rtplan.plot[treatmentIndex].plot0.pointsX
-			# 		l[:,2] = self.patient.rtplan.plot[treatmentIndex].plot0.pointsY
-			# 		l[:,0] = self.patient.rtplan.plot[treatmentIndex].plot90.pointsX
-			# 		r[:,1] = self.envXray.plot.plot0.pointsX
-			# 		r[:,2] = self.envXray.plot.plot0.pointsY
-			# 		r[:,0] = self.envXray.plot.plot90.pointsX
+		# Store said parameters somewhere.
+		logging.critical("Left off here. Calculated h1, h2 and vert for rotation index {}".format(_index))
+		logging.critical("Now need to apply to the stage somehow. Then enable interlock for beam delivery.")
 
 		# If table already exists, update information...
 		self.property.updateVariable('Alignment',['Rotation','x','y','z'],[float(synchrotron6d[3]),float(synchrotron6d[4]),float(synchrotron6d[5])])
 		self.property.updateVariable('Alignment',['Translation','x','y','z'],[float(synchrotron6d[0]),float(synchrotron6d[1]),float(synchrotron6d[2])])
 		self.property.updateVariable('Alignment','Scale',float(self.system.solver.scale))
 
-		# Calculate alignment for stage.
-		# self.system.calculateAlignment()
-
-	def patientApplyAlignment(self,treatmentIndex=-1):
+	def align(self,_index):
 		"""Calculate alignment first."""
 		self.patientCalculateAlignment(treatmentIndex=treatmentIndex)
 
@@ -739,13 +614,6 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		# completion = self.system.movePatient(synchrotron6d)
 		# self.property.updateVariable('Alignment',['Rotation','x','y','z'],[float(completion[3]),float(completion[4]),float(completion[5])])
 		# self.property.updateVariable('Alignment',['Translation','x','y','z'],[float(completion[0]),float(completion[1]),float(completion[2])])
-
-	# def eventFilter(self, source, event):
-	# 	if event.type() == QtCore.QEvent.Close:
-	# 		print(event.type)
-	# 		self.close()
-
-	# 	return QtWidgets.QMainWindow.eventFilter(self, source, event)
 
 if __name__ == "__main__":
 	# QApp 
