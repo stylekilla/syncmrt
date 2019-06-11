@@ -42,8 +42,8 @@ class environment(QtCore.QObject):
 	def addPage(self,name,widget,alignment=None):
 		'''Add environments to work environment.'''
 		if name in self.page:
-			# Do nothing if it already exists.
-			return
+			# Return the page if it already exists.
+			return self.stack.widget(self.page[name])
 		# Specify the button size.
 		size = QtCore.QSize()
 		size.setHeight(30)

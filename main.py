@@ -104,7 +104,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		# Create alignment table.
 		self.property.addSection('Alignment')
 		self.property.addVariable('Alignment',['Rotation','x','y','z'],[0,0,0])
-		self.property.addVariable('Alignment',['Translation','x','y','z'],[0,0,0])
+		self.property.addVariable('Alignment',['Translation','H1','H2','V'],[0,0,0])
 		self.property.addVariable('Alignment','Scale',0)
 		self.propertyTree.expandAll()
 
@@ -157,10 +157,11 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		# When the image mode changes tell the system.
 		self.sbImaging.imageModeChanged.connect(self.system.setImagingMode)
 		# Connect the calculate alignment button to the solver.
-		self.sbTreatment.calculate.connect(partial(self.solve,idx))
+		self.sbTreatment.calculate.connect(partial(self.solve))
 		# Connect the apply alignment button to the patient movement.
-		self.sbTreatment.align.connect(partial(self.align,idx))
+		self.sbTreatment.align.connect(partial(self.align))
 		# Connect the treatment button to the patient treatment delivery.
+		self.sbTreatment.deliver.connect(partial(self.treat))
 
 
 		self.testing()
@@ -285,7 +286,6 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 			self.patient.new(file,'DX')
 			# Create an xray workspace.
 			self.createWorkEnvironmentXray()
-			# self.openXray(file)
 
 	def openFiles(self,modality):
 		# We don't do any importing of pixel data in here; that is left up to the plotter by sending the filepath.
@@ -372,6 +372,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		# Get list of existing x-rays in file.
 		_list = self.patient.dx.getImageList()
 		# Add them to the combo box.
+		self.sbImaging.resetImageSetList()
 		self.sbImaging.addImageSet(_list)
 		# Get the plot histogram widgets and give them to the sidebar widget.
 		histogram = self.envXray.getPlotHistogram()
@@ -400,6 +401,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		# Signals and slots.
 		widget.toggleOverlay.connect(partial(self.envXray.toggleOverlay))
 		self.sbImaging.enableAcquisition()
+		self.sbImaging.resetImageSetList()
 
 	def openCT(self,files):
 		"""Open CT modality files."""
@@ -580,40 +582,44 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 
 	def solve(self,_index):
 		logging.info("Solving alignment for dataset {}".format(_index))
+		# Get the corresponding images.
+		images = self.patient.dx.getImageSet(self.sbImaging.widget['imageList'].currentText())
+		# Get the angle.
+		theta = float(images[_index].view['title'][:-1])
 		# Get the ptv point.
 		_ptv = self.envXray.plot[_index].patientIsocenter
+		# Calculate Txy.
 		txy = -_ptv[0]
-		i = int(self.widget['numImages'].value())
-		if i == 1:
-			theta = [self.widget['theta1'].value()]
-		else:
-			theta = [self.widget['theta1'].value(),self.widget['theta2'].value()]
-		h1 = -txy*np.sin(np.deg2rad(theta[_index]))
-		h2 = txy*np.cos(np.deg2rad(theta[_index]))
+		# Calculate the output values.
+		h1 = txy*np.sin(np.deg2rad(theta))
+		h2 = txy*np.cos(np.deg2rad(theta))
 		tz = -_ptv[1]
 
-		# Store said parameters somewhere.
-		logging.critical("Left off here. Calculated h1, h2 and vert for rotation index {}".format(_index))
-		logging.critical("Now need to apply to the stage somehow. Then enable interlock for beam delivery.")
+		# Store relative movements.
+		self.system.solver[_index] = [h1,h2,tz,0,0,0]
 
 		# If table already exists, update information...
-		self.property.updateVariable('Alignment',['Rotation','x','y','z'],[float(synchrotron6d[3]),float(synchrotron6d[4]),float(synchrotron6d[5])])
-		self.property.updateVariable('Alignment',['Translation','x','y','z'],[float(synchrotron6d[0]),float(synchrotron6d[1]),float(synchrotron6d[2])])
-		self.property.updateVariable('Alignment','Scale',float(self.system.solver.scale))
+		self.property.updateVariable('Alignment',['Rotation','x','y','z'],[0,0,0])
+		self.property.updateVariable('Alignment',['Translation','H1','H2','V'],[h1,h2,tz])
 
 	def align(self,_index):
-		"""Calculate alignment first."""
-		self.patientCalculateAlignment(treatmentIndex=treatmentIndex)
+		logging.info("Applying alignment for dataset {}".format(_index))
+		# Get the corresponding images.
+		images = self.patient.dx.getImageSet(self.sbImaging.widget['imageList'].currentText())
+		# Get positions.
+		_imagePos = images[_index].patientPosition
+		_solution = self.system.solver[_index]
+		moveTo = np.array(_imagePos) + np.array(_solution)
+		self.system.patientSupport.setPosition(moveTo)
+		self.sbTreatment.widget['beam'][_index]['alignmentComplete'] = True
+		self.sbTreatment.treatmentInterlock(_index)
 
-		# Calculate alignment for stage.
-		self.system.calculateAlignment()
+	def treat(self):
+		_preTreatmentPos = self.system.patientSupport.position()
 
-		# Apply alignment.
-		# self.system.applyAlignment()
-
-		# completion = self.system.movePatient(synchrotron6d)
-		# self.property.updateVariable('Alignment',['Rotation','x','y','z'],[float(completion[3]),float(completion[4]),float(completion[5])])
-		# self.property.updateVariable('Alignment',['Translation','x','y','z'],[float(completion[0]),float(completion[1]),float(completion[2])])
+		"""
+			PUT DUNCANS CODE HERE.
+		"""
 
 if __name__ == "__main__":
 	# QApp 
