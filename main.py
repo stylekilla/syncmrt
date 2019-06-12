@@ -4,6 +4,7 @@ import workspace
 import menubar
 from sidebar import Sidebar
 from synctools import QsWidgets
+import time
 
 # Sitepackages
 import os
@@ -15,6 +16,7 @@ from PyQt5.QtCore import pyqtSlot as Slot
 from PyQt5 import QtCore, QtGui, QtWidgets, uic
 # SyncMRT Tools.
 import synctools as mrt
+import epics
 
 # For PyInstaller:
 if getattr(sys, 'frozen', False):
@@ -286,6 +288,25 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 			# self.system.setLocalXrayFile(file)
 			# Create an xray workspace.
 			self.createWorkEnvironmentXray()
+			# Get list of existing x-rays in file.
+			_list = self.patient.dx.getImageList()
+			# Add them to the combo box.
+			self.sbImaging.resetImageSetList()
+			self.sbImaging.addImageSet(_list)
+			# Get the plot histogram widgets and give them to the sidebar widget.
+			histogram = self.envXray.getPlotHistogram()
+			self.sidebar.widget['xrayImageProperties'].addPlotHistogramWindow(histogram)
+			# Get the plot isocenter widgets and give them to the sidebar widget.
+			isocenter = self.envXray.getPlotIsocenter()
+			self.sidebar.widget['xrayImageProperties'].addEditableIsocenter(isocenter)
+			# Force marker update for table.
+			self.envXray.set('maxMarkers',config.markers.quantity)
+			# Finalise import. Set open status to true and open the workspace.
+			self._isXrayOpen = True
+			# self.sbImaging.enableAcquisition()
+			self.environment.button['X-RAY'].clicked.emit()
+			self.sidebar.linkPages('ImageProperties','xrayImageProperties')
+
 
 	def openFiles(self,modality):
 		# We don't do any importing of pixel data in here; that is left up to the plotter by sending the filepath.
@@ -310,7 +331,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 			fileDialogue = QtWidgets.QFileDialog()
 			fileDialogue.setFileMode(QtWidgets.QFileDialog.ExistingFiles)
 			file, dtype = fileDialogue.getOpenFileNames(self, "Open Xray dataset", "", fileFormat)
-			self.patient.load(file,'DX')
+			# self.patient.load(file,'DX')
 			self.openXray(file[0])
 
 		elif modality == 'rtp':
@@ -584,7 +605,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		# Get the corresponding images.
 		images = self.patient.dx.getImageSet(self.sbImaging.widget['imageList'].currentText())
 		# Get the angle.
-		theta = float(images[_index].view['title'][:-1])
+		theta = -float(images[_index].view['title'][:-1])
 		# Get the ptv point.
 		_ptv = self.envXray.plot[_index].patientIsocenter
 		# Calculate Txy.
@@ -606,19 +627,87 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		# Get the corresponding images.
 		images = self.patient.dx.getImageSet(self.sbImaging.widget['imageList'].currentText())
 		# Get positions.
+		theta = float(images[_index].view['title'][:-1])
 		_imagePos = images[_index].patientPosition
+		_imagePos[5] = theta
 		_solution = self.system.solver[_index]
 		moveTo = np.array(_imagePos) + np.array(_solution)
 		self.system.patientSupport.setPosition(moveTo)
 		self.sbTreatment.widget['beam'][_index]['alignmentComplete'] = True
 		self.sbTreatment.treatmentInterlock(_index)
 
-	def treat(self):
+	def treat(self,_index):
 		_preTreatmentPos = self.system.patientSupport.position()
 
 		"""
 			PUT DUNCANS CODE HERE.
 		"""
+		_breathHold = False
+		_beam = True
+		_speed = 2.5
+		_z_start = -11.6
+		_z_stop = 11.6
+		_z_home = 0.0
+		_pv = "SR08ID01SST25:Z"
+
+		# Close 1A Shutter.
+		logging.debug("Closing 1A shutters.")
+		epics.caput("SR08ID01PSS01:HU01A_BL_SHUTTER_CLOSE_CMD", 1, wait=True)
+		# Set up the scan.
+		epics.caput(_pv+".VELO", float(10))
+		# Start the breath-hold.
+		if _breathHold:
+			logging.debug("Turning breath hold on.")
+			epics.caput("asImblZebra:SOFT_IN",0)
+		# Push the mouse to the start pos.
+		logging.debug("Moving to start position.")
+		epics.caput(_pv+".VAL", float(_z_start),wait=True)
+		# Set the treatment speed.
+		epics.caput(_pv+".VELO", float(_speed))
+		_reply = QtWidgets.QMessageBox.question(None,"Treatment Delivery","Do you want to treat?")
+		if _reply == QtWidgets.QMessageBox.Yes:
+			pass
+		else:
+			# Set everything back to normal and return.
+			logging.critical("Treatment cancelled.")
+			# Close 1A Shutter.
+			logging.debug("Closing 1A shutters.")
+			epics.caput("SR08ID01PSS01:HU01A_BL_SHUTTER_CLOSE_CMD", 1, wait=True)
+			# Turn breath hold off.
+			if _breathHold:
+				logging.debug("Turning off breath hold.")
+				epics.caput("asImblZebra:SOFT_IN",1)
+			# Move back to what was before irradiation.
+			epics.caput(_pv+".VELO", float(10))
+			self.system.patientSupport.setPosition(_preTreatmentPos)
+			self.sbTreatment.resetTreatmentDelivery(_index)
+			# Return
+			return
+		# Open the shutter.
+		if _beam:
+			logging.debug("Opening shutter.")
+			epics.caput("SR08ID01PSS01:HU01A_BL_SHUTTER_OPEN_CMD", 1, wait=True)
+			time.sleep(3)
+		# Move to the finish position.
+		logging.debug("Scanning dynamic-wedge through beam.")
+		epics.caput(_pv+".VAL", float(_z_stop),wait=True)
+		# Close 1A Shutter.
+		logging.debug("Closing 1A shutters.")
+		epics.caput("SR08ID01PSS01:HU01A_BL_SHUTTER_CLOSE_CMD", 1, wait=True)
+		time.sleep(3)
+		# Turn breath hold off.
+		if _breathHold:
+			logging.debug("Turning off breath hold.")
+			epics.caput("asImblZebra:SOFT_IN",1)
+		# Set movement speed.
+		epics.caput(_pv+".VELO", float(10))
+		# Move to start position.
+		logging.debug("Resetting to home position.")
+		epics.caput(_pv+".VAL", float(_z_home),wait=True)
+
+		# Move back to what was before irradiation.
+		# self.system.patientSupport.setPosition(_preTreatmentPos)
+		self.system.patientSupport.setPosition([0,0,0,0,0,0])
 
 if __name__ == "__main__":
 	# QApp 
