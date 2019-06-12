@@ -163,8 +163,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		# Connect the treatment button to the patient treatment delivery.
 		self.sbTreatment.deliver.connect(partial(self.treat))
 
-
-		self.testing()
+		# self.testing()
 
 	def testing(self):
 		# self.openFiles('folder')
@@ -181,8 +180,8 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		# self.patient.rtplan.plot[0].plot90.markerAdd(-35.9191,-25.8618)
 		# self.patient.rtplan.plot[0].plot90.markerAdd(63.9358,31.6087)
 		# Xray
-		# self.openXray(['/Users/micahbarnes/Documents/scratch/testXray.hdf5'])
-		self.openXray(['/home/imbl/Documents/Software/testdata/test.hdf5'])
+		# self.openXray('/Users/micahbarnes/Documents/scratch/testXray.hdf5')
+		self.openXray('/home/imbl/Documents/Software/testdata/test.hdf5')
 		# CT
 		# folder = '/Users/micahbarnes/Documents/scratch/ct-lamb/'
 		# folder = '/Users/micahbarnes/Documents/scratch/head-phant/'
@@ -284,6 +283,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 			if file.endswith('.hdf5') is False:
 				file += '.hdf5'
 			self.patient.new(file,'DX')
+			# self.system.setLocalXrayFile(file)
 			# Create an xray workspace.
 			self.createWorkEnvironmentXray()
 
@@ -311,7 +311,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 			fileDialogue.setFileMode(QtWidgets.QFileDialog.ExistingFiles)
 			file, dtype = fileDialogue.getOpenFileNames(self, "Open Xray dataset", "", fileFormat)
 			self.patient.load(file,'DX')
-			self.openXray(file)
+			self.openXray(file[0])
 
 		elif modality == 'rtp':
 			fileFormat = 'DICOM (*.dcm)'
@@ -335,7 +335,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 						dataset.append(os.path.join(root,fn))
 			if len(dataset) > 0:
 				self.patient.load(dataset,'DX')
-				self.openXray(dataset)
+				self.openXray(dataset[0])
 
 			dataset = []
 			modality = 'CT'
@@ -366,9 +366,8 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 			self.envXray.reset()
 		else:
 			self.createWorkEnvironmentXray()
-		# Send x-ray dataset to plot.
-		# self.envXray.loadImages(self.patient.dx.image)
-		self.system.setLocalXrayFile(files)
+		# Open the x-ray file.
+		self.patient.load(files,'DX')
 		# Get list of existing x-rays in file.
 		_list = self.patient.dx.getImageList()
 		# Add them to the combo box.
