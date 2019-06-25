@@ -18,3 +18,8 @@ synctools.fileHandler.hdf5
 ==========================
 .. automodule:: synctools.fileHandler.hdf5
 	:members:
+
+synctools.hardware.imager
+=========================
+.. automodule:: synctools.hardware.imager
+	:members:
