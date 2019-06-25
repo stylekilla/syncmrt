@@ -10,7 +10,7 @@ class files:
 
 class imager:
 	""" Settings for the imager configuration. """
-	isocenter = [100,100]
-	pixelSize = [0.1,0.1]
+	isocenter = [1300,933]
+	pixelSize = [0.047,0.047]
 	sad = 0
 	sid = 0
