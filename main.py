@@ -230,7 +230,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		# When the current image set is changed, get images and plot them.
 		images = self.patient.dx.getImageSet(_set)
 		# Set the amount of images required.
-		self.envXray.loadImages(images)
+		self.envXray.loadImages(images)	
 		# self.envXray.createSubplots(len(_set))
 		# Populate new histograms.
 		histogram = self.envXray.getPlotHistogram()
