@@ -335,13 +335,31 @@ plt.show()
 """
 A DIFFERENT TEST. CALCULATING 3D POINTS.
 """
-a = 49
-b = 97
+from numpy import sin, cos, tan, sqrt, deg2rad
 
-ta = np.arctan(63/105)
-tb = np.arctan(71/66.5)
+T = deg2rad(90) - alpha/2
+G = deg2rad(0)
+B = deg2rad(0)
 
-x = b*np.sin(ta+tb)*np.cos(ta) - a*np.tan(ta+tb)*np.cos(ta) + b*np.cos(ta+tb)*np.tan(ta+tb)*np.cos(ta) - a*np.sin(ta)
-print("X: Expected ~51/52 mm, got {:.2f}.".format(x))
-y  = a*np.cos(ta) + b*np.cos(ta+tb)*np.sin(ta) - a*np.sin(ta)*np.tan(ta+tb) + b*np.sin(ta)*np.tan(ta+tb)*np.sin(ta+tb)
-print("Y: Expected ~88/89 mm, got {:.2f}.".format(y))
+# a2 = 2
+# b2 = 4
+
+# Their workings.
+x2 = (a1*cos(T) - a2*sin(T))/cos(2*T)
+y2 = (a1*sin(T) - a2*cos(T))/cos(2*T)
+z2 = (b1 + b2)/2
+
+x = -(sqrt(2)/2)*x2*cos(G) + (sqrt(2)/2)*y2*cos(G)
+y = -(sqrt(2)/2)*x2*cos(G) - (sqrt(2)/2)*y2*cos(G) + z2*sin(B)
+z = x2*sin(G) + y2*sin(G) + z2*cos(B)
+
+# My workings.
+theta = deg2rad(10)
+alpha = deg2rad(90)-2*theta
+a1 = 22.5
+b1 = 10
+x2 = (a1/sin(alpha)) + (b1/tan(alpha))
+y2 = (a1/tan(alpha)) + (b1/sin(alpha))
+
+x1 = (x2-b1*tan(theta))*sin(theta)
+y1 = (y2-a1*tan(theta))*cos(theta)
