@@ -335,31 +335,31 @@ plt.show()
 """
 A DIFFERENT TEST. CALCULATING 3D POINTS.
 """
+
+import timeit
+
+timeit.timeit("""
 from numpy import sin, cos, tan, sqrt, deg2rad
-
-T = deg2rad(90) - alpha/2
-G = deg2rad(0)
-B = deg2rad(0)
-
-# a2 = 2
-# b2 = 4
-
-# Their workings.
-x2 = (a1*cos(T) - a2*sin(T))/cos(2*T)
-y2 = (a1*sin(T) - a2*cos(T))/cos(2*T)
-z2 = (b1 + b2)/2
-
-x = -(sqrt(2)/2)*x2*cos(G) + (sqrt(2)/2)*y2*cos(G)
-y = -(sqrt(2)/2)*x2*cos(G) - (sqrt(2)/2)*y2*cos(G) + z2*sin(B)
-z = x2*sin(G) + y2*sin(G) + z2*cos(B)
-
+import numpy as np
 # My workings.
-theta = deg2rad(10)
-alpha = deg2rad(90)-2*theta
-a1 = 22.5
-b1 = 10
-x2 = (a1/sin(alpha)) + (b1/tan(alpha))
-y2 = (a1/tan(alpha)) + (b1/sin(alpha))
+alpha = deg2rad(13)
+beta = deg2rad(4)
+a = 3.4
+z1 = 10.1
+b = 3.2
+z2 = 10.2
 
-x1 = (x2-b1*tan(theta))*sin(theta)
-y1 = (y2-a1*tan(theta))*cos(theta)
+phi = np.pi/2 - alpha - beta
+psi_a = np.arctan((a*sin(phi))/(a*cos(phi)+b))
+psi_b = np.pi/2-alpha-beta-psi_a
+
+r = a/sin(psi_a)
+r = b/sin(psi_b)
+
+xv = r*sin(psi_b+beta)
+yv = r*sin(psi_a+alpha)
+
+x = -(sqrt(2)/2)*xv - (sqrt(2)/2)*yv
+y = -(sqrt(2)/2)*xv + (sqrt(2)/2)*yv
+z = (z1+z2)/2
+""", number=10000)
