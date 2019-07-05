@@ -4,21 +4,50 @@ from scipy.signal import find_peaks
 import epics
 import time
 
+
+import logging, coloredlogs
+coloredlogs.install(fmt='%(asctime)s,%(msecs)d %(levelname)-8s [%(filename)s:%(lineno)d] %(message)s',datefmt='%H:%M:%S',level=logging.DEBUG)
+
+
+"""
+Assumes:
+	- RUBY In beam
+	- Ball bearing on stage in centre of field.
+	- BDA centred on synch beam
+	- All movements possible wrt rotations on dynmrt (doesn't check if they are possible or not).
+"""
+# ballbearing on the stage.
+# RUBY is in beam.
+
+
+# This is the left bottom top right of the field in RUBY in pixels.
+l = 700
+t = 1009
+r = 1877
+b = 1120
+
 def getImage():
+	logging.info("Acquiring an image.")
+	epics.caput('SR08ID01DET01:CAM:Acquire.VAL',1,wait=True)
 	arr = epics.caget('SR08ID01DET01:IMAGE:ArrayData')
 	_x = epics.caget('SR08ID01DET01:IMAGE:ArraySize1_RBV')
 	_y = epics.caget('SR08ID01DET01:IMAGE:ArraySize0_RBV')
 	time.sleep(0.1)
-	return np.flipud(np.array(arr,dtype=np.uint16).reshape(_x,_y))[1008:1123,695:1909]
+	# return np.flipud(np.array(arr,dtype=np.uint16).reshape(_x,_y))
+	return np.flipud(np.array(arr,dtype=np.uint16).reshape(_x,_y))[t:b,l:r]
 
 def closeShutter():
+	logging.info("Closing 1A shutter.")
 	epics.caput("SR08ID01PSS01:HU01A_BL_SHUTTER_CLOSE_CMD", 1, wait=True)
+	time.sleep(2)
 
 def openShutter():
+	logging.info("Opening 1A shutter.")
 	epics.caput("SR08ID01PSS01:HU01A_BL_SHUTTER_OPEN_CMD", 1, wait=True)
 	time.sleep(2)
 
 # Set home.
+logging.info("Moving DynMRT stages to home positions.")
 epics.caput('SR08ID01SST25:SAMPLEH1.VAL',0,wait=True)
 epics.caput('SR08ID01SST25:SAMPLEH2.VAL',0,wait=True)
 epics.caput('SR08ID01SST25:ROTATION.VAL',0,wait=True)
@@ -26,11 +55,13 @@ epics.caput('SR08ID01SST25:ROTATION.VAL',0,wait=True)
 ########################
 # START RUBY ACQUISITION
 ########################
+logging.info("Setting up RUBY acquisition parameters.")
 epics.caput('SR08ID01DET01:CAM:Acquire.VAL',0,wait=True)
-epics.caput('SR08ID01DET01:CAM:AcquireTime.VAL',0.02)
+epics.caput('SR08ID01DET01:CAM:AcquireTime.VAL',0.5)
 epics.caput('SR08ID01DET01:CAM:AcquirePeriod.VAL',0.00)
-# epics.caput('SR08ID01DET01:CAM:ImageMode.VAL',0.07,wait=True)
-epics.caput('SR08ID01DET01:CAM:Acquire.VAL',1)
+epics.caput('SR08ID01DET01:CAM:ImageMode.VAL','Single',wait=True)
+epics.caput('SR08ID01DET01:TIFF:AutoSave.VAL','No',wait=True)
+epics.caput('SR08ID01DET01:CAM:Acquire.VAL',1,wait=True)
 
 
 ######################
@@ -40,12 +71,15 @@ epics.caput('SR08ID01DET01:CAM:Acquire.VAL',1)
 # Distance to travel in mm.
 _distance = 5
 
+closeShutter()
 # Get darkfield.
+logging.info("Getting darkfield.")
 dark = getImage()
 # Get flood field.
 epics.caput('SR08ID01SST25:SAMPLEV.TWV',_distance,wait=True)
 epics.caput('SR08ID01SST25:SAMPLEV.TWR',1,wait=True)
 openShutter()
+logging.info("Getting floodfield.")
 flood = getImage() - dark
 epics.caput('SR08ID01SST25:SAMPLEV.TWF',1,wait=True)
 
@@ -60,10 +94,11 @@ image.append((getImage()-dark)/flood)
 epics.caput('SR08ID01SST25:SAMPLEH2.VAL',0,wait=True)
 
 # The row in the image to take.
-_line = 75
+_line = int((b-t)/2)
 _width = 30
 
 # Take line profile of each.
+logging.info("Taking line profiles of images.")
 line = []
 for i in range(len(image)):
 	temp = image[i][_line,:].astype(float)
@@ -75,9 +110,6 @@ for i in range(len(line)):
 	_peaks, _ = find_peaks(line[i],width=_width)
 	peaks.append(_peaks)
 
-pixelSize = _distance/np.absolute(peaks[1]-peaks[0])[0]
-print("Pixel Size: {} mm".format(pixelSize))
-
 # fig,ax = plt.subplots(2,2)
 # ax = ax.flatten()
 # ax[0].plot(np.linspace(0,len(line[0]),len(line[0])),line[0])
@@ -86,24 +118,32 @@ print("Pixel Size: {} mm".format(pixelSize))
 # ax[3].imshow(image[1],cmap='gray')
 # plt.show()
 
+pixelSize = _distance/np.absolute(peaks[1]-peaks[0])[0]
+print("Pixel Size: {} mm".format(pixelSize))
+
+
 ###############
 # CALCULATE COR
 ###############
-_width = 75
+logging.info("Calculating centre of rotation.")
 
 image = []
 # Rotate to -180.
+logging.info("Calculating centre of rotation: -180.")
 epics.caput('SR08ID01SST25:ROTATION.VAL',-180,wait=True)
-image.append(getImage())
+image.append((getImage()-dark)/flood)
 # Rotate to -90.
+logging.info("Calculating centre of rotation: -90.")
 epics.caput('SR08ID01SST25:ROTATION.VAL',-90,wait=True)
-image.append(getImage())
+image.append((getImage()-dark)/flood)
 # Rotate to 0.
+logging.info("Calculating centre of rotation: 0.")
 epics.caput('SR08ID01SST25:ROTATION.VAL',0,wait=True)
-image.append(getImage())
+image.append((getImage()-dark)/flood)
 # Rotate to 90
+logging.info("Calculating centre of rotation: 90.")
 epics.caput('SR08ID01SST25:ROTATION.VAL',90,wait=True)
-image.append(getImage())
+image.append((getImage()-dark)/flood)
 
 # Take line profile of each.
 line = []
@@ -122,16 +162,18 @@ for i in range(len(line)):
 d_h1 = (peaks[1]-peaks[3])*pixelSize/2
 d_h2 = (peaks[0]-peaks[2])*pixelSize/2
 
+print(d_h1,d_h2)
+
 # fig,ax = plt.subplots(2,4)
 # ax = ax.flatten()
-# ax[0].plot(np.linspace(0,len(line[0]),len(line[0])),line[0])
-# ax[0].scatter(line[0][peaks[0]],marker='+',color='r')
-# ax[1].plot(np.linspace(0,len(line[0]),len(line[0])),line[1])
-# ax[1].scatter(line[1][peaks[1]],marker='+',color='r')
-# ax[2].plot(np.linspace(0,len(line[0]),len(line[0])),line[2])
-# ax[2].scatter(line[2][peaks[2]],marker='+',color='r')
-# ax[3].plot(np.linspace(0,len(line[0]),len(line[0])),line[3])
-# ax[3].scatter(line[3][peaks[3]],marker='+',color='r')
+# ax[0].plot(line[0])
+# # ax[0].scatter(line[0][peaks[0]],marker='+',color='r')
+# ax[1].plot(line[1])
+# # ax[1].scatter(line[1][peaks[1]],marker='+',color='r')
+# ax[2].plot(line[2])
+# # ax[2].scatter(line[2][peaks[2]],marker='+',color='r')
+# ax[3].plot(line[3])
+# # ax[3].scatter(line[3][peaks[3]],marker='+',color='r')
 # ax[4].imshow(image[0],cmap='gray')
 # ax[5].imshow(image[1],cmap='gray')
 # ax[6].imshow(image[2],cmap='gray')
@@ -139,6 +181,7 @@ d_h2 = (peaks[0]-peaks[2])*pixelSize/2
 # plt.show()
 
 # Move H1.
+logging.info("Moving the ball-bearing to the centre of rotation.")
 epics.caput('SR08ID01SST25:SAMPLEH1.TWV',d_h1,wait=True)
 if peaks[1] < peaks[3]:
 	epics.caput('SR08ID01SST25:SAMPLEH1.TWF',1,wait=True)
@@ -151,8 +194,9 @@ if peaks[0] < peaks[2]:
 else:
 	epics.caput('SR08ID01SST25:SAMPLEH2.TWR',1,wait=True)
 
+logging.info("Acquiring final image of centre of rotation.")
 # Take final image of iso.
-finalImage = getImage()
+finalImage = (getImage()-dark)/flood
 closeShutter()
 
 # Take line profile of each.
@@ -166,9 +210,9 @@ pos[1] = _peaks[0]
 print("Image isocenter: ",pos)
 
 
-# fig,ax = plt.subplots(1,2)
-# ax = ax.flatten()
-# ax[0].imshow(finalImage)
+fig,ax = plt.subplots(1,2)
+ax = ax.flatten()
+ax[0].imshow(finalImage)
 # ax[0].hlines(_line)
-# ax[0].scatter(pos[1],pos[0],marker='+',color='r')
-# plt.show()
+ax[0].scatter(pos[1],pos[0],marker='+',color='r')
+plt.show()
