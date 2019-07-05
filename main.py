@@ -26,6 +26,7 @@ if getattr(sys, 'frozen', False):
     application_path = sys._MEIPASS
 else:
     application_path = os.path.dirname(os.path.abspath(__file__))
+resourceFilepath = application_path+'/resources/'
 
 # Select Qt5 user interface.
 qtCreatorFile = application_path+"/resources/main.ui"
@@ -54,6 +55,8 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		self.setupUi(self)
 		self.setStyleSheet(qtStyleSheet.read())
 		self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
+		self.setWindowTitle('syncMRT')
+		self.setWindowIcon(QtGui.QIcon(resourceFilepath+'icon.png'))  
 
 		"""
 		Qt5 Setup
