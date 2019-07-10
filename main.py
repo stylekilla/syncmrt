@@ -125,9 +125,6 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		self._isMRIOpen = False
 		self._isRTPOpen = False
 
-		# TESTING MENU
-		self.menuTESTING.triggered.connect(self.testing)
-
 		"""
 		SyncMRT Setup
 		"""
@@ -178,8 +175,8 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		# self.patient.rtplan.plot[0].plot90.markerAdd(-35.9191,-25.8618)
 		# self.patient.rtplan.plot[0].plot90.markerAdd(63.9358,31.6087)
 		# Xray
-		# self.openXray(['/Users/micahbarnes/Documents/scratch/testXray.hdf5'])
-		self.openXray(['/home/imbl/Documents/Software/testdata/test.hdf5'])
+		self.openXray('/Users/micahbarnes/Documents/scratch/testXray.hdf5')
+		# self.openXray(['/home/imbl/Documents/Software/testdata/test.hdf5'])
 		# CT
 		# folder = '/Users/micahbarnes/Documents/scratch/ct-lamb/'
 		# folder = '/Users/micahbarnes/Documents/scratch/head-phant/'
@@ -230,6 +227,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		# self.sbImaging.addImageSet(newItem)
 
 	def loadXraySet(self,_set):
+		logging.debug("Reading image set {}.".format(_set))
 		# When the current image set is changed, get images and plot them.
 		images = self.patient.dx.getImageSet(_set)
 		# Set the amount of images required.
@@ -302,7 +300,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 			fileDialogue.setFileMode(QtWidgets.QFileDialog.ExistingFiles)
 			file, dtype = fileDialogue.getOpenFileNames(self, "Open Xray dataset", "", fileFormat)
 			self.patient.load(file,'DX')
-			self.openXray(file)
+			self.openXray(file[0])
 
 		elif modality == 'rtp':
 			fileFormat = 'DICOM (*.dcm)'
@@ -326,7 +324,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 						dataset.append(os.path.join(root,fn))
 			if len(dataset) > 0:
 				self.patient.load(dataset,'DX')
-				self.openXray(dataset)
+				self.openXray(dataset[0])
 
 			dataset = []
 			modality = 'CT'
@@ -348,9 +346,9 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 
 			self.environment.button['CT'].clicked.emit()
 
-	def openXray(self,files):
-		"""Open XR (x-ray) modality files."""
-		logging.info('Loading x-ray data into worksapce.')
+	def openXray(self,file):
+		"""Open XR (x-ray) modality file."""
+		logging.info('Loading x-ray data.')
 		# Create new x-ray workspace if required.
 		if self._isXrayOpen:
 			# Re-initialise the environment.
@@ -359,7 +357,8 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 			self.createWorkEnvironmentXray()
 		# Send x-ray dataset to plot.
 		# self.envXray.loadImages(self.patient.dx.image)
-		self.system.setLocalXrayFile(files)
+		# self.system.setLocalXrayFile(file)
+		self.patient.load(file,'DX')
 		# Get list of existing x-rays in file.
 		_list = self.patient.dx.getImageList()
 		# Add them to the combo box.

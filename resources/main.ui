@@ -203,45 +203,6 @@
     </item>
    </layout>
   </widget>
- <!--  <widget class="QMenuBar" name="menu">
-   <property name="geometry">
-    <rect>
-     <x>0</x>
-     <y>0</y>
-     <width>1440</width>
-     <height>22</height>
-    </rect>
-   </property>
-   <widget class="QMenu" name="file">
-    <property name="title">
-     <string>File</string>
-    </property>
-    <widget class="QMenu" name="open">
-     <property name="title">
-      <string>Open...</string>
-     </property>
-     <addaction name="menuFileOpenXray"/>
-     <addaction name="menuFileOpenCT"/>
-     <addaction name="menuFileOpenMRI"/>
-     <addaction name="menuFileOpenRTP"/>
-     <addaction name="separator"/>
-     <addaction name="menuFolderOpen"/>
-    </widget>
-    <addaction name="open"/>
-    <addaction name="separator"/>
-    <addaction name="m_fe"/>
-   </widget>
-   <widget class="QMenu" name="tools">
-    <property name="title">
-     <string>Tools</string>
-    </property>
-    <addaction name="m_txr"/>
-    <addaction name="m_ta"/>
-    <addaction name="menuTESTING"/>
-   </widget>
-   <addaction name="file"/>
-   <addaction name="tools"/>
-  </widget> -->
   <widget class="QStatusBar" name="statusBar">
    <property name="sizePolicy">
     <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">
@@ -262,51 +223,6 @@
     </size>
    </property>
   </widget>
-  <action name="menuFileOpenXray">
-   <property name="text">
-    <string>X-ray</string>
-   </property>
-  </action>
-  <action name="menuFileOpenCT">
-   <property name="text">
-    <string>CT</string>
-   </property>
-  </action>
-  <action name="menuFileOpenMRI">
-   <property name="text">
-    <string>MRI</string>
-   </property>
-  </action>
-  <action name="m_txr">
-   <property name="text">
-    <string>Capture X-ray</string>
-   </property>
-  </action>
-  <action name="menuFileOpenRTP">
-   <property name="text">
-    <string>Treatment Plan</string>
-   </property>
-  </action>
-  <action name="m_ta">
-   <property name="text">
-    <string>Align</string>
-   </property>
-  </action>
-  <action name="m_fe">
-   <property name="text">
-    <string>Exit</string>
-   </property>
-  </action>
-  <action name="menuFolderOpen">
-   <property name="text">
-    <string>Folder</string>
-   </property>
-  </action>
-  <action name="menuTESTING">
-   <property name="text">
-    <string>TESTING</string>
-   </property>
-  </action>
  </widget>
  <layoutdefault spacing="6" margin="11"/>
  <resources/>

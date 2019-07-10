@@ -1,0 +1,16 @@
+/*Class decorated styles*/
+.Pass {
+	background-color: #82FF70;
+}
+.Fail {
+	background-color: #ff6961;
+}
+.GroupHeader {
+	font-weight: bold;
+}
+.GroupItem {
+	background-color: #000000;
+}
+.GroupItemLabel {
+	background-color: #000000;
+}
