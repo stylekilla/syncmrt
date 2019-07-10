@@ -20,9 +20,7 @@ import epics
 
 # For PyInstaller:
 if getattr(sys, 'frozen', False):
-    # If the application is run as a bundle, the pyInstaller bootloader
-    # extends the sys module by a flag frozen=True and sets the app 
-    # path into variable _MEIPASS'.
+    # If the application is run as a bundle, the pyInstaller bootloader extends the sys module by a flag frozen=True and sets the app path into variable _MEIPASS'.
     application_path = sys._MEIPASS
 else:
     application_path = os.path.dirname(os.path.abspath(__file__))
@@ -34,13 +32,7 @@ qtStyleSheet = open(application_path+"/resources/stylesheet.css")
 Ui_MainWindow, QtBaseClass = uic.loadUiType(qtCreatorFile)
 
 import logging, coloredlogs
-coloredlogs.install(fmt='%(asctime)s,%(msecs)d %(levelname)-8s [%(filename)s:%(lineno)d] %(message)s',datefmt='%H:%M:%S',level=logging.DEBUG)
-
-# Debug levels: NOTSET, DEBUG, INFO, WARNING, ERROR, CRITICAL
-# logging.basicConfig(format='%(asctime)s,%(msecs)d %(levelname)-8s [%(filename)s:%(lineno)d] %(message)s',
-    # datefmt='%H:%M:%S',
-    # datefmt='%Y-%m-%d:%H:%M:%S',
-    # )
+coloredlogs.install(fmt='%(asctime)s,%(msecs)d %(levelname)-8s [%(filename)s:%(lineno)d] %(message)s',datefmt='%H:%M:%S',level=logging.INFO)
 
 """
 MAIN CLASS
@@ -71,15 +63,8 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 
 		# Sidebar panel.
 		self.sidebar = Sidebar(self.frameSidebarStack,self.frameSidebarList)
-		# Sidebar: Alignment.
-		self.sbAlignment = self.sidebar.addPage('Alignment',QsWidgets.QAlignment(),before='all')
-		self.sbAlignment.widget['maxMarkers'].setValue(3)
-		self.sbAlignment.widget['maxMarkers'].valueChanged.connect(partial(self.updateSettings,'global',self.sbAlignment.widget['maxMarkers']))
-		# self.sbAlignment.widget['calcAlignment'].clicked.connect(partial(self.patientCalculateAlignment,treatmentIndex=-1))
-		# self.sbAlignment.widget['doAlignment'].clicked.connect(partial(self.patientApplyAlignment,treatmentIndex=-1))
-		# self.sbAlignment.widget['optimise'].toggled.connect(partial(self.toggleOptimise))
 		# Sidebar: Imaging
-		self.sidebar.addPage('Imaging',QsWidgets.QImaging(),after='Alignment')
+		self.sidebar.addPage('Imaging',QsWidgets.QImaging(),before='all')
 		self.sbImaging = self.sidebar.getPage('Imaging')
 		# Add image properties section to sidebar.
 		self.sidebar.addPage('ImageProperties',None,after='Imaging')
@@ -126,9 +111,6 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		self._isMRIOpen = False
 		self._isRTPOpen = False
 
-		# TESTING MENU
-		self.menuTESTING.triggered.connect(self.testing)
-
 		"""
 		SyncMRT Setup
 		"""
@@ -142,15 +124,10 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		More GUI linking from System and Patient.
 		"""
 		# Create controls work environment.
-		# self.environment.addPage('Controls',alignment='Right')
-		# self.controls = mrt.widgets.controls.controlsPage(parent=self.environment.stackPage['Controls'])
-		self.sbSettings.modeChanged.connect(self.setControlsComplexity)
 		self.sbSettings.stageChanged.connect(self.system.setStage)
 		self.sbSettings.refreshConnections.connect(self.system.patientSupport.reconnect)
 		self.sbSettings.refreshConnections.connect(self.system.imager.reconnect)
 		self.sbSettings.detectorChanged.connect(self.system.setDetector)
-		# self.sbSettings.controls['cbReadOnly'].stateChanged.connect(partial(self.setControlsReadOnly))
-		# self.setControlsReadOnly(True)
 		self.sbSettings.loadStages(self.system.patientSupport.deviceList)
 		self.sbSettings.loadDetectors(self.system.imager.deviceList)
 		# When an image set is added to the HDF5 file, add it to the sidebar:QImaging:QComboBox.
@@ -168,74 +145,6 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		# Connect the treatment button to the patient treatment delivery.
 		self.sbTreatment.deliver.connect(partial(self.treat))
 
-		# self.testing()
-
-	def testing(self):
-		# self.openFiles('folder')
-		# self.envXray.plot.plot0.markerAdd(-27.036,45.995)
-		# self.envXray.plot.plot0.markerAdd(32.8665,45.001)
-		# self.envXray.plot.plot0.markerAdd(34.6091,-15.0564)
-		# self.envXray.plot.plot90.markerAdd(-23.2147,46.0205)
-		# self.envXray.plot.plot90.markerAdd(-57.9952,43.4355)
-		# self.envXray.plot.plot90.markerAdd(43.1843,-15.4921)
-		# self.patient.rtplan.plot[0].plot0.markerAdd(25.527,-27.8264)
-		# self.patient.rtplan.plot[0].plot0.markerAdd(-29.334,-25.1335)
-		# self.patient.rtplan.plot[0].plot0.markerAdd(-34.1097,32.0152)
-		# self.patient.rtplan.plot[0].plot90.markerAdd(-0.3594,-27.2985)
-		# self.patient.rtplan.plot[0].plot90.markerAdd(-35.9191,-25.8618)
-		# self.patient.rtplan.plot[0].plot90.markerAdd(63.9358,31.6087)
-		# Xray
-		# self.openXray('/Users/micahbarnes/Documents/scratch/testXray.hdf5')
-		self.openXray('/home/imbl/Documents/Software/testdata/test.hdf5')
-		# CT
-		# folder = '/Users/micahbarnes/Documents/scratch/ct-lamb/'
-		# folder = '/Users/micahbarnes/Documents/scratch/head-phant/'
-		# ds_ct = []
-		# ds_rtplan = []
-		# for root, subdir, fp in os.walk(folder):
-		# 	for fn in fp:
-		# 		if (fn.endswith(tuple('.dcm'))) & (fn[:len('ct')] == 'CT'):
-		# 			ds_ct.append(os.path.join(root,fn))
-		# 		elif (fn.endswith(tuple('.dcm'))) & (fn[:len('rp')] == 'RP'):
-		# 			ds_rtplan.append(os.path.join(root,fn))
-		# if len(ds_ct) > 0: self.openCT(ds_ct)
-		# if len(ds_rtplan) > 0: self.openRTP(ds_rtplan)
-
-		# self.envXray.plot[0].markerAdd(20,0)
-		# self.envXray.plot[0].markerAdd(0,0)
-		# self.envXray.plot[0].markerAdd(0,40)
-		# self.envXray.plot[1].markerAdd(0,0)
-		# self.envXray.plot[1].markerAdd(0,0)
-		# self.envXray.plot[1].markerAdd(0,40)
-		# self.envRtplan[0].plot[0].markerAdd(20,0)
-		# self.envRtplan[0].plot[0].markerAdd(0,0)
-		# self.envRtplan[0].plot[0].markerAdd(0,40)
-		# self.envRtplan[0].plot[1].markerAdd(0,0)
-		# self.envRtplan[0].plot[1].markerAdd(0,0)
-		# self.envRtplan[0].plot[1].markerAdd(0,40)
-
-	# def takestupidxray(self,theta):
-	# 	# Grab frame from hamamastu.
-	# 	try:
-	# 		import pyepics as epics
-	# 	except:
-	# 		pass
-	# 	arrayData = epics.caget('SR08ID01DET04:IMAGE:ArrayData')
-	# 	arrayData = arrayData.reshape(1216,616)
-	# 	self.envXray.plot[0].image.imshow(arrayData)
-	# 	self.envXray.plot[0].canvas.draw()
-
-	# def acquireXrays(self,theta,zTranslation,comment):
-	# 	# Send command to system.
-	# 	self.system.acquireXray(theta,zTranslation,comment)
-		# Once done, load images.
-		# for i in range(len(theta)):
-			# self.envXray.plot[i].imageLoad(self.system.detector.imageBuffer[0])
-
-	# def updateXraySetList(self,newItem):
-		# Get the updated items list.
-		# self.sbImaging.addImageSet(newItem)
-
 	def loadXraySet(self,_set):
 		# When the current image set is changed, get images and plot them.
 		images = self.patient.dx.getImageSet(_set)
@@ -252,32 +161,6 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		for i in range(len(images)):
 			_angles.append(images[i].view['title'])
 		self.sbTreatment.populateTreatments(_angles)
-
-	@QtCore.pyqtSlot(int)
-	def calculateAlignment(self,treatmentIndex):
-		print('TADA MAIN.py L:188')
-
-	@QtCore.pyqtSlot(float,float,float)
-	def ctUpdateIsocenter(self,x,y,z):
-		# Update the ct isocenter.
-		try:
-			self.patient.ct.isocenter = np.array([x,y,z])
-			self.patient.ct.plot.updatePatientIsocenter(self.patient.ct.isocenter)
-			logging.debug('Updated patient CT isocenter with vals: {} {} {}'.format(x,y,z))
-		except:
-			logging.warning('Unable to update CT isocenter.')
-
-	@QtCore.pyqtSlot(str)
-	def setControlsComplexity(self,level):
-		self.controls.setLevel(level)
-
-	@QtCore.pyqtSlot(bool)
-	def enableDoAlignment(self,state=False):
-		# self.pps._isStageConnected
-		self.sbAlignment.widget['doAlignment'].setEnabled(state)
-
-	def setControlsReadOnly(self,state):
-		self.controls.setReadOnly(bool(not state))
 
 	def newFile(self,modality):
 		if modality == 'xray':
@@ -310,15 +193,11 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 			self.environment.button['X-RAY'].clicked.emit()
 			self.sidebar.linkPages('ImageProperties','xrayImageProperties')
 
-
 	def openFiles(self,modality):
 		# We don't do any importing of pixel data in here; that is left up to the plotter by sending the filepath.
 		if modality == 'ct':
 			fileFormat = 'DICOM (*.dcm)'
 			fileDialogue = QtWidgets.QFileDialog()
-			# fileDialogue.setFileMode(QtWidgets.QFileDialog.ExistingFiles)
-			# files, dtype = fileDialogue.getOpenFileNames(self, "Open CT dataset", "", fileFormat)
-			# self.openCT(folder)
 			fileDialogue.setFileMode(QtWidgets.QFileDialog.Directory)
 			folder = fileDialogue.getExistingDirectory(self, "Open CT dataset", "")
 			dataset = []
@@ -334,7 +213,6 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 			fileDialogue = QtWidgets.QFileDialog()
 			fileDialogue.setFileMode(QtWidgets.QFileDialog.ExistingFiles)
 			file, dtype = fileDialogue.getOpenFileNames(self, "Open Xray dataset", "", fileFormat)
-			# self.patient.load(file,'DX')
 			self.openXray(file[0])
 
 		elif modality == 'rtp':
@@ -417,8 +295,6 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		# Make a widget for plot stuff.
 		self.envXray = self.environment.addPage('X-RAY',QsWidgets.QPlotEnvironment())
 		self.envXray.toggleSettings.connect(partial(self.sidebar.showStack,'ImageProperties'))
-		# Connect max markers spin box.
-		self.sbAlignment.markersChanged.connect(partial(self.envXray.set,'maxMarkers'))
 		# Sidebar page for x-ray image properties.
 		widget = self.sidebar.addPage('xrayImageProperties',QsWidgets.QXrayProperties(),addList=False)
 		# Signals and slots.
@@ -452,8 +328,6 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		self.envCt = self.environment.addPage('CT',QsWidgets.QPlotEnvironment())
 		self.envCt.set('maxMarkers',config.markers.quantity)
 		self.envCt.toggleSettings.connect(partial(self.sidebar.showStack,'ImageProperties'))
-		# Connect max markers spin box.
-		self.sbAlignment.markersChanged.connect(partial(self.envCt.set,'maxMarkers'))
 		# Sidebar page for ct image properties.
 		widget = self.sidebar.addPage('ctImageProperties',QsWidgets.QCtProperties(),addList=False)
 		# Signals and slots.
@@ -481,8 +355,6 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 			self.envRtplan[i] = self.environment.addPage('BEV%i'%(i+1),QsWidgets.QPlotEnvironment())
 			self.envRtplan[i].set('maxMarkers',config.markerQuantity)
 			self.envRtplan[i].toggleSettings.connect(partial(self.sidebar.showStack,'ImageProperties'))
-			# Connect max markers spin box.
-			self.sbAlignment.markersChanged.connect(partial(self.envRtplan[i].set,'maxMarkers'))
 			# Sidebar page for rtplan image properties.
 			widget = self.sidebar.addPage('bev%iImageProperties'%(i+1),QsWidgets.QRtplanProperties(),addList=False)
 			# Signals and slots.
@@ -505,103 +377,6 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		self._isRTPOpen = True
 		self.environment.button['BEV1'].clicked.emit()
 		self.sidebar.linkPages('ImageProperties','bev1ImageProperties')
-
-	def updateSettings(self,mode,origin,idx=0):
-		"""Update variable based of changed data in property model (in some cases, external sources)."""
-		if (mode == 'xr') & (self._isXrayOpen):
-			"""Update x-ray specific properties."""
-			if origin == self.sbXrayProperties.widget['alignIsocY']:
-				# Overwrite the alignment isoc in settings.
-				# config.hamamatsuAlignmentIsoc[:2] = origin.text()
-				# config.hamamatsuAlignmentIsoc[0] = origin.text()
-				# config.hamamatsuAlignmentIsoc[2] = origin.text()
-				# Update the property variables.
-				# item = self.property.itemFromIndex(self.property.index['X-Ray']['Alignment Isocenter']['y'])
-				# item.setData(origin.text(),QtCore.Qt.DisplayRole)
-				# Re-calculate the extent.
-				# self.xrayCalculateExtent()
-				pass
-			elif origin == self.sbXrayProperties.widget['alignIsocX']:
-				# Overwrite the alignment isoc in settings.
-				# config.hamamatsuAlignmentIsoc[2] = origin.text()
-				# config.hamamatsuAlignmentIsoc[1] = origin.text()
-				# Update the property variables.
-				# item = self.property.itemFromIndex(self.property.index['X-Ray']['Alignment Isocenter']['x'])
-				# item.setData(origin.text(),QtCore.Qt.DisplayRole)
-				# Re-calculate the extent.
-				# self.xrayCalculateExtent()
-				pass
-			elif origin == self.sbXrayProperties.window['pbApply']:
-				# Must be in radiograph mode.
-				mode = 'radiograph'
-				# Get the windows and apply them.
-				windows = self.sbXrayProperties.getWindows()
-				self.envXray.setRadiographMode(mode)
-				self.envXray.plot.setWindows(windows)
-
-		elif (mode == 'ct') & (self._isCTOpen):
-			"""Update ct specific properties."""
-			if origin == self.sbCTProperties.window['pbApply']:
-				# Check mode type.
-				if self.sbCTProperties.window['rbMax'].isChecked():
-					mode = 'max'
-				else:
-					mode = 'sum'
-				# Get windows and apply them.
-				windows = self.sbCTProperties.getWindows()
-				self.patient.ct.plot.setRadiographMode(mode)
-				self.patient.ct.plot.setWindows(windows)
-
-		elif (mode == 'rtplan') & (self._isRTPOpen):
-			"""Update rtplan specific properties."""
-			if origin == self.patient.rtplan.guiInterface[idx].window['pbApply']:
-				# Check mode type.
-				if self.patient.rtplan.guiInterface[idx].window['rbMax'].isChecked():
-					mode = 'max'
-				else:
-					mode = 'sum'
-				# Get windows and apply them.
-				windows = self.patient.rtplan.guiInterface[idx].getWindows()
-				self.patient.rtplan.plot[idx].setRadiographMode(mode)
-				self.patient.rtplan.plot[idx].setWindows(windows)
-
-		# elif mode == 'global':
-		# 	"""Update global variables, applicable to all modes."""
-		# 	if origin == self.sbAlignment.widget['maxMarkers']:
-		# 		value = self.sbAlignment.widget['maxMarkers'].value()
-		# 		# Update settings.
-		# 		config.markerQuantity = value
-		# 		# Update plot tables.
-		# 		if self._isXrayOpen: self.envXray.settings('maxMarkers',value)
-		# 		if self._isCTOpen: self.patient.ct.plot.settings('maxMarkers',value)
-		# 		if self._isRTPOpen: 
-		# 			for i in range(len(self.patient.rtplan.plot)):
-		# 				self.patient.rtplan.plot[i].settings('maxMarkers',value)
-
-	def toggleOptimise(self,state):
-		"""State(bool) tells you whether you should clear the optimisation plots or not."""
-		if state == True:
-			pass
-		elif state == False:
-			try:
-				"""Remove X-ray optimised points."""
-				self.xray.plotEnvironment.plot0.markerRemove(marker=-2)
-				self.xray.plotEnvironment.plot90.markerRemove(marker=-2)
-			except:
-				pass
-			try:
-				"""Remove X-ray optimised points."""
-				self.patient.ct.plotEnvironment.plot0.markerRemove(marker=-2)
-				self.patient.ct.plotEnvironment.plot90.markerRemove(marker=-2)
-			except:
-				pass
-			try:
-				"""Remove X-ray optimised points."""
-				for i in range(len(self.rtp.beam)):
-					self.rtp.beam[i].plotEnvironment.plot0.markerRemove(marker=-2)
-					self.rtp.beam[i].plotEnvironment.plot90.markerRemove(marker=-2)
-			except:
-				pass
 
 	def solve(self,_index):
 		logging.info("Solving alignment for dataset {}".format(_index))
@@ -641,10 +416,6 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 
 	def treat(self,_index):
 		_preTreatmentPos = self.system.patientSupport.position()
-
-		"""
-			PUT DUNCANS CODE HERE.
-		"""
 		_breathHold = False
 		_beam = True
 		_speed = 2.5
@@ -709,7 +480,6 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		epics.caput(_pv+".VAL", float(_z_home),wait=True)
 
 		# Move back to what was before irradiation.
-		# self.system.patientSupport.setPosition(_preTreatmentPos)
 		self.system.patientSupport.setPosition([0,0,0,0,0,0])
 
 if __name__ == "__main__":

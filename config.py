@@ -14,3 +14,8 @@ class imager:
 	pixelSize = [0.158,0.158]
 	sad = 0
 	sid = 0
+
+class irradiation:
+	""" Settings for the delivery configuration. """
+	maskSize = [5,5]
+	speed = 2.5
