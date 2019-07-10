@@ -4,6 +4,13 @@ from scipy.signal import find_peaks
 import epics
 import time
 
+"""
+Assumes:
+	- HamaPapa connected and IOC running
+	- Single non save image acquisition at 0.5s
+	- 
+"""
+
 def getImage():
 	arr = epics.caget('SR08ID01DET04:IMAGE:ArrayData')
 	_x = epics.caget('SR08ID01DET04:IMAGE:ArraySize1_RBV')
