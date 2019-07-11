@@ -156,6 +156,8 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		# Populate new histograms.
 		histogram = self.envXray.getPlotHistogram()
 		self.sidebar.widget['xrayImageProperties'].addPlotHistogramWindow(histogram)
+		# Toggle the ovelrays on and off to refresh them.
+		self.sidebar.widget['xrayImageProperties'].refreshOverlays()
 		# Populate the treatment delivery sidebar.
 		_angles = []
 		for i in range(len(images)):
