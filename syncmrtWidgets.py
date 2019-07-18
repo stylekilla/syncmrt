@@ -84,7 +84,7 @@ class QsListWidget(QtWidgets.QListWidget):
 		self.page[name] = QtWidgets.QListWidgetItem()
 		self.page[name].setText(name)
 		# Add Icon.
-		icon = QtGui.QIcon(resourceFilepath+name+'.png')
+		icon = QtGui.QIcon(resourceFilepath+'/images/'+name+'.png')
 		icon.pixmap(50,50)
 		self.page[name].setIcon(icon)
 		self.page[name].setSizeHint(QtCore.QSize(60,60))
