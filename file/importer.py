@@ -124,7 +124,7 @@ class dicom_ct:
 		gpu.loadData(self.pixelArray)
 
 		# Create a 2d image list for plotting.
-		self.image = [image2d(),image2d()]
+		self.image = [Image2d(),Image2d()]
 		# Flatten the 3d image to the two 2d images.
 		# Extent: [left, right, bottom, top, front, back]
 		self.image[0].pixelArray = np.sum(self.pixelArray,axis=2)

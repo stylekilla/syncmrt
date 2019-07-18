@@ -29,7 +29,7 @@ import logging, coloredlogs
 coloredlogs.install(
 	fmt='%(asctime)s,%(msecs)d %(levelname)-8s [%(filename)s:%(lineno)d] %(message)s',
 	datefmt='%H:%M:%S',
-	level=logging.DEBUG
+	level=logging.INFO
 	)
 
 """
@@ -191,9 +191,27 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 			if file.endswith('.hdf5') is False:
 				file += '.hdf5'
 			self.patient.new(file,'DX')
+			# self.system.setLocalXrayFile(file)
 			# Create an xray workspace.
 			self.createWorkEnvironmentXray()
-			# self.openXray(file)
+			# Get list of existing x-rays in file.
+			_list = self.patient.dx.getImageList()
+			# Add them to the combo box.
+			self.sbImaging.resetImageSetList()
+			self.sbImaging.addImageSet(_list)
+			# Get the plot histogram widgets and give them to the sidebar widget.
+			histogram = self.envXray.getPlotHistogram()
+			self.sidebar.widget['xrayImageProperties'].addPlotHistogramWindow(histogram)
+			# Get the plot isocenter widgets and give them to the sidebar widget.
+			# isocenter = self.envXray.getPlotIsocenter()
+			# self.sidebar.widget['xrayImageProperties'].addEditableIsocenter(isocenter)
+			# Force marker update for table.
+			self.envXray.set('maxMarkers',config.markers.quantity)
+			# Finalise import. Set open status to true and open the workspace.
+			self._isXrayOpen = True
+			# self.sbImaging.enableAcquisition()
+			self.environment.button['X-RAY'].clicked.emit()
+			self.sidebar.linkPages('ImageProperties','xrayImageProperties')
 
 	def openFiles(self,modality):
 		# We don't do any importing of pixel data in here; that is left up to the plotter by sending the filepath.
@@ -215,7 +233,6 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 			fileDialogue = QtWidgets.QFileDialog()
 			fileDialogue.setFileMode(QtWidgets.QFileDialog.ExistingFiles)
 			file, dtype = fileDialogue.getOpenFileNames(self, "Open Xray dataset", "", fileFormat)
-			self.patient.load(file,'DX')
 			self.openXray(file[0])
 
 		elif modality == 'rtp':
@@ -262,24 +279,28 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 
 			self.environment.button['CT'].clicked.emit()
 
-	def openXray(self,file):
-		"""Open XR (x-ray) modality file."""
-		logging.info('Loading x-ray data.')
+	def openXray(self,files):
+		"""Open XR (x-ray) modality files."""
+		logging.info('Loading x-ray data into worksapce.')
 		# Create new x-ray workspace if required.
 		if self._isXrayOpen:
 			# Re-initialise the environment.
 			self.envXray.reset()
 		else:
 			self.createWorkEnvironmentXray()
-		# Send x-ray dataset to plot.
-		self.patient.load(file,'DX')
+		# Open the x-ray file.
+		self.patient.load(files,'DX')
 		# Get list of existing x-rays in file.
 		_list = self.patient.dx.getImageList()
 		# Add them to the combo box.
+		self.sbImaging.resetImageSetList()
 		self.sbImaging.addImageSet(_list)
 		# Get the plot histogram widgets and give them to the sidebar widget.
 		histogram = self.envXray.getPlotHistogram()
 		self.sidebar.widget['xrayImageProperties'].addPlotHistogramWindow(histogram)
+		# Get the plot isocenter widgets and give them to the sidebar widget.
+		# isocenter = self.envXray.getPlotIsocenter()
+		# self.sidebar.widget['xrayImageProperties'].addEditableIsocenter(isocenter)
 		# Force marker update for table.
 		self.envXray.set('maxMarkers',config.markers.quantity)
 		# Finalise import. Set open status to true and open the workspace.
@@ -294,13 +315,12 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		# Make a widget for plot stuff.
 		self.envXray = self.environment.addPage('X-RAY',QsWidgets.QPlotEnvironment())
 		self.envXray.toggleSettings.connect(partial(self.sidebar.showStack,'ImageProperties'))
-		# Connect max markers spin box.
-		self.sbAlignment.markersChanged.connect(partial(self.envXray.set,'maxMarkers'))
 		# Sidebar page for x-ray image properties.
 		widget = self.sidebar.addPage('xrayImageProperties',QsWidgets.QXrayProperties(),addList=False)
 		# Signals and slots.
 		widget.toggleOverlay.connect(partial(self.envXray.toggleOverlay))
 		self.sbImaging.enableAcquisition()
+		self.sbImaging.resetImageSetList()
 
 	def openCT(self,files):
 		"""Open CT modality files."""

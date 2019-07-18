@@ -19,7 +19,7 @@ class patient(QtCore.QObject):
 
 	def load(self,dataset,modality):
 		""" Load Patient Data. """
-		logging.info("Loading ({}) {}".format(modality,dataset))
+		logging.info("Loading {} with {} files.".format(modality,len(dataset)))
 		if modality == 'DX': 
 			# Close the open one first.
 			if self.dx != None: 
