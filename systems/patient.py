@@ -4,7 +4,7 @@ from tools.opencl import gpu
 from PyQt5 import QtCore
 import logging
 
-class patient(QtCore.QObject):
+class Patient(QtCore.QObject):
 	"""
 	This holds information about the patient. Files, datasets, gpu context, imported dicom information etc.
 	"""

@@ -3,6 +3,11 @@ import numpy as np
 import logging
 import time
 
+"""
+Definitely have a look at: https://cars9.uchicago.edu/software/python/pyepics3/devices.html
+Includes Motor and Device class!
+"""
+
 class motor:
 	def __init__(self,pv):
 		# Initialise the thread.

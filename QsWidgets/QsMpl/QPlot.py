@@ -33,13 +33,13 @@ class QPlot:
 		self.markerModel = tableModel
 		self._radiographMode = 'sum'
 		self._R = np.identity(3)
-		# Axis takes on values {1: first axis, 2: second axis, 0: null axis}.
-		self.axis = [1,2,0]
 		self.mask = None
 		self.overlay = {}
-		self.machineIsocenter = [0,0,0]
-		self.patientIsocenter = [0,0,0]
+		self.machineIsocenter = [0,0]
+		self.patientIsocenter = [0,0]
 		self.ctd = None
+		# Centroid stores the [x,y] coordinate and the current overlay state [True/False].
+		# self.ctd = [None,False]
 
 		self.fig = plt.figure()
 		self.fig.patch.set_facecolor('#000000')
@@ -86,25 +86,10 @@ class QPlot:
 	def imageLoad(self,array,extent=np.array([-1,1,-1,1])):
 		# Clear the canvas and start again:
 		self.ax.cla()
-		# Load the image.
-		# self.imageIndex = imageIndex
-		# self.data3d = np.array(array,dtype=np.float32)
 
 		# Always make it float32. Always assume it is a flat 2D array.
 		self.data = np.array(array,dtype=np.float32)
 		self.extent = extent
-
-		# if len(self.data3d.shape) == 3:
-		# 	self.data2d = np.sum(self.data3d,axis=2)
-		# 	# Extent is L,R,B,T.
-		# 	self.extent = extent[:4]
-		# 	# elif imageIndex == 1:
-		# 		# self.data2d = np.sum(self.data3d,axis=1)
-		# 		# self.extent = np.concatenate((extent[4:6],extent[2:4]))
-		# else:
-		# 2D Image (General X-ray).
-		# self.data2d = np.array(self.data3d)
-		# self.data = np.array(self.data2d)
 		
 		self.image = self.ax.imshow(self.data, cmap='bone', extent=self.extent)
 		self.ax.set_xlim(extent[0:2])
@@ -130,6 +115,15 @@ class QPlot:
 			self.pointsY.append(y)
 			self.i += 1
 			self.markerModel.addPoint(self.i,x,y)
+			# Re-calculate the centroid.
+			if self.i > 1:
+				ctd_x = np.sum(self.pointsX)/self.i
+				ctd_y = np.sum(self.pointsY)/self.i
+				self.ctd = [ctd_x,ctd_y]
+				if 'ctd' in self.overlay:
+					# Refresh it's position on the screen.
+					self.toggleOverlay(0,False)
+					self.toggleOverlay(0,True)
 			# Plot marker list.
 			scatter = self.ax.scatter(x,y,c='r',marker='+',s=50)
 			text = self.ax.text(x+1,y-3,self.i,color='r')
@@ -165,6 +159,15 @@ class QPlot:
 						# Update pointsXY lists.
 						self.pointsX[key] = x
 						self.pointsY[key] = y
+						# Re-calculate the centroid.
+			if self.i > 1:
+				ctd_x = np.sum(self.pointsX)/self.i
+				ctd_y = np.sum(self.pointsY)/self.i
+				self.ctd[0] = [ctd_x,ctd_y]
+				if 'ctd' in self.overlay:
+					# Refresh it's position on the screen.
+					self.toggleOverlay(0,False)
+					self.toggleOverlay(0,True)
 
 	def removeMarker(self,marker=-1):
 		'''Clear the specified marker. Else clear all markers.'''
@@ -173,6 +176,11 @@ class QPlot:
 			self.i = 0
 			self.pointsX = []
 			self.pointsY = []
+			self.ctd = None
+			# Remove the overlays if they exist.
+			if 'ctd' in self.overlay:
+				self.toggleOverlay(0,False)
+				self.overlay['ctd'] = None
 			if len(self.markersList) > 0:
 				for index in range(len(self.markersList)):
 					self.markersList[index].remove()
@@ -233,21 +241,23 @@ class QPlot:
 		'''
 		if overlayType == 0:
 			# Centroid overlay.
-			if self.ctd is not None:
-				# Remove overlay lines if they exist.
-				if 'ctd' in self.overlay:
+			# Remove overlay lines if they exist.
+			if 'ctd' in self.overlay:
+				if self.overlay['ctd'] is not None:
 					for obj in self.overlay['ctd']:
 						obj.remove()
-					del(self.overlay['ctd'])
-				if state is True:
-					# Plot overlay scatter points.
-					x,y = [self.ctd[a],self.ctd[b]]
+				del(self.overlay['ctd'])
+			if state is True:
+				# Plot overlay scatter points.
+				if self.ctd is not None:
+					x,y = self.ctd
 					self.overlay['ctd'] = [
-							self.ax.scatter(self.ctd[0],self.ctd[1],c='b',marker='+',s=50),
-							self.ax.text(self.ctd[0]+1,self.ctd[1]-3,'ctd',color='b')
+							self.ax.scatter(x,y,c='b',marker='+',s=50),
+							self.ax.text(x+1,y-3,'ctd',color='b')
 						]
-				else:
-					pass
+			else:
+				pass
+
 		elif overlayType == 1:
 			# Machine isocenter overlay.
 			# Remove overlay lines.

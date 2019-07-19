@@ -4,7 +4,7 @@ import numpy as np
 from functools import partial
 from PyQt5 import QtCore
 
-class system(QtCore.QObject):
+class Brain(QtCore.QObject):
 	"""
 	This module creates a treatment 'system' that is made up of imaging devices, positioning aparatus, beam delivery controls etc.
 	"""
@@ -46,6 +46,8 @@ class system(QtCore.QObject):
 		self._imagingMode = mode
 
 	def calculateAlignment(self):
+		""" This is where the calculation magic happens. """
+
 		# Update variables.
 		# self.solver.setVariable()
 		# Solve for alignment solution.

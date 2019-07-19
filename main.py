@@ -64,8 +64,8 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		self.sbAlignment = self.sidebar.addPage('Alignment',QsWidgets.QAlignment(),before='all')
 		self.sbAlignment.widget['maxMarkers'].setValue(3)
 		self.sbAlignment.widget['maxMarkers'].valueChanged.connect(partial(self.updateSettings,'global',self.sbAlignment.widget['maxMarkers']))
-		self.sbAlignment.widget['calcAlignment'].clicked.connect(partial(self.patientCalculateAlignment,treatmentIndex=-1))
-		self.sbAlignment.widget['doAlignment'].clicked.connect(partial(self.patientApplyAlignment,treatmentIndex=-1))
+		self.sbAlignment.widget['calcAlignment'].clicked.connect(partial(self.patientCalculateAlignment,index=-1))
+		self.sbAlignment.widget['doAlignment'].clicked.connect(partial(self.patientApplyAlignment,index=-1))
 		self.sbAlignment.widget['optimise'].toggled.connect(partial(self.toggleOptimise))
 		# Sidebar: Imaging
 		self.sidebar.addPage('Imaging',QsWidgets.QImaging(),after='Alignment')
@@ -120,8 +120,8 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		SyncMRT Setup
 		"""
 		# Create a new system, this has a solver, detector and stage.
-		self.system = systems.core.system(resourceFilepath+config.files.patientSupports,resourceFilepath+config.files.detectors,config)
-		self.patient = systems.patient()
+		self.system = systems.theBrain.Brain(resourceFilepath+config.files.patientSupports,resourceFilepath+config.files.detectors,config)
+		self.patient = systems.patient.Patient()
 		# Link the system with the patient data.
 		self.system.loadPatient(self.patient)
 
@@ -157,7 +157,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		self.sidebar.widget['xrayImageProperties'].addPlotHistogramWindow(histogram)
 
 	@QtCore.pyqtSlot(int)
-	def calculateAlignment(self,treatmentIndex):
+	def calculateAlignment(self,index):
 		print('TADA MAIN.py L:188')
 
 	@QtCore.pyqtSlot(float,float,float)
@@ -396,7 +396,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		# Populate the sidebar with all the treatments.
 		self.sbTreatment.populateTreatments()
 		for i in range(len(self.patient.rtplan.beam)):
-			self.sbTreatment.widget['beam'][i]['calculate'].clicked.connect(partial(self.patientCalculateAlignment,treatmentIndex=i))
+			self.sbTreatment.widget['beam'][i]['calculate'].clicked.connect(partial(self.patientCalculateAlignment,index=i))
 		# Finalise import. Set open status to true and open the first BEV workspace.
 		self._isRTPOpen = True
 		self.environment.button['BEV1'].clicked.emit()
@@ -469,61 +469,88 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 			except:
 				pass
 
-	def patientCalculateAlignment(self,treatmentIndex=-1):
-		"""Send coordinates to algorithm and align."""
-		logging.info('Calulating patient alignment with condition '+str(treatmentIndex))
-		# Check first if we at least have an x-ray plus CT/RTPLAN open.
+	def patientCalculateAlignment(self,index=-1):
+		""" Send coordinates to algorithm and align. """
+		# Treatment index will tell the method where the call was made from.
+		logging.info('Calulating patient alignment with condition '+str(index))
+
+		# Check first if we at least have an x-ray plus a CT or RTPLAN open.
 		if (self._isXrayOpen & (self._isCTOpen|self._isRTPOpen)):
 			pass
 		else:
 			logging.error('Need at least two datasets open: xray('+str(self._isXrayOpen)+'), ct('+str(self._isCtOpen)+'), rtplan('+str(self._isRTPOpen)+').')
-			return	
+			return
+
 		# Initialise points (l:Dicom, r:Xray).
 		numberOfPoints = self.sbAlignment.widget['maxMarkers'].value()
 		l = np.zeros((numberOfPoints,3))
 		r = np.zeros((numberOfPoints,3))
+
 		# 2D or 3D? (Default is 2D)
+		# Dependent on how many x-ray images are used.
 		_3D = False
 		if len(self.envXray.plot) == 2: _3D = True
-		# Get the x-ray (right) points.
-		r[:,0] = self.envXray.plot[0].pointsY
-		r[:,1] = self.envXray.plot[0].pointsX
-		if _3D: r[:,2] = self.envXray.plot[1].pointsX
 
-		if treatmentIndex == -1:
-			pass
+		# Get the x-ray (right) points.
+		if _3D:
+			p1 = (self.envXray.plot[0].pointsX,self.envXray.plot[0].pointsY)
+			p2 = (self.envXray.plot[1].pointsX,self.envXray.plot[1].pointsY)
+
+			# Now we need to go through the new routine for non-orthogonal imaging.
+			t1 = self.envXray.plot
+			t2 = self.envXray.plot
+
+			import systems.imageGuidance.nonOrthogonalImaging
+			r = nonOrthogonalImaging.calculate(p1,p2,t1,t2)
+		else:
+			r[:,1] = self.envXray.plot[0].pointsX
+			r[:,2] = self.envXray.plot[0].pointsY
+
+		# Now we need to make sure they are in a cartesian Right-Hand XYZ format.
+		# I think they are at this point. The output of nonOrthogonalImaging.calculate() should do this.
+
+		# Now we need to take the dicom points.
+		if index == -1:
+			iso = np.array([0,0,0])
+			# Take the depth down the BEV as X.
+			l[:,0] = self.envCt.plot[1].pointsX
+			# Take the BEV lateral view as Y.
+			l[:,1] = self.envCt.plot[0].pointsX
+			# Take the vertical of the BEV as Z.
+			l[:,2] = (self.envCt.plot[0].pointsY+self.envCt.plot[1].pointsY)/2
 
 		else:
-			"""Align to RTPLAN[index]"""
-			logging.info('Calculating alignment between X-ray and Beams Eye Vew '+str(treatmentIndex+1))
-			# Map x and y points (from plots) to python x and y (axes 0 and 1 respectively).
-			l[:,0] = self.envRtplan[treatmentIndex].plot[0].pointsY
-			l[:,1] = self.envRtplan[treatmentIndex].plot[0].pointsX
-			if _3D: l[:,2] = self.envRtplan[treatmentIndex].plot[1].pointsX
-			# Set the isocenter.
-			self.system.solver.input(patientIsoc= self.patient.rtplan.isocenter)
+			iso = self.patient.rtplan.beam[index].isocenter
+			# Take the depth down the BEV as X.
+			l[:,0] = self.envRtplan[index].plot[1].pointsX
+			# Take the BEV lateral view as Y.
+			l[:,1] = self.envRtplan[index].plot[0].pointsX
+			# Take the vertical of the BEV as Z.
+			l[:,2] = (self.envRtplan[index].plot[0].pointsY+self.envRtplan[i].plot[1].pointsY)/2
 
-		# Tell the solver what the points in each system are.
-		self.system.solver.input(left=l,right=r)
+		# Now we need to make sure they are also in a cartesian Right-Hand XYZ format.
+		# Unsure if this is the case.
+
+		# Finally, we can send the points off for calculation to `theBrain`!
+		self.system.solver.input(
+			left=l,
+			right=r,
+			patientIsoc=iso
+			)
+
 		# We have some points. Calculate the global result.
 		alignment6d = self.system.solver.solve()
-		logging.info('Calculated 6D alignment with values: '+str(alignment6d))
-		# Send centroid locations back to the plots.
-		self.envXray.set('markerCtd',self.system.solver._rightCentroid)
-		if treatmentIndex == -1: self.envCt.set('markerCtd',self.system.solver._leftCentroid)
-		else: self.envRtplan[treatmentIndex].set('markerCtd',self.system.solver._leftCentroid)
 		# Get synchrotron axes alignment.
-		synchrotron6d = [-alignment6d[2],alignment6d[1],-alignment6d[0],-alignment6d[5],alignment6d[4],-alignment6d[3]]
-		logging.info('Synchrotron 6D alignment calculated as: '+str(synchrotron6d))
+		# synchrotron6d = [-alignment6d[2],alignment6d[1],-alignment6d[0],-alignment6d[5],alignment6d[4],-alignment6d[3]]
 
 		# If table already exists, update information...
-		self.property.updateVariable('Alignment',['Rotation','x','y','z'],[float(synchrotron6d[3]),float(synchrotron6d[4]),float(synchrotron6d[5])])
-		self.property.updateVariable('Alignment',['Translation','x','y','z'],[float(synchrotron6d[0]),float(synchrotron6d[1]),float(synchrotron6d[2])])
+		self.property.updateVariable('Alignment',['Rotation','x','y','z'],[float(alignment[3]),float(alignment[4]),float(alignment[5])])
+		self.property.updateVariable('Alignment',['Translation','x','y','z'],[float(alignment[0]),float(alignment[1]),float(alignment[2])])
 		self.property.updateVariable('Alignment','Scale',float(self.system.solver.scale))
 
-	def patientApplyAlignment(self,treatmentIndex=-1):
+	def patientApplyAlignment(self,index=-1):
 		"""Calculate alignment first."""
-		self.patientCalculateAlignment(treatmentIndex=treatmentIndex)
+		self.patientCalculateAlignment(index=index)
 
 		# Calculate alignment for stage.
 		self.system.calculateAlignment()
