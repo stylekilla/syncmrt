@@ -51,6 +51,7 @@ class QPlotEnvironment(QtWidgets.QSplitter):
 			self.createSubplots(len(image))
 		for i in range(len(image)):
 			self.plot[i].imageLoad(image[i].pixelArray,image[i].extent)
+			self.plot[i]._imagingAngle = image[i].imagingAngle
 			self.tableModel[i].setLabels(image[i].view)
 			self.histogram[i].setTitle('View: '+image[i].view['title'])
 			self.histogram[i].setData(image[i].pixelArray)

@@ -2,6 +2,7 @@
 from resources import config, ui
 import systems
 import QsWidgets
+from systems.imageGuidance import nonOrthogonalImaging
 # Core imports.
 import os
 import sys
@@ -144,6 +145,34 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		self.sbImaging.acquire.connect(self.system.acquireXray)
 		# When the image mode changes tell the system.
 		self.sbImaging.imageModeChanged.connect(self.system.setImagingMode)
+
+		self.testing()
+
+	def testing(self):
+		self.openXray('../scratch/test.hdf5')
+		dataset = []
+		modality = 'CT'
+		for root, subdir, fp in os.walk('../scratch/head-phant/'):
+			for fn in fp:
+				if (fn.endswith(tuple('.dcm'))) & (fn[:len(modality)] == modality):
+					dataset.append(os.path.join(root,fn))
+		if len(dataset) > 0:
+			self.openCT(dataset)	
+
+		self.envXray.plot[0].markerAdd(-25,25)
+		self.envXray.plot[0].markerAdd(-25,-25)
+		self.envXray.plot[0].markerAdd(25,-25)
+		self.envXray.plot[1].markerAdd(-25,25)
+		self.envXray.plot[1].markerAdd(-25,-25)
+		self.envXray.plot[1].markerAdd(50,-25)
+		self.envCt.plot[0].markerAdd(-25,25)
+		self.envCt.plot[0].markerAdd(-25,-25)
+		self.envCt.plot[0].markerAdd(25,-25)
+		self.envCt.plot[1].markerAdd(-25,25)
+		self.envCt.plot[1].markerAdd(-25,-25)
+		self.envCt.plot[1].markerAdd(50,-25)
+
+		self.patientCalculateAlignment()
 
 	@QtCore.pyqtSlot(int)
 	def calculateAlignment(self,index):
@@ -340,7 +369,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		# Force marker update for table.
 		self.envCt.set('maxMarkers',config.markers.quantity)
 		# Finalise import. Set open status to true and open the workspace.
-		self._isCtOpen = True
+		self._isCTOpen = True
 		self.environment.button['CT'].clicked.emit()
 		self.sidebar.linkPages('ImageProperties','ctImageProperties')
 
@@ -476,16 +505,20 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		logging.info('Calulating patient alignment with condition '+str(index))
 
 		# Check first if we at least have an x-ray plus a CT or RTPLAN open.
-		if (self._isXrayOpen & (self._isCTOpen|self._isRTPOpen)):
-			pass
-		else:
-			logging.error('Need at least two datasets open: xray('+str(self._isXrayOpen)+'), ct('+str(self._isCtOpen)+'), rtplan('+str(self._isRTPOpen)+').')
+		if (self._isXrayOpen & (self._isCTOpen|self._isRTPOpen) ) is False:
+			logging.error('Need at least two datasets open: xray('+str(self._isXrayOpen)+'), ct('+str(self._isCTOpen)+'), rtplan('+str(self._isRTPOpen)+').')
 			return
+
 
 		# Initialise points (l:Dicom, r:Xray).
 		numberOfPoints = self.sbAlignment.widget['maxMarkers'].value()
 		l = np.zeros((numberOfPoints,3))
 		r = np.zeros((numberOfPoints,3))
+
+		# Check that each plot has enough points.
+		if (len(self.envXray.plot[0].pointsX) != numberOfPoints) or (len(self.envXray.plot[1].pointsX) != numberOfPoints): 
+			logging.error("At least {} points required in X-ray for calculation.".format(numberOfPoints))
+			return
 
 		# 2D or 3D? (Default is 2D)
 		# Dependent on how many x-ray images are used.
@@ -494,14 +527,12 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 
 		# Get the x-ray (right) points.
 		if _3D:
-			p1 = (self.envXray.plot[0].pointsX,self.envXray.plot[0].pointsY)
-			p2 = (self.envXray.plot[1].pointsX,self.envXray.plot[1].pointsY)
-
+			p1 = self.envXray.plot[0].markers()
+			p2 = self.envXray.plot[1].markers()
 			# Now we need to go through the new routine for non-orthogonal imaging.
-			t1 = self.patient.dx.image[0].patientPosition[-1]
-			t2 = self.patient.dx.image[1].patientPosition[-1]
+			t1 = self.envXray.plot[0]._imagingAngle
+			t2 = self.envXray.plot[1]._imagingAngle
 
-			import systems.imageGuidance.nonOrthogonalImaging
 			r = nonOrthogonalImaging.calculate(p1,p2,t1,t2)
 		else:
 			r[:,1] = self.envXray.plot[0].pointsX
@@ -512,22 +543,30 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 
 		# Now we need to take the dicom points.
 		if index == -1:
+			# Check that each plot has enough points.
+			if (len(self.envCt.plot[0].pointsX) != numberOfPoints) or (len(self.envCt.plot[1].pointsX) != numberOfPoints): 
+				logging.error("At least {} points required in CT for calculation.".format(numberOfPoints))
+				return
 			iso = np.array([0,0,0])
 			# Take the depth down the BEV as X.
 			l[:,0] = self.envCt.plot[1].pointsX
 			# Take the BEV lateral view as Y.
 			l[:,1] = self.envCt.plot[0].pointsX
 			# Take the vertical of the BEV as Z.
-			l[:,2] = (self.envCt.plot[0].pointsY+self.envCt.plot[1].pointsY)/2
+			l[:,2] = (np.array(self.envCt.plot[0].pointsY)+np.array(self.envCt.plot[1].pointsY))/2
 
 		else:
+			# Check that each plot has enough points.
+			if (len(self.envRtplan[index].plot[0].pointsX) != numberOfPoints) or (len(self.envRtplan[index].plot[1].pointsX) != numberOfPoints): 
+				logging.error("At least {} points required in BEV{} for calculation.".format(numberOfPoints,treatmentIndex))
+				return
 			iso = self.patient.rtplan.beam[index].isocenter
 			# Take the depth down the BEV as X.
 			l[:,0] = self.envRtplan[index].plot[1].pointsX
 			# Take the BEV lateral view as Y.
 			l[:,1] = self.envRtplan[index].plot[0].pointsX
 			# Take the vertical of the BEV as Z.
-			l[:,2] = (self.envRtplan[index].plot[0].pointsY+self.envRtplan[i].plot[1].pointsY)/2
+			l[:,2] = (np.array(self.envRtplan[index].plot[0].pointsY)+np.array(self.envRtplan[index].plot[1].pointsY))/2
 
 		# Now we need to make sure they are also in a cartesian Right-Hand XYZ format.
 		# Unsure if this is the case.
@@ -545,8 +584,8 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		# synchrotron6d = [-alignment6d[2],alignment6d[1],-alignment6d[0],-alignment6d[5],alignment6d[4],-alignment6d[3]]
 
 		# If table already exists, update information...
-		self.property.updateVariable('Alignment',['Rotation','x','y','z'],[float(alignment[3]),float(alignment[4]),float(alignment[5])])
-		self.property.updateVariable('Alignment',['Translation','x','y','z'],[float(alignment[0]),float(alignment[1]),float(alignment[2])])
+		self.property.updateVariable('Alignment',['Rotation','x','y','z'],[float(alignment6d[3]),float(alignment6d[4]),float(alignment6d[5])])
+		self.property.updateVariable('Alignment',['Translation','x','y','z'],[float(alignment6d[0]),float(alignment6d[1]),float(alignment6d[2])])
 		self.property.updateVariable('Alignment','Scale',float(self.system.solver.scale))
 
 	def patientApplyAlignment(self,index=-1):

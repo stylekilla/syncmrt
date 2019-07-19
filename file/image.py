@@ -10,6 +10,8 @@ class Image2d:
 		self.patientIsocenter = None
 		# Patient position at the time of the image.
 		self.patientPosition = None
+		# Patient vertical angle at the time of the image.
+		self.imagingAngle = None
 		# Image view.
 		self.view = {
 			'title':'None',

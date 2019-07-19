@@ -47,6 +47,7 @@ class sync_dx:
 				image.patientIsocenter = _set[str(i+1)].attrs['Image Isocenter']
 				image.patientPosition = list(_set[str(i+1)].attrs['Patient Support Position']) + list(_set[str(i+1)].attrs['Patient Support Angle'])
 				image.view['title'] = str(_set[str(i+1)].attrs['Image Angle'])+"\u00B0"
+				image.imagingAngle = _set[str(i+1)].attrs['Image Angle']
 				image.M = _set[str(i+1)].attrs['M']
 				image.Mi = _set[str(i+1)].attrs['Mi']
 				# Append the image.

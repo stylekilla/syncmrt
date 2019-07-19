@@ -33,6 +33,7 @@ class QPlot:
 		self.markerModel = tableModel
 		self._radiographMode = 'sum'
 		self._R = np.identity(3)
+		self._imagingAngle = 0
 		self.mask = None
 		self.overlay = {}
 		self.machineIsocenter = [0,0]
@@ -229,8 +230,8 @@ class QPlot:
 		self.canvas.draw()
 
 	def markers(self):
-		""" Return the points in this plot. """
-		return zip(self.pointsX,self.pointsY)
+		""" Return the points in this plot as a list. """
+		return list(zip(self.pointsX,self.pointsY))
 
 	def toggleOverlay(self,overlayType,state=False):
 		'''
