@@ -145,17 +145,6 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		# When the image mode changes tell the system.
 		self.sbImaging.imageModeChanged.connect(self.system.setImagingMode)
 
-	def loadXraySet(self,_set):
-		logging.debug("Reading image set {}.".format(_set))
-		# When the current image set is changed, get images and plot them.
-		images = self.patient.dx.getImageSet(_set)
-		# Set the amount of images required.
-		self.envXray.loadImages(images)	
-		# self.envXray.createSubplots(len(_set))
-		# Populate new histograms.
-		histogram = self.envXray.getPlotHistogram()
-		self.sidebar.widget['xrayImageProperties'].addPlotHistogramWindow(histogram)
-
 	@QtCore.pyqtSlot(int)
 	def calculateAlignment(self,index):
 		print('TADA MAIN.py L:188')
@@ -193,7 +182,8 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 			self.patient.new(file,'DX')
 			# self.system.setLocalXrayFile(file)
 			# Create an xray workspace.
-			self.createWorkEnvironmentXray()
+			if not self._isXrayOpen:
+				self.createWorkEnvironmentXray()
 			# Get list of existing x-rays in file.
 			_list = self.patient.dx.getImageList()
 			# Add them to the combo box.
@@ -321,6 +311,17 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		widget.toggleOverlay.connect(partial(self.envXray.toggleOverlay))
 		self.sbImaging.enableAcquisition()
 		self.sbImaging.resetImageSetList()
+
+	def loadXraySet(self,_set):
+		logging.debug("Reading image set {}.".format(_set))
+		# When the current image set is changed, get images and plot them.
+		images = self.patient.dx.getImageSet(_set)
+		# Set the amount of images required.
+		self.envXray.loadImages(images)	
+		# self.envXray.createSubplots(len(_set))
+		# Populate new histograms.
+		histogram = self.envXray.getPlotHistogram()
+		self.sidebar.widget['xrayImageProperties'].addPlotHistogramWindow(histogram)
 
 	def openCT(self,files):
 		"""Open CT modality files."""
@@ -497,8 +498,8 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 			p2 = (self.envXray.plot[1].pointsX,self.envXray.plot[1].pointsY)
 
 			# Now we need to go through the new routine for non-orthogonal imaging.
-			t1 = self.envXray.plot
-			t2 = self.envXray.plot
+			t1 = self.patient.dx.image[0].patientPosition[-1]
+			t2 = self.patient.dx.image[1].patientPosition[-1]
 
 			import systems.imageGuidance.nonOrthogonalImaging
 			r = nonOrthogonalImaging.calculate(p1,p2,t1,t2)
