@@ -146,7 +146,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		# When the image mode changes tell the system.
 		self.sbImaging.imageModeChanged.connect(self.system.setImagingMode)
 
-		self.testing()
+		# self.testing()
 
 	def testing(self):
 		self.openXray('../scratch/test.hdf5')
@@ -159,17 +159,17 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		if len(dataset) > 0:
 			self.openCT(dataset)	
 
-		self.envXray.plot[0].markerAdd(-25,25)
-		self.envXray.plot[0].markerAdd(-25,-25)
-		self.envXray.plot[0].markerAdd(25,-25)
-		self.envXray.plot[1].markerAdd(-25,25)
-		self.envXray.plot[1].markerAdd(-25,-25)
-		self.envXray.plot[1].markerAdd(50,-25)
+		self.envXray.plot[0].markerAdd(0.0,25)
+		self.envXray.plot[0].markerAdd(0.0,-25)
+		self.envXray.plot[0].markerAdd(-53.03,-25)
+		self.envXray.plot[1].markerAdd(-35.35,25)
+		self.envXray.plot[1].markerAdd(-35.35,-25)
+		self.envXray.plot[1].markerAdd(-17.67,-25)
 		self.envCt.plot[0].markerAdd(-25,25)
 		self.envCt.plot[0].markerAdd(-25,-25)
 		self.envCt.plot[0].markerAdd(25,-25)
-		self.envCt.plot[1].markerAdd(-25,25)
-		self.envCt.plot[1].markerAdd(-25,-25)
+		self.envCt.plot[1].markerAdd(25,25)
+		self.envCt.plot[1].markerAdd(25,-25)
 		self.envCt.plot[1].markerAdd(50,-25)
 
 		self.patientCalculateAlignment()
@@ -572,7 +572,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		# Unsure if this is the case.
 
 		# Finally, we can send the points off for calculation to `theBrain`!
-		self.system.solver.input(
+		self.system.solver.setInputs(
 			left=l,
 			right=r,
 			patientIsoc=iso

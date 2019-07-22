@@ -39,10 +39,11 @@ def calculate(p1,p2,t1,t2):
 			alpha = np.deg2rad(45-t2)
 			beta = np.deg2rad(t1+45)
 			# Unpack the two points.
-			# a, z1 = p1
-			# b, z2 = p2
 			a, z2 = p2[i]
 			b, z1 = p1[i]
+			# Do some safe conversions if zeros are encountered.
+			if a == 0: a = 1e-9
+			if b == 0: b = 1e-9
 			# Calculate the separation of each imaging axis from the true X axis.
 			phi = np.pi/2 - alpha - beta
 			psi_a = np.arctan((a*np.sin(phi))/(a*np.cos(phi)+b))

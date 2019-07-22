@@ -20,7 +20,7 @@ class solver:
 		self.solution = np.zeros((6,))
 		self.transform = np.identity(4)
 
-	def input(self,left=None,right=None,patientIsoc=None,machineIsoc=None):
+	def setInputs(self,left=None,right=None,patientIsoc=None,machineIsoc=None):
 		# Update vars.
 		if left is not None: self._leftPoints = np.array(left)
 		if right is not None: self._rightPoints = np.array(right)
@@ -44,9 +44,9 @@ class solver:
 		if self._patientIsocenter is None:
 			self._patientIsocenter = self._leftCentroid
 
-		print('Left Points:',self._leftPoints)
+		print('Left Points:\n',self._leftPoints)
 		print('Left Ctd:',self._leftCentroid)
-		print('Right Points:',self._rightPoints)
+		print('Right Points:\n',self._rightPoints)
 		print('Right Ctd:',self._rightCentroid)
 		print('Patient Isoc:',self._patientIsocenter)
 		print('Machine Isoc:',self._machineIsocenter)
@@ -213,7 +213,6 @@ def angles(R):
 				del z[i]
 			except:
 				logging.critical('Cannot solve alignment. Unknown cause.')
-				print('\033[91m Unable to solve for the alignment. Please select the points properly.')
 				return 0, 0, 0
 
 	# Angles must be applied in xyz order.
