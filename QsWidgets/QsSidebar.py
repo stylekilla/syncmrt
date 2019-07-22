@@ -620,6 +620,13 @@ class QXrayProperties(QtWidgets.QWidget):
 		elif button == 'cbPatIsoc': self.toggleOverlay.emit(2,setState)
 		elif button == 'cbBeamOverlay': self.toggleOverlay.emit(3,setState)
 
+	def refreshOverlays(self):
+		for item in ['cbBeamIsoc','cbPatIsoc','cbCentroid','cbBeamOverlay']:
+			# Toggle them on and off to refresh them.
+			self.widget[item].toggle()
+			self.widget[item].toggle()
+
+
 class QCtProperties(QtWidgets.QWidget):
 	# Qt signals.
 	isocenterChanged = QtCore.pyqtSignal(float,float,float)

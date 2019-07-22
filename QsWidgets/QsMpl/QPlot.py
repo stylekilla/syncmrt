@@ -423,6 +423,7 @@ class Histogram:
 		self.canvas.draw()
 
 	def loadImage(self,data,**kwargs):
+		self.ax.cla()
 		# Data min and max.
 		dmin = np.min(data)
 		dmax = np.max(data)

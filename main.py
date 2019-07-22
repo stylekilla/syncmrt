@@ -347,7 +347,8 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		images = self.patient.dx.getImageSet(_set)
 		# Set the amount of images required.
 		self.envXray.loadImages(images)	
-		# self.envXray.createSubplots(len(_set))
+		# Toggle the ovelrays on and off to refresh them.
+		self.sidebar.widget['xrayImageProperties'].refreshOverlays()
 		# Populate new histograms.
 		histogram = self.envXray.getPlotHistogram()
 		self.sidebar.widget['xrayImageProperties'].addPlotHistogramWindow(histogram)
