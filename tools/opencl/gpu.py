@@ -35,14 +35,23 @@ class gpu:
 			cpuList += plt.get_devices(cl.device_type.CPU)
 			gpuList += plt.get_devices(cl.device_type.GPU)
 		# Create a device context.
-		try:
-			for device in gpuList:
-				if device.vendor == 'NVIDIA':
-					chosenDevice = [device]  
+		print('CPU List: \n',cpuList)
+		print('GPU List: \n',gpuList)
+		chosenDevice = None
+		for device in gpuList:
+			try:
+				# if device.vendor.contains('NVIDIA'):
+				chosenDevice = [device]  
 					# self.ctx = cl.Context(devices=[device])
-		except:
-			# Use the CPU.
+			except:
+				pass
+		if chosenDevice is None:
+			# Use the CPU if no GPU found.
 			chosenDevice = [cpuList[0]]
+		else:
+			pass
+
+		print('Chosen Device: \n',chosenDevice)
 
 		self.ctx = cl.Context(devices=chosenDevice)
 		logging.info('Using '+ str(chosenDevice) +' for computation.')

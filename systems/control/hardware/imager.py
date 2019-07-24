@@ -187,7 +187,7 @@ class Imager(QtCore.QObject):
 		self.detector.setParameters(kwargs)
 
 
-	def stitch(self,index,metadata,z,tz):
+	def stitch(self,index,metadata,z,z1,z2):
 		"""
 		The `imager._stitchBuffer` is stitched together and the complete image is sent to the `imager.buffer` along with its finalised metadata.
 		Stitching assumes the middle of the beam window is the middle of the beam. No offset.
@@ -200,35 +200,32 @@ class Imager(QtCore.QObject):
 			The metadata of the image to be included in the HDF5 file as image attributes.
 		z : float
 			The `z` (vertical) position of the patient before imaging.
-		tz : list
-			The range of vertical movement as `[-tz,+tz]` relative to the pre-imaging position `z`.
+		z1 : float
+			The top position of the patient at the start of imaging.
+		z2 : float
+			The bottom position of the patient at the end imaging.
+		# tz : list
+			# The range of vertical movement as `[-tz,+tz]` relative to the pre-imaging position `z`.
 		"""
 		# Metadata
 		finish = self._stitchBuffer[-1][1]
 		metadata.update(finish)
+		logging.critical("The pre-imaging height position is {} ({}, {})".format(z,z1,z2))
 
-		logging.critical("Stitching is out of order... why?")
-		# Image.
-		# image = self._stitchBuffer[0][0]
-		# for i in (range(1,len(self._stitchBuffer))):
-		# 	print("Stitching {} of {}".format(i,len(self._stitchBuffer)-1))
-		# 	roi = self._stitchBuffer[i][0]
-		# 	# Stack the image.
-		# 	image = np.vstack((image,roi))
-
-		# Stack the image.
-		image = self._stitchBuffer[-1][0]
-		for i in range(len(self._stitchBuffer)-1):
+		# Stitch the image.
+		image = self._stitchBuffer[0][0]
+		for i in range(1,len(self._stitchBuffer)):
 			image = np.vstack((image,self._stitchBuffer[i][0]))
 
 		# Calculate the extent.
 		logging.critical("Extent calculation for stitching is currently wrong. Unfinished")
 		l = (image.shape[1]/2)*self.detector.pixelSize[1]
 		r = -(image.shape[1]/2)*self.detector.pixelSize[1]
-		t = z + tz[1] + 0.5*self._stitchBuffer[0][0].shape[0]*self.detector.pixelSize[0]
-		b = z + tz[0] - 0.5*self._stitchBuffer[0][0].shape[0]*self.detector.pixelSize[0]
+		# t = z + tz[1] + 0.5*self._stitchBuffer[0][0].shape[0]*self.detector.pixelSize[0]
+		# b = z + tz[0] - 0.5*self._stitchBuffer[0][0].shape[0]*self.detector.pixelSize[0]
+		t = z1 - z + 0.5*self._stitchBuffer[0][0].shape[0]*self.detector.pixelSize[0]
+		b = -(z - z2) - 0.5*self._stitchBuffer[0][0].shape[0]*self.detector.pixelSize[0]
 		extent = (l,r,b,t)
-		logging.critical("Image array shape: {}.".format(image.shape))
 		# Add the transformation matrix into the images frame of reference.
 		# Imagers FOR is a RH-CS where +x propagates down the beamline.
 		M = np.identity(3)

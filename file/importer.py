@@ -202,7 +202,7 @@ class dicom_rtplan:
 			# Rotate the dataset.
 			pixelArray = gpuContext.rotate(self.beam[i]._arr2bcs)
 			# Create the 2d projection images.
-			self.beam[i].image = [image2d(),image2d()]
+			self.beam[i].image = [Image2d(),Image2d()]
 			# Get the relevant information for the new image.
 			pixelSize = bcs@dcm2python@ctArrayPixelSize
 			arrayShape = np.array(pixelArray.shape)

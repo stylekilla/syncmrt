@@ -406,7 +406,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 			self.sbTreatment.widget['quantity'].setText(str(i+1))
 			# Make a widget for plot stuff.
 			self.envRtplan[i] = self.environment.addPage('BEV%i'%(i+1),QsWidgets.QPlotEnvironment())
-			self.envRtplan[i].set('maxMarkers',config.markerQuantity)
+			self.envRtplan[i].set('maxMarkers',config.markers.quantity)
 			self.envRtplan[i].toggleSettings.connect(partial(self.sidebar.showStack,'ImageProperties'))
 			# Connect max markers spin box.
 			self.sbAlignment.markersChanged.connect(partial(self.envRtplan[i].set,'maxMarkers'))
@@ -423,7 +423,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 			histogram = self.envRtplan[i].getPlotHistogram()
 			self.sidebar.widget['bev%iImageProperties'%(i+1)].addPlotHistogramWindow(histogram)
 			# Force marker update for table.
-			self.envRtplan[i].set('maxMarkers',config.markers.quantity)
+			self.sbAlignment.markersChanged.connect(partial(self.envRtplan[i].set,'maxMarkers'))
 		# Populate the sidebar with all the treatments.
 		self.sbTreatment.populateTreatments()
 		for i in range(len(self.patient.rtplan.beam)):

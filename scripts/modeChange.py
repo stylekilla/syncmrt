@@ -12,6 +12,8 @@ Slits3B = epics.PV('SR08ID01SLM03:ZCENTRE.VAL')
 RubyTranslation = epics.PV('SR08ID01DST31:Y.VAL')
 # Mono position.
 Mono = epics.PV('SR08ID01DCM01:Z1.VAL')
+# MRTShutter.
+MRTShutter = epics.PV('SR08ID01SST21:YTRANS.VAL')
 
 
 def goToMono():
@@ -23,8 +25,9 @@ def goToMono():
 	Slits1B.put(20.00)
 	Slits2A.put(20.00)
 	Slits3B.put(20.00)
-	RubyTranslation.put(740.00)
+	RubyTranslation.put(732.00)
 	Mono.put(0.00)
+	MRTShutter.put(0)
 
 def goToWhite():
 	"""
@@ -37,3 +40,4 @@ def goToWhite():
 	Slits3B.put(0.00)
 	RubyTranslation.put(200.00)
 	Mono.put(-45.00)
+	MRTShutter.put(-300)

@@ -89,6 +89,7 @@ class patientSupport(QtCore.QObject):
 				self._size = np.add(self._size,motor._size)
 
 	def shiftPosition(self,position):
+		logging.info("Shifting position to {}".format(position))
 		# This is a relative position change.
 		# Iterate through available motors.
 		for motor in self.currentMotors:
@@ -100,6 +101,7 @@ class patientSupport(QtCore.QObject):
 			position[(motor._axis + (3*motor._type))] = 0
 
 	def setPosition(self,position):
+		logging.info("Setting position to {}".format(position))
 		# This is a direct position change.
 		# Iterate through available motors.
 		for motor in self.currentMotors:

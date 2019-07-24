@@ -14,6 +14,8 @@ class Patient(QtCore.QObject):
 		super().__init__()
 		self.name = name
 		self.dx = None
+		self.ct = None
+		self.rtplan = None
 		# Program internals.
 		self._gpuContext = None
 
