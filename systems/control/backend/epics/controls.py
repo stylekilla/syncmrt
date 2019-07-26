@@ -164,9 +164,20 @@ class detector:
 		if self._connected is False:
 			return None
 		else:
-			self.pv['CAM:Acquire'].put(1)
-			image = np.array(self.pv['IMAGE:ArrayData'].get(),dtype='uint16')
+			# self.pv['CAM:Acquire'].put(1)
+			# im = self.pv['IMAGE:ArrayData'].get()
+			# try:
+			# 	image = np.array(im,dtype='uint16')
+			# except:
+			# 	logging.error("Tried to get image from RUBY. Instead got {}".format(im))
+			# 	# Try again.
+			# 	image = np.array(im,dtype='uint16')
+			image = None
+			while image is None:
+				self.pv['CAM:Acquire'].put(1)
+				image = self.pv['IMAGE:ArrayData'].get()
+
 			x = self.pv['IMAGE:ArraySize1_RBV'].get()
 			y = self.pv['IMAGE:ArraySize0_RBV'].get()
-
-			return np.flipud(image.reshape(x,y))
+			logging.info("Flipping RUBY images because it is retarded.")
+			return np.fliplr(np.flipud(image.reshape(x,y)))

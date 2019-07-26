@@ -93,7 +93,8 @@ class Brain(QtCore.QObject):
 		tx = ty = rx = ry = 0
 		# Move to first position.
 		self.patientSupport.finishedMove.connect(self._startImage)
-		self.patientSupport.shiftPosition([tx,ty,self._routine.tz[0],rx,ry,self._routine.theta[0]])
+		# Added minus sign in to first shift to lower the object into the imaging frame (to get the top position).
+		self.patientSupport.shiftPosition([tx,ty,-self._routine.tz[1],rx,ry,self._routine.theta[0]])
 
 	def _startImage(self):
 		# Assume step for now.
@@ -106,7 +107,11 @@ class Brain(QtCore.QObject):
 			self.patientSupport.finishedMove.disconnect()
 			self.patientSupport.finishedMove.connect(partial(self._step,'finishedMove'))
 			# Calculate routine vars.
-			self._routine.stepCounterLimit = round(self._routine.roiZ/self._routine.beamHeight)
+			"""
+			Redo this so it repeats until current Z pos is less than/greater than the final Z position.
+			Then no counter is needed.
+			"""
+			self._routine.stepCounterLimit = round(self._routine.roiZ/self._routine.beamHeight)+1
 			self._routine.stepSize = self._routine.beamHeight
 			# Up the step counter by 1.
 			self._routine.stepCounter += 1
@@ -115,6 +120,9 @@ class Brain(QtCore.QObject):
 
 	def _step(self,status):
 		logging.info("In image step method {}/{} with status {}.".format(int(self._routine.stepCounter),int(self._routine.stepCounterLimit),status))
+		# Get the last known image position.
+		self._routine.lastStepPosition = self.patientSupport.position()
+		logging.info("Last known imaging position: {}".format(self._routine.lastStepPosition))
 		if self._routine.stepCounter < self._routine.stepCounterLimit:
 			if status == 'finishedMove':
 				self._routine.stepCounter += 1
@@ -129,7 +137,7 @@ class Brain(QtCore.QObject):
 			self.imager.imageAcquired.connect(self._continueScan)
 			self.patientSupport.finishedMove.disconnect()
 			# Get the final image position.
-			self._routine.lastStepPosition = self.patientSupport.position()
+			# self._routine.lastStepPosition = self.patientSupport.position()
 			# Metadata.
 			tx,ty,tz,rx,ry,rz = self._routine.preImagingPosition
 			metadata = {
@@ -144,7 +152,9 @@ class Brain(QtCore.QObject):
 			self._routine.stepCounter = 0
 			# Stitch the image.
 			# self.imager.stitch(self._routine.imageCounter,metadata,tz,self._routine.tz)
-			self.imager.stitch(self._routine.imageCounter,metadata,
+			self.imager.stitch(
+				self._routine.imageCounter,
+				metadata,
 				self._routine.preImagingPosition[2],
 				self._routine.lastStepPosition[2],
 				self._routine.firstStepPosition[2]
@@ -170,7 +180,7 @@ class Brain(QtCore.QObject):
 			# Move to the next imaging position
 			_pos = np.array(self._routine.preImagingPosition) + np.array([tx,ty,self._routine.tz[0],rx,ry,self._routine.theta[self._routine.imageCounter]])
 			# self.patientSupport.shiftPosition(_pos)
-			logging.info("Sending LAPS to position {}".format(_pos))
+			logging.info("Sending LAPS to position {} for next scan".format(_pos))
 			self.patientSupport.setPosition(_pos)
 		else:
 			self._endScan()

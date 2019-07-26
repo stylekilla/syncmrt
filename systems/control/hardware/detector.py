@@ -64,7 +64,6 @@ class detector(QtCore.QObject):
 			# Assumes stage moving at constant speed.
 			# Write all to buffer, then when finished return the image and metadata.
 			return (self.buffer,metadata)
-			# pass
 
 		else:
 			# Return a tuple of the image and metadata.

@@ -252,14 +252,14 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 			fileDialogue = QtWidgets.QFileDialog()
 			fileDialogue.setFileMode(QtWidgets.QFileDialog.ExistingFiles)
 			file, dtype = fileDialogue.getOpenFileNames(self, "Open Xray dataset", "", fileFormat)
-			self.openXray(file[0])
+			if len(file) > 0: self.openXray(file[0])
 
 		elif modality == 'rtp':
 			fileFormat = 'DICOM (*.dcm)'
 			fileDialogue = QtWidgets.QFileDialog()
 			fileDialogue.setFileMode(QtWidgets.QFileDialog.ExistingFiles)
 			file, dtype = fileDialogue.getOpenFileNames(self, "Open RP dataset", "", fileFormat)
-			self.openRTP(file)
+			if len(file) > 0: self.openRTP(file)
 
 		elif modality == 'folder':
 			# Try all file types...
@@ -267,36 +267,36 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 			fileDialogue = QtWidgets.QFileDialog()
 			fileDialogue.setFileMode(QtWidgets.QFileDialog.Directory)
 			folder = fileDialogue.getExistingDirectory(self, "Open dataset folder", "")
+			if folder != '':
+				dataset = []
+				modality = 'xray'
+				for root, subdir, fp in os.walk(folder):
+					for fn in fp:
+						if (fn.endswith(tuple('.hdf5'))) & (fn[:len(modality)] == modality):
+							dataset.append(os.path.join(root,fn))
+				if len(dataset) > 0:
+					self.patient.load(dataset,'DX')
+					self.openXray(dataset[0])
 
-			dataset = []
-			modality = 'xray'
-			for root, subdir, fp in os.walk(folder):
-				for fn in fp:
-					if (fn.endswith(tuple('.hdf5'))) & (fn[:len(modality)] == modality):
-						dataset.append(os.path.join(root,fn))
-			if len(dataset) > 0:
-				self.patient.load(dataset,'DX')
-				self.openXray(dataset[0])
+				dataset = []
+				modality = 'CT'
+				for root, subdir, fp in os.walk(folder):
+					for fn in fp:
+						if (fn.endswith(tuple('.dcm'))) & (fn[:len(modality)] == modality):
+							dataset.append(os.path.join(root,fn))
+				if len(dataset) > 0:
+					self.openCT(dataset)	
+				
+				dataset = []
+				modality = 'RP'
+				for root, subdir, fp in os.walk(folder):
+					for fn in fp:
+						if (fn.endswith(tuple('.dcm'))) & (fn[:len(modality)] == modality):
+							dataset.append(os.path.join(root,fn))
+				if len(dataset) > 0:
+					self.openRTP(dataset)
 
-			dataset = []
-			modality = 'CT'
-			for root, subdir, fp in os.walk(folder):
-				for fn in fp:
-					if (fn.endswith(tuple('.dcm'))) & (fn[:len(modality)] == modality):
-						dataset.append(os.path.join(root,fn))
-			if len(dataset) > 0:
-				self.openCT(dataset)	
-			
-			dataset = []
-			modality = 'RP'
-			for root, subdir, fp in os.walk(folder):
-				for fn in fp:
-					if (fn.endswith(tuple('.dcm'))) & (fn[:len(modality)] == modality):
-						dataset.append(os.path.join(root,fn))
-			if len(dataset) > 0:
-				self.openRTP(dataset)
-
-			self.environment.button['CT'].clicked.emit()
+				self.environment.button['CT'].clicked.emit()
 
 	def openXray(self,files):
 		"""Open XR (x-ray) modality files."""
@@ -517,7 +517,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		r = np.zeros((numberOfPoints,3))
 
 		# Check that each plot has enough points.
-		if (len(self.envXray.plot[0].pointsX) != numberOfPoints) or (len(self.envXray.plot[1].pointsX) != numberOfPoints): 
+		if (len(self.envXray.plot[0].pointsX) != numberOfPoints): 
 			logging.error("At least {} points required in X-ray for calculation.".format(numberOfPoints))
 			return
 
@@ -528,6 +528,9 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 
 		# Get the x-ray (right) points.
 		if _3D:
+			if (len(self.envXray.plot[1].pointsX) != numberOfPoints): 
+				logging.error("At least {} points required in X-ray for calculation.".format(numberOfPoints))
+				return
 			p1 = self.envXray.plot[0].markers()
 			p2 = self.envXray.plot[1].markers()
 			# Now we need to go through the new routine for non-orthogonal imaging.

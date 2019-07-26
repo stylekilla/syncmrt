@@ -13,8 +13,12 @@ RubyTranslation = epics.PV('SR08ID01DST31:Y.VAL')
 # Mono position.
 Mono = epics.PV('SR08ID01DCM01:Z1.VAL')
 # MRTShutter.
-MRTShutter = epics.PV('SR08ID01SST21:YTRANS.VAL')
+MRTShutter = epics.PV('SR08ID01SST21:YTrans.VAL')
 
+"""
+Things to add:
+- LAPS movement offset.
+"""
 
 def goToMono():
 	"""
@@ -38,6 +42,6 @@ def goToWhite():
 	Slits1B.put(0.00)
 	Slits2A.put(0.00)
 	Slits3B.put(0.00)
-	RubyTranslation.put(200.00)
+	RubyTranslation.put(-15.00)
 	Mono.put(-45.00)
 	MRTShutter.put(-300)
