@@ -249,7 +249,6 @@ class dicom_ct(QtCore.QObject):
 		elif _x == 1: _sum2 = 0
 		elif _x == 2: _sum2 = 2
 
-		print(self.extent)
 		# Get the first flattened image.
 		self.image[0].pixelArray = np.sum(self.pixelArray,axis=_sum1)
 		# If we sum down axis 0 we need to transpose the array, just because of numpy.
