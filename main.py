@@ -146,33 +146,43 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		# When the image mode changes tell the system.
 		self.sbImaging.imageModeChanged.connect(self.system.setImagingMode)
 
-		# self.testing()
+		self.testing()
 
 	def testing(self):
 		self.openXray('../scratch/test.hdf5')
 		dataset = []
 		modality = 'CT'
-		for root, subdir, fp in os.walk('../scratch/head-phant/'):
+		# for root, subdir, fp in os.walk('../scratch/head-phant/'):
+		for root, subdir, fp in os.walk('../scratch/HeadneckCT/'):
 			for fn in fp:
-				if (fn.endswith(tuple('.dcm'))) & (fn[:len(modality)] == modality):
+				# if (fn.endswith('.dcm')) & (fn[:len(modality)] == modality):
+				if fn.endswith('.dcm'):
 					dataset.append(os.path.join(root,fn))
 		if len(dataset) > 0:
-			self.openCT(dataset)	
+			self.openCT(dataset)
 
-		self.envXray.plot[0].markerAdd(0.0,25)
-		self.envXray.plot[0].markerAdd(0.0,-25)
-		self.envXray.plot[0].markerAdd(-53.03,-25)
-		self.envXray.plot[1].markerAdd(-35.35,25)
-		self.envXray.plot[1].markerAdd(-35.35,-25)
-		self.envXray.plot[1].markerAdd(-17.67,-25)
-		self.envCt.plot[0].markerAdd(-25,25)
-		self.envCt.plot[0].markerAdd(-25,-25)
-		self.envCt.plot[0].markerAdd(25,-25)
-		self.envCt.plot[1].markerAdd(25,25)
-		self.envCt.plot[1].markerAdd(25,-25)
-		self.envCt.plot[1].markerAdd(50,-25)
+		# 2D test case.
+		# self.envXray.plot[0].markerAdd(10.61,30)
+		# self.envXray.plot[0].markerAdd(-10.61,30)
+		# self.envXray.plot[0].markerAdd(-5.3,-10)
+		# self.envCt.plot[0].markerAdd(15,30)
+		# self.envCt.plot[0].markerAdd(-15,30)
+		# self.envCt.plot[0].markerAdd(-7.5,-10)
 
-		self.patientCalculateAlignment()
+		# self.envXray.plot[0].markerAdd(0.0,-25)
+		# self.envXray.plot[0].markerAdd(0.0,25)
+		# self.envXray.plot[0].markerAdd(-53.03,25)
+		# self.envXray.plot[1].markerAdd(-35.35,-25)
+		# self.envXray.plot[1].markerAdd(-35.35,25)
+		# self.envXray.plot[1].markerAdd(-17.67,25)
+		# self.envCt.plot[0].markerAdd(-25,25)
+		# self.envCt.plot[0].markerAdd(-25,-25)
+		# self.envCt.plot[0].markerAdd(25,-25)
+		# self.envCt.plot[1].markerAdd(25,25)
+		# self.envCt.plot[1].markerAdd(25,-25)
+		# self.envCt.plot[1].markerAdd(50,-25)
+
+		# self.patientCalculateAlignment()
 
 	@QtCore.pyqtSlot(int)
 	def calculateAlignment(self,index):
@@ -362,17 +372,31 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		if self._isCTOpen == False:
 			self.createWorkEnvironmentCT()
 			logging.debug('Created CT Work Environment')
-		# Send ct dataset to plot.
-		self.envCt.loadImages(self.patient.ct.image)
-		# Get the plot histogram widgets and give them to the sidebar widget.
-		histogram = self.envCt.getPlotHistogram()
-		self.sidebar.widget['ctImageProperties'].addPlotHistogramWindow(histogram)
+		# Enable the CT view selection.
+		self.sidebar.widget['ctImageProperties'].group['view'].setEnabled(True)
+		# Update the CT view.
+		self.sidebar.widget['ctImageProperties'].updateCtView.connect(self.patient.ct.changeView)
+		self.patient.ct.newCtView.connect(self.updateCTEnv)
+		# Load the CT images and get the histograms.
+		self.updateCTEnv()
+		# # Send ct dataset to plot.
+		# self.envCt.loadImages(self.patient.ct.image)
+		# # Get the plot histogram widgets and give them to the sidebar widget.
+		# histogram = self.envCt.getPlotHistogram()
+		# self.sidebar.widget['ctImageProperties'].addPlotHistogramWindow(histogram)
 		# Force marker update for table.
 		self.envCt.set('maxMarkers',config.markers.quantity)
 		# Finalise import. Set open status to true and open the workspace.
 		self._isCTOpen = True
 		self.environment.button['CT'].clicked.emit()
 		self.sidebar.linkPages('ImageProperties','ctImageProperties')
+
+	def updateCTEnv(self):
+		# Send ct dataset to plot.
+		self.envCt.loadImages(self.patient.ct.image)
+		# Get the plot histogram widgets and give them to the sidebar widget.
+		histogram = self.envCt.getPlotHistogram()
+		self.sidebar.widget['ctImageProperties'].addPlotHistogramWindow(histogram)
 
 	def createWorkEnvironmentCT(self):
 		# Make a widget for plot stuff.

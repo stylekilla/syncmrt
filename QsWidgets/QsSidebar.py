@@ -631,6 +631,7 @@ class QCtProperties(QtWidgets.QWidget):
 	# Qt signals.
 	isocenterChanged = QtCore.pyqtSignal(float,float,float)
 	toggleOverlay = QtCore.pyqtSignal(int,bool)
+	updateCtView = QtCore.pyqtSignal(str)
 
 	def __init__(self):
 		# Init QObject class.
@@ -657,8 +658,8 @@ class QCtProperties(QtWidgets.QWidget):
 		overlayGroup.setLayout(overlayGroupLayout)
 		self.layout.addWidget(overlayGroup)
 
-		# # Group: Editable Isocenter
-		# # self.group['editIsocenter'] = editIsocenter = QtWidgets.QGroupBox()
+		# Group: Editable Isocenter
+		# self.group['editIsocenter'] = editIsocenter = QtWidgets.QGroupBox()
 		# self.group['editIsocenter'] = QtWidgets.QGroupBox()
 		# self.group['editIsocenter'].setTitle('Edit Treatment Isocenter')
 		# label1 = QtWidgets.QLabel('Isocenter (mm)')
@@ -693,6 +694,30 @@ class QCtProperties(QtWidgets.QWidget):
 		# self.group['editIsocenter'].setLayout(editIsocenterLayout)
 		# self.layout.addWidget(self.group['editIsocenter'])
 
+		# Group: View.
+		self.group['view'] = QtWidgets.QGroupBox()
+		self.group['view'].setTitle('CT View')
+		view = QtWidgets.QLabel('Primary View:')
+		self.widget['view'] = QtWidgets.QComboBox()
+		self.widget['view'].addItem("Coronal (AP)")
+		self.widget['view'].addItem("Coronal (PA)")
+		# Layout
+		viewGroupLayout = QtWidgets.QVBoxLayout()
+		viewGroupLayout.addWidget(view)
+		viewGroupLayout.addWidget(self.widget['view'])
+		# Defaults
+		self.group['view'].setEnabled(False)
+		self.widget['view'].setCurrentIndex(0)
+
+		# Signals and Slots
+		# self.widget['view'].currentIndexChanged.connect(partial(self.updateCtView.emit,self.widget['view'].currentText()[-3:-1]))
+		self.widget['view'].currentIndexChanged.connect(self.emitUpdateCtView)
+		# self.widget['cbPatIsoc'].stateChanged.connect(partial(self.emitToggleOverlay,'cbPatIsoc'))
+		# self.widget['cbCentroid'].stateChanged.connect(partial(self.emitToggleOverlay,'cbCentroid'))
+		# Group inclusion to page
+		self.group['view'].setLayout(viewGroupLayout)
+		self.layout.addWidget(self.group['view'])
+
 		# Group 3: Windowing.
 		self.window = {}
 		windowGroup = QtWidgets.QGroupBox()
@@ -717,6 +742,10 @@ class QCtProperties(QtWidgets.QWidget):
 		for i in range(len(widget)):
 			widget[i].setMaximumHeight(200)
 			layout.addWidget(widget[i])
+
+	def emitUpdateCtView(self):
+		view = self.widget['view'].currentText()[-3:-1]
+		self.updateCtView.emit(view)
 
 	def emitToggleOverlay(self,button,state):
 		setState = False
