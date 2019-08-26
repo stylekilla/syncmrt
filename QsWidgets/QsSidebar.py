@@ -526,11 +526,13 @@ class QSettings(QtWidgets.QWidget):
 
 class QXrayProperties(QtWidgets.QWidget):
 	toggleOverlay = QtCore.pyqtSignal(int,bool)
+	isocenterUpdated = QtCore.pyqtSignal(float,float,float)
 
 	def __init__(self,parent=None):
 		super().__init__()
 		# self.parent = parent
 		self.widget = {}
+		self.group = {}
 		self.layout = QtWidgets.QVBoxLayout()
 
 		# Group 2: Overlays.
@@ -560,29 +562,54 @@ class QXrayProperties(QtWidgets.QWidget):
 		overlayGroup.setLayout(overlayGroupLayout)
 		self.layout.addWidget(overlayGroup)
 
-		# Group 1: Editable Isocenter
-		# editIsocenter = QtWidgets.QGroupBox()
-		# editIsocenter.setTitle('Edit Treatment Isocenter')
-		# label1 = QtWidgets.QLabel('Isocenter (mm)')
-		# label2 = QtWidgets.QLabel('x: ')
-		# self.widget['alignIsocX'] = QtWidgets.QLineEdit()
-		# label3 = QtWidgets.QLabel('y: ')
-		# self.widget['alignIsocY'] = QtWidgets.QLineEdit()
+		# Group 2: Editable Isocenter.
+		self.widget['isocenter'] = {}
+		self.group['isocenter'] = QtWidgets.QGroupBox()
+		self.group['isocenter'].setTitle('Tumour Isocenter')
+		lytIsocenter = QtWidgets.QVBoxLayout()
+		# Add toggle checkbox.
+		self.widget['isocenter']['cbCustomIsoc'] = QtWidgets.QCheckBox('Set Custom Isocenter')
+		self.widget['isocenter']['cbCustomIsoc'].setToolTip("If enabled, allows the user to set a custom target position.")
+		self.widget['isocenter']['cbCustomIsoc'].stateChanged.connect(self._toggleCustomIsocenter)
+		# Create an isocenter widget with XYZ toggles in it.
+		self.widget['isocenter']['editIso'] = QtWidgets.QWidget()
+		label1 = QtWidgets.QLabel('Isocenter (mm)')
+		label2 = QtWidgets.QLabel('x: ')
+		self.widget['isocenter']['editIsoX'] = QtWidgets.QLineEdit()
+		label3 = QtWidgets.QLabel('y: ')
+		self.widget['isocenter']['editIsoY'] = QtWidgets.QLineEdit()
+		label4 = QtWidgets.QLabel('z: ')
+		self.widget['isocenter']['editIsoZ'] = QtWidgets.QLineEdit()
 		# Layout
-		# editIsocenterLayout = QtWidgets.QFormLayout()
-		# editIsocenterLayout.addRow(label1)
-		# editIsocenterLayout.addRow(label2,self.widget['alignIsocX'])
-		# editIsocenterLayout.addRow(label3,self.widget['alignIsocY'])
-		# # Defaults
-		# validator = QtGui.QDoubleValidator()
-		# validator.setBottom(0)
-		# validator.setDecimals(4)
-		# self.widget['alignIsocX'].setValidator(validator)
-		# self.widget['alignIsocY'].setValidator(validator)
-		# # Signals and Slots
-		# # Group inclusion to page
-		# editIsocenter.setLayout(editIsocenterLayout)
-		# self.layout.addWidget(editIsocenter)
+		lytEditIsocenter = QtWidgets.QFormLayout()
+		lytEditIsocenter.setContentsMargins(0,0,0,0)
+		lytEditIsocenter.addRow(label1)
+		lytEditIsocenter.addRow(label2,self.widget['isocenter']['editIsoX'])
+		lytEditIsocenter.addRow(label3,self.widget['isocenter']['editIsoY'])
+		lytEditIsocenter.addRow(label4,self.widget['isocenter']['editIsoZ'])
+		self.widget['isocenter']['editIso'].setLayout(lytEditIsocenter)
+		# Validators.
+		doubleValidator = QtGui.QDoubleValidator()
+		doubleValidator.setDecimals(3)
+		self.widget['isocenter']['editIsoX'].setText('0')
+		self.widget['isocenter']['editIsoY'].setText('0')
+		self.widget['isocenter']['editIsoZ'].setText('0')
+		self.widget['isocenter']['editIsoX'].setValidator(doubleValidator)
+		self.widget['isocenter']['editIsoY'].setValidator(doubleValidator)
+		self.widget['isocenter']['editIsoZ'].setValidator(doubleValidator)
+		# Defaults
+		self.widget['isocenter']['editIso'].setEnabled(False)
+		self.widget['isocenter']['editIso'].setVisible(False)
+		# Signals and Slots
+		self.widget['isocenter']['editIsoX'].editingFinished.connect(self._updateIsocenter)
+		self.widget['isocenter']['editIsoY'].editingFinished.connect(self._updateIsocenter)
+		self.widget['isocenter']['editIsoZ'].editingFinished.connect(self._updateIsocenter)
+		# Set the layout of group.
+		lytIsocenter.addWidget(self.widget['isocenter']['cbCustomIsoc'])
+		lytIsocenter.addWidget(self.widget['isocenter']['editIso'])
+		self.group['isocenter'].setLayout(lytIsocenter)
+		# Add group to sidebar layout.
+		self.layout.addWidget(self.group['isocenter'])
 
 		# Group 3: Windowing.
 		self.window = {}
@@ -598,6 +625,18 @@ class QXrayProperties(QtWidgets.QWidget):
 		# Finish page.
 		self.layout.addStretch(1)
 		self.setLayout(self.layout)
+
+	def _toggleCustomIsocenter(self,state):
+		""" Toggles the manual setting of the isocenter on and off. """
+		self.widget['isocenter']['editIso'].setEnabled(bool(state))
+		self.widget['isocenter']['editIso'].setVisible(bool(state))
+
+	def _updateIsocenter(self):
+		""" Send a signal with updated x,y coordinates. """
+		_x = float(self.widget['isocenter']['editIsoX'].text())
+		_y = float(self.widget['isocenter']['editIsoY'].text())
+		_z = float(self.widget['isocenter']['editIsoZ'].text())
+		self.isocenterUpdated.emit(_x,_y,_z)
 
 	def addPlotHistogramWindow(self,widget):
 		# These are new ones each time. Remove old wdigets.
@@ -629,12 +668,17 @@ class QXrayProperties(QtWidgets.QWidget):
 
 class QCtProperties(QtWidgets.QWidget):
 	# Qt signals.
-	isocenterChanged = QtCore.pyqtSignal(float,float,float)
+	isocenterUpdated = QtCore.pyqtSignal(float,float,float)
 	toggleOverlay = QtCore.pyqtSignal(int,bool)
 	updateCtView = QtCore.pyqtSignal(str)
 
+	"""
+	The structure of information held in this class is as follows:
+		1.	self.group['groupname']
+		2.	self.widget['groupname']['widgetname']
+	"""
+
 	def __init__(self):
-		# Init QObject class.
 		super().__init__()
 		# Continue with sub-class initialisation.
 		self.group = {}
@@ -642,57 +686,71 @@ class QCtProperties(QtWidgets.QWidget):
 		self.layout = QtWidgets.QVBoxLayout()
 
 		# Group: Overlays.
-		overlayGroup = QtWidgets.QGroupBox()
-		overlayGroup.setTitle('Plot Overlays')
-		self.widget['cbPatIsoc'] = QtWidgets.QCheckBox('Patient Isocenter')
-		self.widget['cbCentroid'] = QtWidgets.QCheckBox('Centroid Position')
+		self.widget['overlays'] = {}
+		self.group['overlays'] = QtWidgets.QGroupBox()
+		self.group['overlays'].setTitle('Plot Overlays')
+		self.widget['overlays']['cbPatIsoc'] = QtWidgets.QCheckBox('Patient Isocenter')
+		self.widget['overlays']['cbCentroid'] = QtWidgets.QCheckBox('Centroid Position')
 		# Layout
-		overlayGroupLayout = QtWidgets.QVBoxLayout()
-		overlayGroupLayout.addWidget(self.widget['cbPatIsoc'])
-		overlayGroupLayout.addWidget(self.widget['cbCentroid'])
+		lytOverlays = QtWidgets.QVBoxLayout()
+		lytOverlays.addWidget(self.widget['overlays']['cbPatIsoc'])
+		lytOverlays.addWidget(self.widget['overlays']['cbCentroid'])
 		# Defaults
 		# Signals and Slots
-		self.widget['cbPatIsoc'].stateChanged.connect(partial(self.emitToggleOverlay,'cbPatIsoc'))
-		self.widget['cbCentroid'].stateChanged.connect(partial(self.emitToggleOverlay,'cbCentroid'))
+		self.widget['overlays']['cbPatIsoc'].stateChanged.connect(partial(self.emitToggleOverlay,'cbPatIsoc'))
+		self.widget['overlays']['cbCentroid'].stateChanged.connect(partial(self.emitToggleOverlay,'cbCentroid'))
 		# Group inclusion to page
-		overlayGroup.setLayout(overlayGroupLayout)
-		self.layout.addWidget(overlayGroup)
+		self.group['overlays'].setLayout(lytOverlays)
+		self.layout.addWidget(self.group['overlays'])
 
-		# Group: Editable Isocenter
-		# self.group['editIsocenter'] = editIsocenter = QtWidgets.QGroupBox()
-		# self.group['editIsocenter'] = QtWidgets.QGroupBox()
-		# self.group['editIsocenter'].setTitle('Edit Treatment Isocenter')
-		# label1 = QtWidgets.QLabel('Isocenter (mm)')
-		# label2 = QtWidgets.QLabel('x: ')
-		# self.widget['isocX'] = QtWidgets.QLineEdit()
-		# label3 = QtWidgets.QLabel('y: ')
-		# self.widget['isocY'] = QtWidgets.QLineEdit()
-		# label4 = QtWidgets.QLabel('z: ')
-		# self.widget['isocZ'] = QtWidgets.QLineEdit()
-		# # Layout
-		# editIsocenterLayout = QtWidgets.QFormLayout()
-		# editIsocenterLayout.addRow(label1)
-		# editIsocenterLayout.addRow(label2,self.widget['isocX'])
-		# editIsocenterLayout.addRow(label3,self.widget['isocY'])
-		# editIsocenterLayout.addRow(label4,self.widget['isocZ'])
-		# # Defaults
-		# self.group['editIsocenter'].setEnabled(False)
-		# doubleValidator = QtGui.QDoubleValidator()
-		# # doubleValidator.setBottom(0)
-		# doubleValidator.setDecimals(3)
-		# self.widget['isocX'].setText('0')
-		# self.widget['isocY'].setText('0')
-		# self.widget['isocZ'].setText('0')
-		# self.widget['isocX'].setValidator(doubleValidator)
-		# self.widget['isocY'].setValidator(doubleValidator)
-		# self.widget['isocZ'].setValidator(doubleValidator)
-		# # Signals and Slots
-		# self.widget['isocX'].returnPressed.connect(self.updateIsocenter)
-		# self.widget['isocY'].returnPressed.connect(self.updateIsocenter)
-		# self.widget['isocZ'].returnPressed.connect(self.updateIsocenter)
-		# # Group inclusion to page
-		# self.group['editIsocenter'].setLayout(editIsocenterLayout)
-		# self.layout.addWidget(self.group['editIsocenter'])
+		# Group 2: Editable Isocenter.
+		self.widget['isocenter'] = {}
+		self.group['isocenter'] = QtWidgets.QGroupBox()
+		self.group['isocenter'].setTitle('Tumour Isocenter')
+		lytIsocenter = QtWidgets.QVBoxLayout()
+		# Add toggle checkbox.
+		self.widget['isocenter']['cbCustomIsoc'] = QtWidgets.QCheckBox('Set Custom Isocenter')
+		self.widget['isocenter']['cbCustomIsoc'].setToolTip("If enabled, allows the user to set a custom target position.")
+		self.widget['isocenter']['cbCustomIsoc'].stateChanged.connect(self._toggleCustomIsocenter)
+		# Create an isocenter widget with XYZ toggles in it.
+		self.widget['isocenter']['editIso'] = QtWidgets.QWidget()
+		label1 = QtWidgets.QLabel('Isocenter (mm)')
+		label2 = QtWidgets.QLabel('x: ')
+		self.widget['isocenter']['editIsoX'] = QtWidgets.QLineEdit()
+		label3 = QtWidgets.QLabel('y: ')
+		self.widget['isocenter']['editIsoY'] = QtWidgets.QLineEdit()
+		label4 = QtWidgets.QLabel('z: ')
+		self.widget['isocenter']['editIsoZ'] = QtWidgets.QLineEdit()
+		# Layout
+		lytEditIsocenter = QtWidgets.QFormLayout()
+		lytEditIsocenter.setContentsMargins(0,0,0,0)
+		lytEditIsocenter.addRow(label1)
+		lytEditIsocenter.addRow(label2,self.widget['isocenter']['editIsoX'])
+		lytEditIsocenter.addRow(label3,self.widget['isocenter']['editIsoY'])
+		lytEditIsocenter.addRow(label4,self.widget['isocenter']['editIsoZ'])
+		self.widget['isocenter']['editIso'].setLayout(lytEditIsocenter)
+		# Validators.
+		doubleValidator = QtGui.QDoubleValidator()
+		doubleValidator.setDecimals(3)
+		self.widget['isocenter']['editIsoX'].setText('0')
+		self.widget['isocenter']['editIsoY'].setText('0')
+		self.widget['isocenter']['editIsoZ'].setText('0')
+		self.widget['isocenter']['editIsoX'].setValidator(doubleValidator)
+		self.widget['isocenter']['editIsoY'].setValidator(doubleValidator)
+		self.widget['isocenter']['editIsoZ'].setValidator(doubleValidator)
+		# Defaults
+		self.widget['isocenter']['editIso'].setEnabled(False)
+		self.widget['isocenter']['editIso'].setVisible(False)
+		# Signals and Slots
+		self.widget['isocenter']['editIsoX'].editingFinished.connect(self._updateIsocenter)
+		self.widget['isocenter']['editIsoY'].editingFinished.connect(self._updateIsocenter)
+		self.widget['isocenter']['editIsoZ'].editingFinished.connect(self._updateIsocenter)
+		# Set the layout of group.
+		lytIsocenter.addWidget(self.widget['isocenter']['cbCustomIsoc'])
+		lytIsocenter.addWidget(self.widget['isocenter']['editIso'])
+		self.group['isocenter'].setLayout(lytIsocenter)
+		# Add group to sidebar layout.
+		self.layout.addWidget(self.group['isocenter'])
 
 		# Group: View.
 		self.group['view'] = QtWidgets.QGroupBox()
@@ -708,12 +766,8 @@ class QCtProperties(QtWidgets.QWidget):
 		# Defaults
 		self.group['view'].setEnabled(False)
 		self.widget['view'].setCurrentIndex(0)
-
 		# Signals and Slots
-		# self.widget['view'].currentIndexChanged.connect(partial(self.updateCtView.emit,self.widget['view'].currentText()[-3:-1]))
 		self.widget['view'].currentIndexChanged.connect(self.emitUpdateCtView)
-		# self.widget['cbPatIsoc'].stateChanged.connect(partial(self.emitToggleOverlay,'cbPatIsoc'))
-		# self.widget['cbCentroid'].stateChanged.connect(partial(self.emitToggleOverlay,'cbCentroid'))
 		# Group inclusion to page
 		self.group['view'].setLayout(viewGroupLayout)
 		self.layout.addWidget(self.group['view'])
@@ -732,6 +786,18 @@ class QCtProperties(QtWidgets.QWidget):
 		# Finish page.
 		self.layout.addStretch(1)
 		self.setLayout(self.layout)
+
+	def _toggleCustomIsocenter(self,state):
+		""" Toggles the manual setting of the isocenter on and off. """
+		self.widget['isocenter']['editIso'].setEnabled(bool(state))
+		self.widget['isocenter']['editIso'].setVisible(bool(state))
+
+	def _updateIsocenter(self):
+		""" Send a signal with updated x,y coordinates. """
+		_x = float(self.widget['isocenter']['editIsoX'].text())
+		_y = float(self.widget['isocenter']['editIsoY'].text())
+		_z = float(self.widget['isocenter']['editIsoZ'].text())
+		self.isocenterUpdated.emit(_x,_y,_z)
 
 	def addPlotHistogramWindow(self,widget):
 		# These are new ones each time. Remove old wdigets.
@@ -757,6 +823,12 @@ class QCtProperties(QtWidgets.QWidget):
 		elif button == 'cbBeamIsoc': self.toggleOverlay.emit(1,setState)
 		elif button == 'cbPatIsoc': self.toggleOverlay.emit(2,setState)
 		elif button == 'cbBeamOverlay': self.toggleOverlay.emit(3,setState)
+
+	def refreshOverlays(self):
+		for item in ['cbBeamIsoc','cbPatIsoc','cbCentroid','cbBeamOverlay']:
+			# Toggle them on and off to refresh them.
+			self.widget[item].toggle()
+			self.widget[item].toggle()
 
 class QRtplanProperties(QtWidgets.QWidget):
 	# Qt signals.

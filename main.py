@@ -346,8 +346,9 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		self.envXray.toggleSettings.connect(partial(self.sidebar.showStack,'ImageProperties'))
 		# Sidebar page for x-ray image properties.
 		widget = self.sidebar.addPage('xrayImageProperties',QsWidgets.QXrayProperties(),addList=False)
-		# Signals and slots.
 		widget.toggleOverlay.connect(partial(self.envXray.toggleOverlay))
+		widget.isocenterUpdated.connect(self.envXray.updateIsocenter)
+		# What is this?
 		self.sbImaging.enableAcquisition()
 		self.sbImaging.resetImageSetList()
 
@@ -409,6 +410,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		widget = self.sidebar.addPage('ctImageProperties',QsWidgets.QCtProperties(),addList=False)
 		# Signals and slots.
 		widget.toggleOverlay.connect(partial(self.envCt.toggleOverlay))
+		widget.isocenterUpdated.connect(self.envCt.updateIsocenter)
 
 	def openRTP(self,files):
 		"""Open CT modality files."""

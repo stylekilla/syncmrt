@@ -189,6 +189,12 @@ class QPlotEnvironment(QtWidgets.QSplitter):
 	def toggleImageSettings(self):
 		self.toggleSettings.emit()
 
+	def updateIsocenter(self,x,y,z):
+		""" Update the isocenter in each plot. """
+		for i in range(len(self.plot)):
+			if i == 0: self.plot[i].updatePatientIsocenter(x,y)
+			elif i == 1: self.plot[i].updatePatientIsocenter(z,y)
+
 	def resetWidget(self):
 		# Removes all widgets and items associated with the layout. Essentially creates a new one.
 		self.__init__()
