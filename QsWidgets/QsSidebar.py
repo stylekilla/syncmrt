@@ -490,7 +490,7 @@ class QSettings(QtWidgets.QWidget):
 
 	def _emitMaskSizeChanged(self):
 		# Turn the line edit text into a float.
-		self.maskSizeChanged.emit(float(self.widget['maskSize'].text()))
+		if self.widget['maskSize'].isValid(): self.maskSizeChanged.emit(float(self.widget['maskSize'].text()))
 
 	def loadDetectors(self,stageList):
 		# stageList should be a list of strings of the stages available to choose from.

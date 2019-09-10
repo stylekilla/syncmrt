@@ -155,7 +155,6 @@ class QRangeEdit(QtWidgets.QLineEdit):
         self.defaultValue = defaultValue
         self.setText(str(self.defaultValue))
 
-
     def _changed(self,text):
         # Validate the text.
         self._validate(text)
