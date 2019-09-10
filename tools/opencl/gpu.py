@@ -35,8 +35,6 @@ class gpu:
 			cpuList += plt.get_devices(cl.device_type.CPU)
 			gpuList += plt.get_devices(cl.device_type.GPU)
 		# Create a device context.
-		print('CPU List: \n',cpuList)
-		print('GPU List: \n',gpuList)
 		chosenDevice = None
 		for device in gpuList:
 			try:
@@ -51,22 +49,23 @@ class gpu:
 		else:
 			pass
 
-		print('Chosen Device: \n',chosenDevice)
-
 		self.ctx = cl.Context(devices=chosenDevice)
 		logging.info('Using '+ str(chosenDevice) +' for computation.')
 			
 		# Create a device queue.
 		self.queue = cl.CommandQueue(self.ctx)
 
-	def loadData(self,data):
-		# Specify inpput buffer.
+	def loadData(self,data,extent=None):
+		""" Load an array onto the GPU. """
 		array = np.array(data,order='C').astype(np.int32)
 		self._inputBuffer = cl.Buffer(self.ctx, cl.mem_flags.READ_ONLY | cl.mem_flags.COPY_HOST_PTR, hostbuf=array)
 		self._inputBufferShape = np.shape(array)
+		# If an extent for the array is specified, save that too.
+		if (type(extent) != type(None)) & (len(np.array(extent).shape) == 6): 
+			self._inputExtent = extent
 
-	def getData(self):
-		return self._outputBuffer
+	# def getData(self):
+		# return self._outputBuffer
 
 	# def rotate(self,data,rotations=[],pixelSize=None,extent=None,isocenter=None):
 	def rotate(self,rotationMatrix):
@@ -216,27 +215,14 @@ class gpu:
 		Ti = np.identity(4)
 		# Ti[:3,3] = offset
 		Ti[:3,3] = (R@np.hstack([offset,1]))[:3]
-		# print(Ti)
 		# Make the point.
 		p = np.hstack([point,1])
 		# Translate, rotate, and reposition the point.
-		# print('point:',p)
 		P = T@p
-		# print('translated:',P)
 		P = R@P
-		# print('rotated:',P)
 		P = Ti@P
-		# print('R:')
-		# print(R)
-		# print('T:')
-		# print(T)
-		# print('Ti:')
-		# print(Ti)
-		# print('Everything')
-		# print(T@R@Ti)
 
 		# P = T@R@Ti@p
-		# print('rehomed:',P)
 
 		return P[:3]
 

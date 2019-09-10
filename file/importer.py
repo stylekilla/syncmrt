@@ -132,15 +132,22 @@ class dicom_ct(QtCore.QObject):
 		voxelIndex1 = np.array([0,0,0,1]).reshape((4,1))
 		voxelIndex2 = np.array([shape[0],shape[1],shape[2],1]).reshape((4,1))
 		# Construct the transformation matrix, M.
-		M = np.zeros((4,4))
-		M[:3,0] = self.pixelSize[0]*x
-		M[:3,1] = self.pixelSize[1]*y
-		M[:3,2] = self.pixelSize[2]*z
-		M[:3,3] = self.TLF
-		M[3,3] = 1
+		self.M = np.zeros((4,4))
+		self.M[:3,0] = self.pixelSize[0]*x
+		self.M[:3,1] = self.pixelSize[1]*y
+		self.M[:3,2] = self.pixelSize[2]*z
+		self.M[:3,3] = self.TLF
+		self.M[3,3] = 1
 		# Compute the voxel indices in mm.
-		voxelPosition1 = M@voxelIndex1
-		voxelPosition2 = M@voxelIndex2
+		voxelPosition1 = self.M@voxelIndex1
+		voxelPosition2 = self.M@voxelIndex2
+
+		# test = np.linalg.inv(self.M)@np.array([0,0,0,1])
+		# test = test[:3]
+		# logging.critical("0,0,0 at {}".format(test))
+
+		# test@np.array(self.pixelSize)
+		# logging.critical("0,0,0 at {}".format(test))
 
 		# Calculate Extent.
 		# self.extent, self.labels = calculateNewImageInformation(self.patientPosition,self.RCS,shape,self.pixelSize,self.leftTopFront)
@@ -149,31 +156,18 @@ class dicom_ct(QtCore.QObject):
 		_z = [voxelPosition1[2],voxelPosition2[2]]
 		self.extent = np.array(_x+_y+_z).reshape((6,))
 		# Load array onto GPU for future reference.
-		gpu.loadData(self.pixelArray)
+		gpu.loadData(self.pixelArray,extent=self.extent)
 
 		# Create a 2d image list for plotting.
 		self.image = [Image2d(),Image2d()]
 		# Set the default.
 		self.changeView('AP')
-		# Flatten the 3d image to the two 2d images.
-		# Extent: [left, right, bottom, top, front, back]
-		# self.image[0].pixelArray = np.sum(self.pixelArray,axis=2)
-		# self.image[0].extent = np.array([self.extent[0],self.extent[1],self.extent[2],self.extent[3]])
-		# self.image[0].view = { 'title':self.labels[2] }
-		# self.image[1].pixelArray = np.sum(self.pixelArray,axis=1)
-		# self.image[1].extent = np.array([ self.extent[4], self.extent[5], self.extent[2], self.extent[3] ])
-		# self.image[1].view = { 'title':self.labels[1] }
 
-		# Save and write fp and ds.
-		# np.save(self.fp+'/dicom_ct.npy',self.pixelArray)
-		# self.ds = [self.fp+'/dicom_ct.npy']
-		self.fp = os.path.dirname(self.fp)
-
-	def changeView(self,view):
-		'''
+	def changeView(self,view,extent=None,flatteningMode='sum'):
+		"""
 		This only works for 90 deg rotations. (i.e. looking down various axes). This does not work for non-orthogonal rotations.
 		View must be a code: AP, PA, SI, IS, LR, RL etc.
-		'''
+		"""
 		default = np.array([[1,0,0],[0,1,0],[0,0,1]])
 		si = np.array([[-1,0,0],[0,1,0],[0,0,-1]])
 		lr = np.array([[0,0,1],[0,1,0],[-1,0,0]])
@@ -207,15 +201,36 @@ class dicom_ct(QtCore.QObject):
 			t1 = 'PA'
 			t2 = 'RL'
 
+
 		# XYZ axes are assumed to align with the DICOM XYZ (in it's default HFS orientation). 
 		# Axes for numpy sum are swapped for X and Y as the 0 python axis refers to rows (which is DICOM Y) and vice versa for X.
+
+		# Calculate the transformation matrix, M, that takes CT position in indices to mm (and vice versa).
+		Mi = np.linalg.inv(self.M)
+
+		# Calculate the selected CT ROI in mm as array indices.
+		# Use the original array extent if none is provided.
+		logging.critical("Extent: {}".format(extent))
+		if extent == None: extent = self.extent
+		x1, x2, y1, y2, z1, z2 = extent
+		# Get the two extreme vertices of the array as p1 and p2.
+		p1 = np.array([x1,y1,z1,1])
+		p2 = np.array([x2,y2,z2,1])
+		# Convert them into index location.
+		i1 = Mi@p1
+		i2 = Mi@p2
+		# Update the indices.
+		x1, y1, z1, _ = i1.astype(int)
+		x2, y2, z2, _ = i2.astype(int)
+		logging.critical("P1: {} P2: {}".format(p1,p2))
+		logging.critical("I1: {} I2: {}".format(i1.astype(int),i2.astype(int)))
 
 		# Get new X axis.
 		_x = np.absolute(m[0,:]).argmax()
 		# Direction.
 		_xd = int(np.sign(m[0,:][_x]))
 		# Extent.
-		_xe = [self.extent[0],self.extent[1]]
+		_xe = [extent[0],extent[1]]
 		if np.sign(_xd) == np.sign(-1): _xe = _xe[::-1]
 		# Now assign the direction to what the new X (global) axis is.
 		_xd = int(np.sign(m[:,0][_x]))
@@ -225,7 +240,7 @@ class dicom_ct(QtCore.QObject):
 		# Direction.
 		_yd = int(np.sign(m[1,:][_y]))
 		# Extent.
-		_ye = [self.extent[2],self.extent[3]]
+		_ye = [extent[2],extent[3]]
 		if np.sign(_yd) == np.sign(-1): _ye = _ye[::-1]
 		# Now assign the direction to what the new Y (global) axis is.
 		_yd = int(np.sign(m[:,1][_y]))
@@ -235,7 +250,7 @@ class dicom_ct(QtCore.QObject):
 		# Direction.
 		_zd = int(np.sign(m[2,:][_z]))
 		# Extent.
-		_ze = [self.extent[4],self.extent[5]]
+		_ze = [extent[4],extent[5]]
 		if np.sign(_zd) == np.sign(-1): _ze = _ze[::-1]
 		# Now assign the direction to what the new Z (global) axis is.
 		_zd = int(np.sign(m[:,2][_z]))
@@ -250,7 +265,8 @@ class dicom_ct(QtCore.QObject):
 		elif _x == 2: _sum2 = 2
 
 		# Get the first flattened image.
-		self.image[0].pixelArray = np.sum(self.pixelArray,axis=_sum1)
+		if flatteningMode == 'sum': self.image[0].pixelArray = np.sum(self.pixelArray[y1:y2,x1:x2,z1:z2],axis=_sum1)
+		elif flatteningMode == 'max': self.image[0].pixelArray = np.amax(self.pixelArray[y1:y2,x1:x2,z1:z2],axis=_sum1)
 		# If we sum down axis 0 we need to transpose the array, just because of numpy.
 		if _sum1 == 0: self.image[0].pixelArray = np.flipud(np.transpose(self.image[0].pixelArray))
 		elif _sum1 == 1: self.image[0].pixelArray = np.flipud(np.transpose(self.image[0].pixelArray))
@@ -269,7 +285,8 @@ class dicom_ct(QtCore.QObject):
 		self.image[0].view = { 'title':t1 }
 
 		# Get the second flattened image.
-		self.image[1].pixelArray = np.sum(self.pixelArray,axis=_sum2)
+		if flatteningMode == 'sum': self.image[1].pixelArray = np.sum(self.pixelArray[y1:y2,x1:x2,z1:z2],axis=_sum2)
+		elif flatteningMode == 'max': self.image[1].pixelArray = np.amax(self.pixelArray[y1:y2,x1:x2,z1:z2],axis=_sum2)
 		# If we sum down axis 0 we need to transpose the array, just because of numpy.
 		if _sum2 == 0: self.image[1].pixelArray = np.flipud(np.transpose(self.image[1].pixelArray))
 		elif _sum2 == 1: self.image[1].pixelArray = np.fliplr(np.flipud(np.transpose(self.image[1].pixelArray)))
@@ -288,7 +305,7 @@ class dicom_ct(QtCore.QObject):
 		self.image[1].view = { 'title':t2 }
 
 		# Emit a signal to say a new view has been loaded.
-		self.newCtView.emit()	
+		self.newCtView.emit()
 
 class beamClass:
 	def __init__(self):

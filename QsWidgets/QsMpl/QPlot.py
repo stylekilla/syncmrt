@@ -58,7 +58,7 @@ class QPlot:
 		self.ax.spines['top'].set_visible(False)
 		self.ax.spines['right'].set_visible(False)
 		self.ax.spines['bottom'].set_visible(False)
-		self.ax.tick_params('both',which='both',length=7,width=1,pad=-30,direction='in',colors='#FFFFFF')
+		self.ax.tick_params('both',which='both',length=7,width=1,pad=-35,direction='in',colors='#FFFFFF')
 
 		# Create a canvas widget for Qt to use.
 		self.canvas = FigureCanvas(self.fig)
@@ -110,7 +110,7 @@ class QPlot:
 			pass
 
 	def markerAdd(self,x,y):
-		'''Append marker position if it is within the maximum marker limit.'''
+		""" Append marker position if it is within the maximum marker limit."""
 		if self.i < self.markersMaximum:
 			self.pointsX.append(x)
 			self.pointsY.append(y)
@@ -353,6 +353,7 @@ class QPlot:
 		if (event.button == 1) & (self.canvas._pickerActive):
 			self.markerAdd(event.xdata,event.ydata)
 
+
 CENTER_HEADING = """
 QGroupBox::title {
 	subcontrol-origin: margin;
@@ -371,22 +372,12 @@ class QHistogramWindow(QtWidgets.QGroupBox):
 		self.range = []
 		self.range.append(QtWidgets.QSlider(QtCore.Qt.Horizontal))
 		self.range.append(QtWidgets.QSlider(QtCore.Qt.Horizontal))
-		# Flattening method buttons.
-		self.button = []
-		self.button.append(QtWidgets.QRadioButton('Sum'))
-		self.button.append(QtWidgets.QRadioButton('Max'))
-		options = QtWidgets.QWidget()
-		optionsLayout = QtWidgets.QHBoxLayout()
-		optionsLayout.addWidget(self.button[0])
-		optionsLayout.addWidget(self.button[1])
-		options.setLayout(optionsLayout)
 		# Layout.
 		layout = QtWidgets.QVBoxLayout()
 		layout.setContentsMargins(0,0,0,0)
 		layout.addWidget(self.histogram.canvas)
 		layout.addWidget(self.range[0])
 		layout.addWidget(self.range[1])
-		layout.addWidget(options)
 		# Set layout.
 		self.setLayout(layout)
 		self.setStyleSheet(CENTER_HEADING)
@@ -417,8 +408,6 @@ class QHistogramWindow(QtWidgets.QGroupBox):
 	def setEnabled(self,state):
 		for i in range(len(self.range)):
 			self.range[i].setEnabled(state)
-		for i in range(len(self.button)):
-			self.button[i].setEnabled(state)
 
 class Histogram:
 	def __init__(self):
@@ -494,18 +483,18 @@ class QsWindow:
 		layout.addRow(self.histogram.canvas)
 		layout.addRow(lb_min,self.widget['sl_min'])
 		layout.addRow(lb_max,self.widget['sl_max'])
-		# Check for advanced options.
-		if self.advanced == True:
-			# Add radio buttons for 3d arrays where flattening option can be chosen.
-			self.widget['rb_sum'] = QtWidgets.QRadioButton('Sum')
-			self.widget['rb_max'] = QtWidgets.QRadioButton('Max')
-			self.widget['rb_sum'].toggled.connect(self.updateFlatteningMode)
-			self.widget['rb_max'].toggled.connect(self.updateFlatteningMode)
-			# Defaults.
-			self.widget['rb_sum'].setChecked(True)
-			self.widget['rb_max'].setChecked(False)
-			# Add to layout.
-			layout.addRow(self.widget['rb_sum'],self.widget['rb_max'])
+		# # Check for advanced options.
+		# if self.advanced == True:
+		# 	# Add radio buttons for 3d arrays where flattening option can be chosen.
+		# 	self.widget['rb_sum'] = QtWidgets.QRadioButton('Sum')
+		# 	self.widget['rb_max'] = QtWidgets.QRadioButton('Max')
+		# 	self.widget['rb_sum'].toggled.connect(self.updateFlatteningMode)
+		# 	self.widget['rb_max'].toggled.connect(self.updateFlatteningMode)
+		# 	# Defaults.
+		# 	self.widget['rb_sum'].setChecked(True)
+		# 	self.widget['rb_max'].setChecked(False)
+		# 	# Add to layout.
+		# 	layout.addRow(self.widget['rb_sum'],self.widget['rb_max'])
 		# Set layout.
 		self.parent.setLayout(layout)
 
@@ -527,12 +516,12 @@ class QsWindow:
 		# Refresh histogram.
 		self.histogram.refresh()
 
-	def updateFlatteningMode(self):
-		if self.widget['rb_sum'].isChecked() == True:
-			mode = 'sum'
-		elif self.widget['rb_max'].isChecked() == True:
-			mode = 'max'
-		self.plot._radiographMode = mode
+	# def updateFlatteningMode(self):
+	# 	if self.widget['rb_sum'].isChecked() == True:
+	# 		mode = 'sum'
+	# 	elif self.widget['rb_max'].isChecked() == True:
+	# 		mode = 'max'
+	# 	self.plot._radiographMode = mode
 
 	def updateWindow(self):
 		if self.plot.image == None:
@@ -583,82 +572,3 @@ class QsWindow:
 		# Update histogram overlay.
 		self.histogram.update(minimum,maximum)
 		# Restrict the value of each slider?? So that one can't go past the other.
-
-# class QEditableIsocenter(QtWidgets.QGroupBox):
-# 	isocenterUpdated = QtCore.pyqtSignal(float,float)
-# 	selectIsocenter = QtCore.pyqtSignal()
-
-# 	def __init__(self,_x,_y):
-# 		super().__init__()
-# 		# Stylesheet.
-# 		# _css = open(resourceFilepath+'QPlot.css')
-# 		# self.setStyleSheet(_css.read())
-# 		# Header widget.
-# 		_header = QtWidgets.QWidget()
-# 		self.select = QtWidgets.QPushButton()
-# 		self.select.setIcon(QtGui.QIcon(resourceFilepath+'pick.png'))
-# 		self.select.setCheckable(True)
-# 		self.select.setChecked(False)
-# 		self.select.setMaximumWidth(38)
-# 		# self.select.setObjectName('isocenterPicker')
-# 		self.select.setToolTip("Select treatment isocentre with a mouse click.")
-# 		_layout = QtWidgets.QHBoxLayout()
-# 		_layout.setContentsMargins(0,0,0,0)
-# 		_layout.addWidget(QtWidgets.QLabel("Treatment Isocenter"),QtCore.Qt.AlignLeft)
-# 		_layout.addWidget(self.select,QtCore.Qt.AlignRight)
-# 		_header.setLayout(_layout)
-# 		# Labels.
-# 		_xlbl = QtWidgets.QLabel('x (mm): ')
-# 		_ylbl = QtWidgets.QLabel('y (mm): ')
-# 		# Create line edits.
-# 		self.x = QtWidgets.QLineEdit(str(_x))
-# 		self.y = QtWidgets.QLineEdit(str(_y))
-# 		# Flattening method buttons.
-# 		validator = QtGui.QDoubleValidator()
-# 		validator.setBottom(-150)
-# 		validator.setTop(150)
-# 		validator.setDecimals(2)
-# 		# Set validators.
-# 		self.x.setValidator(validator)
-# 		self.y.setValidator(validator)
-# 		# Layout.
-# 		layout = QtWidgets.QFormLayout()
-# 		layout.setContentsMargins(5,0,0,0)
-# 		layout.addRow(_header)
-# 		layout.addRow(_xlbl,self.x)
-# 		layout.addRow(_ylbl,self.y)
-# 		# Set layout.
-# 		self.setLayout(layout)
-# 		# Signals and slots.
-# 		self.select.clicked.connect(self._selectIsocenter)
-# 		self.x.editingFinished.connect(self.updateIsocenter)
-# 		self.y.editingFinished.connect(self.updateIsocenter)
-
-# 	def updateIsocenter(self):
-# 		""" Send a signal with updated x,y coordinates. """
-# 		_x = float(self.x.text())
-# 		_y = float(self.y.text())
-# 		self.isocenterUpdated.emit(_x,_y)
-
-# 	def _selectIsocenter(self):
-# 		"""
-# 		Other way of setting color:
-# 		palette = self.select.palette()
-# 		palette.setColor(QtGui.QPalette.Button,QtGui.QColor('#82FF70'))
-# 		self.select.setPalette(palette)
-# 		"""
-# 		if self.select.isChecked():
-# 			self.select.setDown(True)
-# 		else:
-# 			self.select.setDown(False)
-# 		# self.select.setDown(True)
-# 		self.selectIsocenter.emit()
-
-# 	def setIsocenter(self,x,y):
-# 		""" Set the isocenter based off x and y coordinates. """
-# 		self.select.setDown(False)
-# 		self.select.setChecked(False)
-# 		self.x.setText("{:.2f}".format(x))
-# 		self.y.setText("{:.2f}".format(y))
-# 		self.x.editingFinished.emit()
-# 		self.y.editingFinished.emit()

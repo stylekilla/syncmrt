@@ -1,5 +1,7 @@
 from PyQt5 import QtWidgets, QtGui, QtCore
 from functools import partial
+from resources import config
+import QsWidgets
 import logging
 
 class QAlignment(QtWidgets.QWidget):
@@ -43,6 +45,7 @@ class QAlignment(QtWidgets.QWidget):
 		self.widget['markerSize'].setSingleStep(0.25)
 		self.widget['markerSize'].setValue(2.00)
 		self.widget['maxMarkers'].setMinimum(1)
+		self.widget['maxMarkers'].setValue(config.markers.quantity)
 		self.widget['threshold'].setEnabled(False)
 		self.widget['threshold'].setRange(0,50)
 		self.widget['threshold'].setValue(3)
@@ -670,7 +673,7 @@ class QCtProperties(QtWidgets.QWidget):
 	# Qt signals.
 	isocenterUpdated = QtCore.pyqtSignal(float,float,float)
 	toggleOverlay = QtCore.pyqtSignal(int,bool)
-	updateCtView = QtCore.pyqtSignal(str)
+	updateCtView = QtCore.pyqtSignal(str,tuple,str)
 
 	"""
 	The structure of information held in this class is as follows:
@@ -697,8 +700,8 @@ class QCtProperties(QtWidgets.QWidget):
 		lytOverlays.addWidget(self.widget['overlays']['cbCentroid'])
 		# Defaults
 		# Signals and Slots
-		self.widget['overlays']['cbPatIsoc'].stateChanged.connect(partial(self.emitToggleOverlay,'cbPatIsoc'))
-		self.widget['overlays']['cbCentroid'].stateChanged.connect(partial(self.emitToggleOverlay,'cbCentroid'))
+		self.widget['overlays']['cbPatIsoc'].stateChanged.connect(partial(self._emitToggleOverlay,'cbPatIsoc'))
+		self.widget['overlays']['cbCentroid'].stateChanged.connect(partial(self._emitToggleOverlay,'cbCentroid'))
 		# Group inclusion to page
 		self.group['overlays'].setLayout(lytOverlays)
 		self.layout.addWidget(self.group['overlays'])
@@ -756,18 +759,43 @@ class QCtProperties(QtWidgets.QWidget):
 		self.group['view'] = QtWidgets.QGroupBox()
 		self.group['view'].setTitle('CT View')
 		view = QtWidgets.QLabel('Primary View:')
-		self.widget['view'] = QtWidgets.QComboBox()
-		self.widget['view'].addItem("Coronal (AP)")
-		self.widget['view'].addItem("Coronal (PA)")
+		# Combo box selection.
+		self.widget['view'] = {}
+		self.widget['view']['select'] = QtWidgets.QComboBox()
+		self.widget['view']['select'].addItem("Coronal (AP)")
+		self.widget['view']['select'].addItem("Coronal (PA)")
+		# Range slider.
+		self.widget['view']['xrange'] = QsWidgets.QRangeList('X:')
+		self.widget['view']['yrange'] = QsWidgets.QRangeList('Y:')
+		self.widget['view']['zrange'] = QsWidgets.QRangeList('Z:')
+		self.widget['view']['xrange'].newRange.connect(self._emitUpdateCtView)
+		self.widget['view']['yrange'].newRange.connect(self._emitUpdateCtView)
+		self.widget['view']['zrange'].newRange.connect(self._emitUpdateCtView)
+		# Flattening options.
+		self.widget['view']['sum'] = QtWidgets.QRadioButton('Sum')
+		self.widget['view']['max'] = QtWidgets.QRadioButton('Max')
+		flatteningOptions = QtWidgets.QWidget()
+		flatteningOptionsLayout = QtWidgets.QHBoxLayout()
+		flatteningOptionsLayout.addWidget(self.widget['view']['sum'])
+		flatteningOptionsLayout.addWidget(self.widget['view']['max'])
+		flatteningOptions.setLayout(flatteningOptionsLayout)
+		self.widget['view']['sum'].setChecked(True)
+		self.widget['view']['sum'].toggled.connect(self._emitUpdateCtView)
+		self.widget['view']['max'].toggled.connect(self._emitUpdateCtView)
 		# Layout
 		viewGroupLayout = QtWidgets.QVBoxLayout()
 		viewGroupLayout.addWidget(view)
-		viewGroupLayout.addWidget(self.widget['view'])
+		viewGroupLayout.addWidget(self.widget['view']['select'])
+		viewGroupLayout.addWidget(QtWidgets.QLabel("CT ROI (DICOM):"))
+		viewGroupLayout.addWidget(self.widget['view']['xrange'])
+		viewGroupLayout.addWidget(self.widget['view']['yrange'])
+		viewGroupLayout.addWidget(self.widget['view']['zrange'])
+		viewGroupLayout.addWidget(flatteningOptions)
 		# Defaults
 		self.group['view'].setEnabled(False)
-		self.widget['view'].setCurrentIndex(0)
+		self.widget['view']['select'].setCurrentIndex(0)
 		# Signals and Slots
-		self.widget['view'].currentIndexChanged.connect(self.emitUpdateCtView)
+		self.widget['view']['select'].currentIndexChanged.connect(self._emitUpdateCtView)
 		# Group inclusion to page
 		self.group['view'].setLayout(viewGroupLayout)
 		self.layout.addWidget(self.group['view'])
@@ -809,11 +837,23 @@ class QCtProperties(QtWidgets.QWidget):
 			widget[i].setMaximumHeight(200)
 			layout.addWidget(widget[i])
 
-	def emitUpdateCtView(self):
-		view = self.widget['view'].currentText()[-3:-1]
-		self.updateCtView.emit(view)
+	def _emitUpdateCtView(self):
+		# Get the CT ROI values.
+		_x = self.widget['view']['xrange'].getRange()
+		_y = self.widget['view']['yrange'].getRange()
+		_z = self.widget['view']['zrange'].getRange()
+		roi = _x+_y+_z
+		# If a None value is returned then do not send the signal.
+		if None in roi: return
+		# Get the view.
+		view = self.widget['view']['select'].currentText()[-3:-1]
+		# Get the mode.
+		if self.widget['view']['sum'].isChecked(): mode = 'sum'
+		elif self.widget['view']['max'].isChecked(): mode = 'max'
+		# Send the signal.
+		self.updateCtView.emit(view,roi,mode)
 
-	def emitToggleOverlay(self,button,state):
+	def _emitToggleOverlay(self,button,state):
 		setState = False
 		# Identify true or false.
 		if state == 0: setState = False
@@ -829,6 +869,12 @@ class QCtProperties(QtWidgets.QWidget):
 			# Toggle them on and off to refresh them.
 			self.widget[item].toggle()
 			self.widget[item].toggle()
+
+	def setCtRoi(self,extent):
+		""" Use an array shape to set the sliders XYZ. """
+		self.widget['view']['xrange'].setRange([extent[0],extent[1]])
+		self.widget['view']['yrange'].setRange([extent[2],extent[3]])
+		self.widget['view']['zrange'].setRange([extent[4],extent[5]])
 
 class QRtplanProperties(QtWidgets.QWidget):
 	# Qt signals.

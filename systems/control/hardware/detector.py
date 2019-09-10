@@ -26,7 +26,8 @@ class detector(QtCore.QObject):
 		# Controllers.
 		self._controller = controls.detector(pv)
 		# Setup.
-		self.setup()
+		logging.critical("Turning off detector setup for development.")
+		# self.setup()
 
 	def reconnect(self):
 		if self._controller is not None:

@@ -63,7 +63,6 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		self.sidebar = ui.sidebar.Sidebar(self.frameSidebarStack,self.frameSidebarList)
 		# Sidebar: Alignment.
 		self.sbAlignment = self.sidebar.addPage('Alignment',QsWidgets.QAlignment(),before='all')
-		self.sbAlignment.widget['maxMarkers'].setValue(3)
 		self.sbAlignment.widget['maxMarkers'].valueChanged.connect(partial(self.updateSettings,'global',self.sbAlignment.widget['maxMarkers']))
 		self.sbAlignment.widget['calcAlignment'].clicked.connect(partial(self.patientCalculateAlignment,index=-1))
 		self.sbAlignment.widget['doAlignment'].clicked.connect(partial(self.patientApplyAlignment,index=-1))
@@ -380,11 +379,8 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		self.patient.ct.newCtView.connect(self.updateCTEnv)
 		# Load the CT images and get the histograms.
 		self.updateCTEnv()
-		# # Send ct dataset to plot.
-		# self.envCt.loadImages(self.patient.ct.image)
-		# # Get the plot histogram widgets and give them to the sidebar widget.
-		# histogram = self.envCt.getPlotHistogram()
-		# self.sidebar.widget['ctImageProperties'].addPlotHistogramWindow(histogram)
+		# Send the CT ROI range sliders the extent of the array.
+		self.sidebar.widget['ctImageProperties'].setCtRoi(self.patient.ct.extent)
 		# Force marker update for table.
 		self.envCt.set('maxMarkers',config.markers.quantity)
 		# Finalise import. Set open status to true and open the workspace.
