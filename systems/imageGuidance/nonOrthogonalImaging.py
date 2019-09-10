@@ -5,7 +5,7 @@ def calculate(p1,p2,t1,t2):
 	"""
 	This will take two points (p1 and p2) from two different imaging frames at non-orthogonal angles (t1 and t2) from the 0deg axis and give back a globally fixed position value (p) for the true position of the object w.r.t. to the fixed axis.
 	+X is downstream, +Y is downstream left (synchrotron coordinate system).
-	Xv and Yv are X and Y rotated by +45 (CW) (in a right handed coordinate system).
+	Xv and Yv are X and Y rotated by +45 (right handed coordinate system). 
 
 
 		Parameters

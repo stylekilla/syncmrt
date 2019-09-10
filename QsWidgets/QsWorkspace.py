@@ -159,9 +159,10 @@ class QPlotEnvironment(QtWidgets.QSplitter):
 		self.tableView = []
 		self.histogram = []
 
-	def setRadiographMode(self,mode):
-		'''Set radiograph mode to 'sum' or 'max.''' 
-		self.plot[i]._radiographMode = mode
+	def setMaskSize(self,size):
+		""" Set each plot's mask size. """
+		self.plot[0].setMaskSize(size)
+		self.plot[1].setMaskSize(size)
 
 	def set(self,setting,value):
 		if setting == 'maxMarkers':

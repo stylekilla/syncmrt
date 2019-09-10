@@ -3,7 +3,7 @@ import numpy as np
 from functools import partial
 import logging
 
-__all__ = ['QRangeSlider','QRangeList']
+__all__ = ['QRangeSlider','QRangeList','QRangeEdit']
 
 class QRangeSlider(QtWidgets.QWidget):
     newRange = QtCore.pyqtSignal(int,int)

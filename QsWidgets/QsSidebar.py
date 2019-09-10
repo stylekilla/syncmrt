@@ -420,33 +420,20 @@ class QSettings(QtWidgets.QWidget):
 	modeChanged = QtCore.pyqtSignal('QString')
 	stageChanged = QtCore.pyqtSignal('QString')
 	detectorChanged = QtCore.pyqtSignal('QString')
+	maskSizeChanged = QtCore.pyqtSignal(float)
 	refreshConnections = QtCore.pyqtSignal()
 
 	def __init__(self):
 		super().__init__()
 		self.controls = {}
 		self.hardware = {}
+		self.widget = {}
+		self.group = {}
 		self.layout = QtWidgets.QVBoxLayout()
 
-		# # Group 1: Controls Level
-		# controlsGroup = QtWidgets.QGroupBox()
-		# controlsGroup.setTitle('Control Complexity')
-		# self.controls['rbSimple'] = QtWidgets.QRadioButton('Simple')
-		# self.controls['rbNormal'] = QtWidgets.QRadioButton('Normal')
-		# self.controls['rbComplex'] = QtWidgets.QRadioButton('Complex')
-		# self.controls['cbReadOnly'] = QtWidgets.QCheckBox('Read Only')
-		# self.controls['complexity'] = 'simple'
-		# # Layout
-		# controlsGroupLayout = QtWidgets.QVBoxLayout()
-		# controlsGroupLayout.addWidget(self.controls['rbSimple'])
-		# controlsGroupLayout.addWidget(self.controls['rbNormal'])
-		# controlsGroupLayout.addWidget(self.controls['rbComplex'])
-		# controlsGroupLayout.addWidget(self.controls['cbReadOnly'])
-		# controlsGroup.setLayout(controlsGroupLayout)
-
-		# Group 2: Hardware
-		hardwareGroup = QtWidgets.QGroupBox()
-		hardwareGroup.setTitle('Hardware Configuration')
+		# Group: Hardware
+		self.group['hardware'] = QtWidgets.QGroupBox()
+		self.group['hardware'].setTitle('Hardware Configuration')
 		detectorLabel = QtWidgets.QLabel('Stage')
 		self.hardware['stage'] = QtWidgets.QComboBox()
 		stageLabel = QtWidgets.QLabel('Detector')
@@ -460,36 +447,29 @@ class QSettings(QtWidgets.QWidget):
 		hardwareGroupLayout.addWidget(self.hardware['detector'])
 		hardwareGroupLayout.addWidget(QHLine())
 		hardwareGroupLayout.addWidget(self.hardware['refresh'])
-		hardwareGroup.setLayout(hardwareGroupLayout)
-
-		# Defaults
-		# self.controls['rbSimple'].setChecked(True)
-		# self.controls['cbReadOnly'].setChecked(True)
+		self.group['hardware'].setLayout(hardwareGroupLayout)
 		# Signals and Slots
-		# self.controls['rbSimple'].clicked.connect(self.controlsMode)
-		# self.controls['rbNormal'].clicked.connect(self.controlsMode)
-		# self.controls['rbComplex'].clicked.connect(self.controlsMode)
 		self.hardware['stage'].currentIndexChanged.connect(self.stageChange)
 		self.hardware['detector'].currentIndexChanged.connect(self.detectorChange)
 		self.hardware['refresh'].clicked.connect(self._refreshConnections)
+
+		# Mask Settings.
+		self.group['mask'] = QtWidgets.QGroupBox()
+		self.group['mask'].setTitle("Mask Settings")
+		self.widget['maskSize'] = QsWidgets.QRangeEdit()
+		self.widget['maskSize'].setRange([0,30.0],20.0)
+		self.widget['maskSize'].editingFinished.connect(self._emitMaskSizeChanged)
+		# Layout.
+		lyt = QtWidgets.QFormLayout()
+		lyt.addRow(QtWidgets.QLabel("Size (mm):"),self.widget['maskSize'])
+		self.group['mask'].setLayout(lyt)
+
 		# Add Sections
-		# self.layout.addWidget(controlsGroup)
-		self.layout.addWidget(hardwareGroup)
+		self.layout.addWidget(self.group['hardware'])
+		self.layout.addWidget(self.group['mask'])
 		# Finish page.
 		self.layout.addStretch(1)
 		self.setLayout(self.layout)
-
-	# def controlsMode(self):
-	# 	''' Set complexity of controls. '''
-	# 	if self.controls['rbSimple'].isChecked():
-	# 		self.controls['complexity'] = 'simple'
-	# 	elif self.controls['rbNormal'].isChecked():
-	# 		self.controls['complexity'] = 'normal'
-	# 	elif self.controls['rbComplex'].isChecked():
-	# 		self.controls['complexity'] = 'complex'
-
-	# 	# Emit signal to say state has changed.
-	# 	self.modeChanged.emit(self.controls['complexity'])
 
 	def loadStages(self,stageList):
 		# stageList should be a list of strings of the stages available to choose from.
@@ -507,6 +487,10 @@ class QSettings(QtWidgets.QWidget):
 
 	def _refreshConnections(self):
 		self.refreshConnections.emit()
+
+	def _emitMaskSizeChanged(self):
+		# Turn the line edit text into a float.
+		self.maskSizeChanged.emit(float(self.widget['maskSize'].text()))
 
 	def loadDetectors(self,stageList):
 		# stageList should be a list of strings of the stages available to choose from.

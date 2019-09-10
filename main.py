@@ -326,6 +326,8 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		# Get the plot histogram widgets and give them to the sidebar widget.
 		histogram = self.envXray.getPlotHistogram()
 		self.sidebar.widget['xrayImageProperties'].addPlotHistogramWindow(histogram)
+		# Connect the settings mask size to the plot.
+		self.sbSettings.maskSizeChanged.connect(self.envXray.setMaskSize)
 		# Get the plot isocenter widgets and give them to the sidebar widget.
 		# isocenter = self.envXray.getPlotIsocenter()
 		# self.sidebar.widget['xrayImageProperties'].addEditableIsocenter(isocenter)

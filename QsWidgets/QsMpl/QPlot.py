@@ -35,6 +35,7 @@ class QPlot:
 		self._R = np.identity(3)
 		self._imagingAngle = 0
 		self.mask = None
+		self.maskSize = 20.0
 		self.overlay = {}
 		self.machineIsocenter = [0,0]
 		self.patientIsocenter = [0,0]
@@ -307,9 +308,8 @@ class QPlot:
 			# Beam area overlay.
 			if state is True:
 				# Create new patches.
-				_maskSize = 5
-				_beam = Rectangle((-_maskSize/2,-_maskSize/2), _maskSize, _maskSize,fc='r',ec='none')
-				_ptv = Rectangle((self.patientIsocenter[0]-_maskSize/2,self.patientIsocenter[1]-_maskSize/2), _maskSize, _maskSize,fc='y',ec='none')
+				_beam = Rectangle((-self.maskSize/2,-self.maskSize/2), self.maskSize, self.maskSize,fc='r',ec='none')
+				_ptv = Rectangle((self.patientIsocenter[0]-self.maskSize/2,self.patientIsocenter[1]-self.maskSize/2), self.maskSize, self.maskSize,fc='y',ec='none')
 				pc = PatchCollection([_beam,_ptv],alpha=0.2,match_original=True)
 				self.overlay['beamArea'] = self.ax.add_collection(pc)
 			else:
@@ -347,6 +347,11 @@ class QPlot:
 
 		# Refresh
 		self.canvas.draw()
+	def setMaskSize(self,size):
+		""" Set the mask size and toggle the overlay if it is enabled. """
+		self.maskSize = size
+		self.toggleOverlay(3,'beamArea' in self.overlay)
+		self.toggleOverlay(3,'beamArea' in self.overlay)
 
 	def eventFilter(self,event):
 		# If mouse button 1 is clicked (left click).
