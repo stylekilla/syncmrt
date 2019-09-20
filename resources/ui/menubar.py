@@ -9,10 +9,10 @@ def populate(mb):
 	items['new_xray'].setShortcut('Ctrl+N')
 	file_load = file.addMenu("Load")
 	items['load_xray'] = file_load.addAction("X-Ray")
-	items['load_xray'].setShortcut('Ctrl+L')
 	items['load_ct'] = file_load.addAction("CT")
 	items['load_rtplan'] = file_load.addAction("RT Plan")
 	file_load.addSeparator()
 	items['load_folder'] = file_load.addAction("Folder")
+	items['load_folder'].setShortcut('Ctrl+L')
 
 	return items

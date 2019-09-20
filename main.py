@@ -148,17 +148,18 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		self.testing()
 
 	def testing(self):
-		self.openXray('../scratch/test.hdf5')
-		dataset = []
-		modality = 'CT'
-		# for root, subdir, fp in os.walk('../scratch/head-phant/'):
-		for root, subdir, fp in os.walk('../scratch/HeadneckCT/'):
-			for fn in fp:
-				# if (fn.endswith('.dcm')) & (fn[:len(modality)] == modality):
-				if fn.endswith('.dcm'):
-					dataset.append(os.path.join(root,fn))
-		if len(dataset) > 0:
-			self.openCT(dataset)
+		pass
+		# self.openXray('../scratch/test.hdf5')
+		# dataset = []
+		# modality = 'CT'
+		# # for root, subdir, fp in os.walk('../scratch/head-phant/'):
+		# for root, subdir, fp in os.walk('../scratch/HeadneckCT/'):
+		# 	for fn in fp:
+		# 		# if (fn.endswith('.dcm')) & (fn[:len(modality)] == modality):
+		# 		if fn.endswith('.dcm'):
+		# 			dataset.append(os.path.join(root,fn))
+		# if len(dataset) > 0:
+		# 	self.openCT(dataset)
 
 		# 2D test case.
 		# self.envXray.plot[0].markerAdd(10.61,30)
@@ -442,7 +443,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 			self.envRtplan[i].loadImages(self.patient.rtplan.beam[i].image)
 			# Set the mask data and isocenter data in the plots.
 			self.envRtplan[i].set('patMask',self.patient.rtplan.beam[i].mask)
-			self.envRtplan[i].set('patIso',self.patient.rtplan.beam[i].isocenter)
+			self.envRtplan[i].set('patIso',self.patient.rtplan.getIsocenter(i))
 			# Get the plot histogram widgets and give them to the sidebar widget.
 			histogram = self.envRtplan[i].getPlotHistogram()
 			self.sidebar.widget['bev%iImageProperties'%(i+1)].addPlotHistogramWindow(histogram)

@@ -39,11 +39,7 @@ class Patient(QtCore.QObject):
 			if self.ct != None: 
 				self.rtplan = importer.dicom_rtplan(
 						dataset,
-						self.ct.RCS,
-						self.ct.leftTopFront,
-						self.ct.pixelArray.shape,
-						self.ct.pixelSize,
-						self.ct.patientPosition,
+						self.ct,
 						self._gpuContext
 					)
 			else: 

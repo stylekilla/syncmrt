@@ -107,25 +107,26 @@ class dicom_ct(QtCore.QObject):
 		# Rescale the Hounsfield Units.
 		self.pixelArray = (self.pixelArray*ref.RescaleSlope) + ref.RescaleIntercept
 
-		# '''
-		# Map the DICOM CS (RCS) to the python CS (WCS):
-		# '''
 		# Get current CT orientation.
 		self.patientPosition = ref.PatientPosition
 		# Machine coordinates defined here:
 		# http://dicom.nema.org/medical/Dicom/2016c/output/chtml/part03/sect_C.8.8.25.6.html
+		# Base coordinate system.
+		self.BCS = np.identity(3)
+		# Python coordinate system.
+		self.PCS = np.array([[0,1,0],[1,0,0],[0,0,1]])
+		# Patient coordinate system.
 		dcmAxes =  np.array(list(map(float,ref.ImageOrientationPatient)))
 		x = dcmAxes[:3]
 		y = dcmAxes[3:6]
 		z = np.cross(x,y)
-		self.orientation = np.vstack((x,y,z))
 		self.RCS = np.vstack((x,y,z))
 		# Get the pixel size.
 		z1 = list(map(float,ref.ImagePositionPatient))[2]
 		z2 = list(map(float,dicom.dcmread(dataset[-1]).ImagePositionPatient))[2]
 		spacingBetweenSlices = (z2-z1)/len(dataset)
 		self.pixelSize = np.append(np.array(list(map(float,ref.PixelSpacing))),spacingBetweenSlices)
-		# Top left front value (corner of voxel).
+		# Top left front value (corner of voxel, NOT the centre as defined by the DICOM format).
 		self.TLF = np.array(list(map(float,ref.ImagePositionPatient)))
 		self.TLF +=  np.sign(self.TLF)*(self.pixelSize/2)
 		# Get the top left front and bottom right back voxels for caclualting extent.
@@ -142,19 +143,17 @@ class dicom_ct(QtCore.QObject):
 		voxelPosition1 = self.M@voxelIndex1
 		voxelPosition2 = self.M@voxelIndex2
 
-		# test = np.linalg.inv(self.M)@np.array([0,0,0,1])
-		# test = test[:3]
-		# logging.critical("0,0,0 at {}".format(test))
-
-		# test@np.array(self.pixelSize)
-		# logging.critical("0,0,0 at {}".format(test))
+		# Store the bottom right back position.
+		self.BRB = voxelPosition2[:3]
 
 		# Calculate Extent.
-		# self.extent, self.labels = calculateNewImageInformation(self.patientPosition,self.RCS,shape,self.pixelSize,self.leftTopFront)
+		# self.extent, self.labels = calculateNewImageInformation(self.patientPosition,self.RCS,shape,self.pixelSize,self.leftTopFront
+		# Extent is [L,R,B,T,F,B]
 		_x = [voxelPosition1[0],voxelPosition2[0]]
 		_y = [voxelPosition1[1],voxelPosition2[1]]
 		_z = [voxelPosition1[2],voxelPosition2[2]]
 		self.extent = np.array(_x+_y+_z).reshape((6,))
+
 		# Load array onto GPU for future reference.
 		gpu.loadData(self.pixelArray,extent=self.extent)
 
@@ -210,8 +209,8 @@ class dicom_ct(QtCore.QObject):
 
 		# Calculate the selected CT ROI in mm as array indices.
 		# Use the original array extent if none is provided.
-		logging.critical("Extent: {}".format(extent))
 		if extent == None: extent = self.extent
+		logging.critical("Extent: {}".format(extent))
 		x1, x2, y1, y2, z1, z2 = extent
 		# Get the two extreme vertices of the array as p1 and p2.
 		p1 = np.array([x1,y1,z1,1])
@@ -323,69 +322,167 @@ class beamClass:
 		self._dcm2bcs = None
 
 class dicom_rtplan:
-	def __init__(self,dataset,rcs,rcsLeftTopFront,ctArrayShape,ctArrayPixelSize,ctPatientPosition,gpuContext):
-		# BCS: Beam Coordinate System (Linac)
-		# RCS: Reference Coordinate System (Patient)
-		# Conversion of dicom coordinates to python coordinates.
-		dcm2python = np.array([[0,1,0],[1,0,0],[0,0,1]])
+	def __init__(self,rtplan,ct,gpu):
+		"""
+			BCS: Beam Coordinate System (Linac)
+			RCS: Reference Coordinate System (Patient)
+			PCS: Pyhon Coordinate System (DICOM to Python)
+		"""
+		self.PCS = np.array([[0,1,0],[1,0,0],[0,0,1]])
+
 		# Firstly, read in DICOM rtplan file.
-		ref = dicom.dcmread(dataset[0])
-		# Set file path.
-		self.fp = os.path.dirname(dataset[0])
+		ref = dicom.dcmread(rtplan[0])
 		# Construct an object array of the amount of beams to be delivered.
 		self.beam = np.empty(ref.FractionGroupSequence[0].NumberOfBeams,dtype=object)
-		self.isocenter = dcm2python@np.array(list(map(float,ref.BeamSequence[0].ControlPointSequence[0].IsocenterPosition)))
+		# Get the isocenter. Current only supports a single isocenter.
+		self.isocenter = np.array(list(map(float,ref.BeamSequence[0].ControlPointSequence[0].IsocenterPosition)))
 
-		# Extract confromal mask data.
+		logging.info("Isocenter (DICOM) {}".format(self.isocenter))
+		self.isocenter = np.array(list(map(float,ref.BeamSequence[0].ControlPointSequence[0].IsocenterPosition)))
+
 		for i in range(len(self.beam)):
+			# Get the appropriate data for each beam.
 			self.beam[i] = beamClass()
+
+			# Extract confromal mask data.
 			# If a block is specified for the MLC then get it.
 			if ref.BeamSequence[0].NumberOfBlocks > 0:
 				temp = np.array(list(map(float,ref.BeamSequence[i].BlockSequence[0].BlockData)))
-				class _data:
+				class Mask:
 					x = np.append(temp[0::2],temp[0])
 					y = np.append(temp[1::2],temp[1])
-				self.beam[i].mask = _data
+				self.beam[i].mask = Mask
 				self.beam[i].maskThickness = ref.BeamSequence[i].BlockSequence[0].BlockThickness
 			# Get the jaws position for backup.
+
 			# Get the machine positions.
 			self.beam[i].gantry = float(ref.BeamSequence[i].ControlPointSequence[0].GantryAngle)
 			self.beam[i].patientSupport = float(ref.BeamSequence[i].ControlPointSequence[0].PatientSupportAngle)
 			self.beam[i].collimator = float(ref.BeamSequence[i].ControlPointSequence[0].BeamLimitingDeviceAngle)
+			# Currently... these aren't available in treatment planning. Sad face.
 			self.beam[i].pitch = float(ref.BeamSequence[i].ControlPointSequence[0].TableTopPitchAngle)
 			self.beam[i].roll = float(ref.BeamSequence[i].ControlPointSequence[0].TableTopRollAngle)
 
-			# Rotate everything in the RCS frame to match the bed position.
-			cs_bed = rotate_cs(np.identity(3),[self.beam[i].pitch],['y'])
-			cs_bed = rotate_cs(cs_bed,[self.beam[i].roll],['z'])
-			cs_bed = rotate_cs(cs_bed,[-self.beam[i].patientSupport],['x'])
-			# Bring the patient RCS into the beam view.
-			cs_machine = rotate_cs(cs_bed,[90],['y'])
-			# Rotate the bed position to match the machine position.
-			bcs = rotate_cs(cs_machine,[-self.beam[i].collimator,-self.beam[i].gantry],['z','x'])
-			self.beam[i]._arr2bcs = (bcs)
-			self.beam[i].BCS = (bcs)
-			self.beam[i].isocenter = np.absolute(bcs)@self.isocenter
-			# Rotate the dataset.
-			pixelArray = gpuContext.rotate(self.beam[i]._arr2bcs)
+			logging.info("Gantry Rotation: {}".format(self.beam[i].gantry))
+			logging.info("Patient Support: {}".format(self.beam[i].patientSupport))
+			logging.info("Collimator Rotation: {}".format(self.beam[i].collimator))
+
+			# Linac Coordinate System w.r.t WCS.
+			LCS = np.array([[1,0,0],[0,0,1],[0,-1,0]])
+
+			# Beam Port Coordinate system w.r.t WCS.
+			BCS = np.array([[1,0,0],[0,-1,0],[0,0,-1]])
+
+			# Calculate the rotation of the bed in the LCS.
+			# rotations = [-self.beam[i].patientSupport,self.beam[i].roll,self.beam[i].pitch]
+			# axes = ['y','z','x']
+			# cs_bed = (LCS@activeRotation(np.identity(3),rotations,axes))@np.linalg.inv(LCS)
+			rotations = [self.beam[i].patientSupport]
+			axes = ['z']
+			cs_bed = (LCS@activeRotation(np.identity(3),rotations,axes))@np.linalg.inv(LCS)
+
+			# Rotate the WCS to the beam port view w.r.t the WCS.
+			rotations = [90]
+			axes = ['x']
+			cs_beamport = activeRotation(np.identity(3),rotations,axes)
+
+			# Rotate the gantry and collimator w.r.t to the BCS.
+			rotations = [self.beam[i].gantry,self.beam[i].collimator]
+			axes = ['y','z']
+			cs_linac = (BCS@activeRotation(np.identity(3),rotations,axes))@np.linalg.inv(BCS)
+
+			# Calculate the new patient coordinate system.
+			# A passive rotation of the patient position w.r.t to the LCS.
+			temp = ct.RCS@cs_bed
+			# A passive rotation of the inverse beam port takes the WCS into the view of the BCS w.r.t the WCS.
+			temp = temp@np.linalg.inv(cs_beamport)
+			# A passive rotation of the BEV w.r.t the BCS.
+			self.beam[i].RCS = temp@cs_linac
+
+			# Calculate a transform, W, that takes anything from the ct RCS to the beam RCS.
+			self.beam[i].W = wcs2wcs(ct.RCS, self.beam[i].RCS)
+
+			logging.info("\nBED R:\n {}".format(cs_bed))
+			logging.info("\nBEAM PORT R:\n {}".format(cs_beamport))
+			logging.info("\nLINAC R:\n {}".format(cs_linac))
+			# logging.info("\nCT RCS:\n {}".format(ct.RCS))
+			logging.info("\nBEV RCS:\n {}".format(self.beam[i].RCS))
+			logging.info("\nW:\n {}".format(self.beam[i].W))
+
+			# Rotate the CT.
+			self.beam[i].pixelArray = gpu.rotate(self.beam[i].W)
+
+			# Calculate the new pixel size.
+			self.beam[i].pixelSize = np.absolute(self.beam[i].W@ct.pixelSize)
+
+			logging.info("\nPixelSize: {}".format(self.beam[i].pixelSize))
+
 			# Create the 2d projection images.
 			self.beam[i].image = [Image2d(),Image2d()]
-			# Get the relevant information for the new image.
-			pixelSize = bcs@dcm2python@ctArrayPixelSize
-			arrayShape = np.array(pixelArray.shape)
-			extent, labels = calculateNewImageInformation(ctPatientPosition,bcs,arrayShape,pixelSize,rcsLeftTopFront)
-			# Flatten the 3d image to the two 2d images.
-			self.beam[i].image[0].pixelArray = np.sum(pixelArray,axis=2)
-			self.beam[i].image[0].extent = np.array([extent[0],extent[1],extent[2],extent[3]])
-			self.beam[i].image[0].view = { 'title':labels[2], 'xLabel':labels[0], 'yLabel':labels[1] }
-			self.beam[i].image[1].pixelArray = np.sum(pixelArray,axis=1)
-			self.beam[i].image[1].extent = np.array([ extent[4], extent[5], extent[2], extent[3] ])
-			self.beam[i].image[1].view = { 'title':labels[0], 'xLabel':labels[2], 'yLabel':labels[1] }
 
-def rotate_cs(cs,theta,axis):
+			# Find which rotated axis is on which fixed global axis.
+			testAxes = np.absolute(self.beam[i].W)
+			# Axes (x is fixed, so which ever arg is maxed means that axis is mapped onto our x fixed axis).
+			x = np.argmax(testAxes[:,0])
+			y = np.argmax(testAxes[:,1])
+			z = np.argmax(testAxes[:,2])
+			# Directions. Add +1 to axis identifiers since you can't have -0 but you can have -1...
+			xd = (x+1)*np.sign(testAxes[x,0])
+			yd = (y+1)*np.sign(testAxes[y,1])
+			zd = (z+1)*np.sign(testAxes[z,2])
+
+			# Extent.
+			# Axis tells us which extent modifer to take and in what order.
+			xe = ct.extent[x*2:x*2+2][::np.sign(xd).astype(int)]
+			ye = ct.extent[y*2:y*2+2][::np.sign(yd).astype(int)]
+			ze = ct.extent[z*2:z*2+2][::np.sign(zd).astype(int)]
+			self.beam[i].extent = np.hstack((xe,ye,ze)).reshape((6,))
+
+			# Top left front.
+			self.beam[i].TLF = self.beam[i].extent[::2]
+
+			# Get each axis for transform M.
+			x = self.beam[i].RCS[0,:]
+			y = self.beam[i].RCS[1,:]
+			z = self.beam[i].RCS[2,:]
+
+			# Construct the transformation matrix, M.
+			self.beam[i].M = np.zeros((4,4))
+			self.beam[i].M[:3,0] = self.beam[i].pixelSize[0]*x
+			self.beam[i].M[:3,1] = self.beam[i].pixelSize[1]*y
+			self.beam[i].M[:3,2] = self.beam[i].pixelSize[2]*z
+			self.beam[i].M[:3,3] = self.beam[i].TLF
+			self.beam[i].M[3,3] = 1
+
+			# Calculate new isocenter position.
+			self.beam[i].isocenter = np.absolute(wcs2wcs(np.identity(3),self.beam[i].RCS))@self.isocenter
+
+			logging.info("\nIsocenter: {}".format(self.beam[i].isocenter))
+
+			# Flatten the 3d image to the two 2d images.
+			self.beam[i].image[0].pixelArray = np.sum(self.beam[i].pixelArray,axis=2)
+			self.beam[i].image[0].extent = np.array([self.beam[i].extent[0],self.beam[i].extent[1],self.beam[i].extent[2],self.beam[i].extent[3]])
+			self.beam[i].image[1].pixelArray = np.sum(self.beam[i].pixelArray,axis=1)
+			self.beam[i].image[1].extent = np.array([self.beam[i].extent[4],self.beam[i].extent[5],self.beam[i].extent[2],self.beam[i].extent[3]])
+			# self.beam[i].image[1].pixelArray = np.sum(self.beam[i].pixelArray,axis=0)
+			# self.beam[i].image[1].extent = np.array([self.beam[i].extent[0],self.beam[i].extent[1],self.beam[i].extent[4],self.beam[i].extent[5]])
+
+	def getIsocenter(self,beamIndex):
+		return self.PCS@self.beam[beamIndex].isocenter
+
+def activeRotation(cs,theta,axis):
+	""" 
+	Active rotation of 'cs' by 'theta' about 'axis' for a Right Handed Coordinate System.
+	When viewed from the end of an axis, a positive rotation results in an anticlockwise direction.
+	When viewed from looking down the axis, a positive rotation results in an clockwise direction.
+	If theta = T:
+		T = T3 x T2 x T1 ...
+	If cs = P:
+		P' = T x P
+	"""
 	# Put angles into radians.
 	rotations = []
-	for i in range(len(theta)):
+	for i, _ in enumerate(theta):
 		t = np.deg2rad(theta[i])
 		if axis[i] == 'x': r = np.array([[1,0,0],[0,np.cos(t),-np.sin(t)],[0,np.sin(t),np.cos(t)]])
 		elif axis[i] == 'y': r = np.array([[np.cos(t),0,np.sin(t)],[0,1,0],[-np.sin(t),0,np.cos(t)]])
@@ -394,13 +491,11 @@ def rotate_cs(cs,theta,axis):
 
 	# Calculate out the combined rotations.
 	m = np.identity(3)
-	for i in range(len(rotations)):
-		m = m@rotations[-(i+1)]
+	for i, _ in enumerate(rotations):
+		m = m@rotations[i]
 
-	rotated_cs = np.zeros(cs.shape)
 	# Rotate coordinate system.
-	for i in range(3):
-		rotated_cs[i] = m@np.transpose(cs[i])
+	rotated_cs = m@cs
 
 	return rotated_cs
 

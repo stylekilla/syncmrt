@@ -64,16 +64,22 @@ class gpu:
 		if (type(extent) != type(None)) & (len(np.array(extent).shape) == 6): 
 			self._inputExtent = extent
 
-	# def getData(self):
-		# return self._outputBuffer
+	def getData(self):
+		""" Should return the last calculated output. """
+		arrOut = np.zeros(self._outputBufferShape)
+		cl.enqueue_copy(self.queue, arrOut, self._outputBuffer)
+		return arrOut
 
-	# def rotate(self,data,rotations=[],pixelSize=None,extent=None,isocenter=None):
 	def rotate(self,rotationMatrix):
-		'''
+		"""
 		Here we give the data to be copied to the GPU and give some deacriptors about the data.
 		We must enforce datatypes as we are dealing with c and memory access/copies.
-		Rotations happen about real world (x,y,z) axes.
-		'''
+		Rotations happen about a pre-defined world coordinate system (x,y,z) axes (as according to HFS patient position in DICOM standard).
+		"""
+		# OpenCL Coordinate System w.r.t WCS.
+		OCS = np.array([[0,-1,0],[-1,0,0],[0,0,-1]])
+		# Put the rotation matrix (World CS) in the context of the OCL CS, then take it back into the frame of reference of the IEC CS.
+		gpuRotationMatrix = (OCS@rotationMatrix)@np.linalg.inv(OCS)
 		# Create a basic box for calculations of a cube. Built off (row,cols,depth).
 		basicBox = np.array([
 			[0,0,0],
@@ -106,9 +112,9 @@ class gpu:
 		# Create memory flags.
 		mf = cl.mem_flags
 		# GPU buffers.
-		gpuRotation = cl.Buffer(self.ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=rotationMatrix.astype('float32'))
-		gpuOut = cl.Buffer(self.ctx, mf.WRITE_ONLY | mf.COPY_HOST_PTR, hostbuf=arrOut)
-		gpuOutShape = cl.Buffer(self.ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=arrOutShape)
+		gpuRotation = cl.Buffer(self.ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=gpuRotationMatrix.astype('float32'))
+		self._outputBuffer = cl.Buffer(self.ctx, mf.WRITE_ONLY | mf.COPY_HOST_PTR, hostbuf=arrOut)
+		self._outputBufferShape = cl.Buffer(self.ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=arrOutShape)
 		# Get kernel source.
 		fp = os.path.dirname(inspect.getfile(gpu))
 		kernel = open(fp+"/kernels/rotate.cl", "r").read()
@@ -117,14 +123,14 @@ class gpu:
 		# Kwargs
 		kwargs = ( self._inputBuffer,
 			gpuRotation,
-			gpuOut,
-			gpuOutShape
+			self._outputBuffer,
+			self._outputBufferShape
 		)
 		# Run the program.
 		# __call__(queue, global_size, local_size, *args, global_offset=None, wait_for=None, g_times_l=False)
 		program.rotate3d(self.queue,self._inputBufferShape,None,*(kwargs))
 		# Get results
-		cl.enqueue_copy(self.queue, arrOut, gpuOut)
+		cl.enqueue_copy(self.queue, arrOut, self._outputBuffer)
 		# Remove any dirty array values in the output.
 		# arrOut = np.nan_to_num(arrOut)
 		return arrOut
