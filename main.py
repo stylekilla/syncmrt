@@ -378,7 +378,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		# Enable the CT view selection.
 		self.sidebar.widget['ctImageProperties'].group['view'].setEnabled(True)
 		# Update the CT view.
-		self.sidebar.widget['ctImageProperties'].updateCtView.connect(self.patient.ct.changeView)
+		self.sidebar.widget['ctImageProperties'].updateCtView.connect(self.patient.ct.calculateView)
 		self.patient.ct.newCtView.connect(self.updateCTEnv)
 		# Load the CT images and get the histograms.
 		self.updateCTEnv()

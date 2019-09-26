@@ -6,7 +6,7 @@ from file import hdf5
 from tools.opencl import gpu as gpuInterface
 from tools.math import wcs2wcs
 from natsort import natsorted
-from PyQt5 import QtCore
+from PyQt5 import QtCore, QtWidgets
 import logging
 
 np.set_printoptions(formatter={'float': lambda x: "{0:0.2f}".format(x)})
@@ -81,57 +81,71 @@ def checkDicomModality(dataset,modality):
 	# Return the sorted file list.
 	return sortedFiles
 
-class dicom_ct(QtCore.QObject):
-	# Qt signals.
+class ct(QtCore.QObject):
 	newCtView = QtCore.pyqtSignal()
 
 	def __init__(self,dataset,gpu):
-		# Init QObject class.
 		super().__init__()
-		self.fp = os.path.dirname(dataset[0])
-		# Are we reading in a CT DICOM file?
+		# # Create a progress dialog.
+		# progress = QtWidgets.QProgressDialog()
+		# progress.setMaximum(len(dataset))
+		# progress.setMinimum(0)
+		# progress.setAutoClose(True)
+		# progress.setBar(QtWidgets.QProgressBar())
+		# progress.setLabel(QtWidgets.QLabel("Loading DICOM Files"))
+		# progress.setCancelButton(None)
+		# progress.open()
+
+		# Hold a reference to the gpu instance.
+		self.gpu = gpu
+
+		# Check that the dataset is indeed a DICOM CT dataset.
 		dataset = checkDicomModality(dataset,'CT')
-		ref = dicom.dcmread(dataset[0])
-		# Get CT shape.
+
+		if len(dataset) is 0:
+			# If the dataset has no CT files, then exit this function.
+			return
+		else:
+			# Else, read the first one as a reference point.
+			ref = dicom.dcmread(dataset[0])
+
+		# Get the 3D CT array shape.
 		shape = np.array([int(ref.Rows), int(ref.Columns), len(dataset)])
-		# Initialize image with array of zeros.
+		# Create an empty python array to dump the CT data into.
 		self.pixelArray = np.zeros(shape, dtype=np.int32)
 		# Read array in one slice at a time.
-		for fn in dataset:
-			slice = dicom.dcmread(fn)
-			self.pixelArray[:,:,dataset.index(fn)] = slice.pixel_array
-			# self.pixelArray[:,:,shape[2]-dataset.index(fn)-1] = slice.pixel_array
-			# Should send signal of import status here.
-			# pct = dataset.index(fn)/len(dataset)
-			# progress.emit(pct)
+		for index,fn in enumerate(dataset):
+			ctSlice = dicom.dcmread(fn)
+			self.pixelArray[:,:,dataset.index(fn)] = ctSlice.pixel_array
+			# Emit the load percentage.
+			# progress.setValue(index+1)
+
+		# # Restart the progress bar.
+		# progress.setValue(0)
+		# progress.setMaximum(4)
+
 		# Rescale the Hounsfield Units.
 		self.pixelArray = (self.pixelArray*ref.RescaleSlope) + ref.RescaleIntercept
-
 		# Get current CT orientation.
 		self.patientPosition = ref.PatientPosition
-		# Machine coordinates defined here:
-		# http://dicom.nema.org/medical/Dicom/2016c/output/chtml/part03/sect_C.8.8.25.6.html
-		# Base coordinate system.
-		self.BCS = np.identity(3)
 		# Python coordinate system.
 		self.PCS = np.array([[0,1,0],[1,0,0],[0,0,1]])
-		# Patient coordinate system.
+		# Patient reference coordinate system (RCS).
 		dcmAxes =  np.array(list(map(float,ref.ImageOrientationPatient)))
 		x = dcmAxes[:3]
 		y = dcmAxes[3:6]
 		z = np.cross(x,y)
 		self.RCS = np.vstack((x,y,z))
-		# Get the pixel size.
+		# Calculate spacing between slices as it isn't always provided.
 		z1 = list(map(float,ref.ImagePositionPatient))[2]
 		z2 = list(map(float,dicom.dcmread(dataset[-1]).ImagePositionPatient))[2]
 		spacingBetweenSlices = (z2-z1)/len(dataset)
+		# Get the pixel size.
 		self.pixelSize = np.append(np.array(list(map(float,ref.PixelSpacing))),spacingBetweenSlices)
-		# Top left front value (corner of voxel, NOT the centre as defined by the DICOM format).
+		# Get the top left front pixel position in the RCS (set as the centre of the voxel).
 		self.TLF = np.array(list(map(float,ref.ImagePositionPatient)))
+		# Adjust the TLF to sit on the outside corner of the voxel (to align with the expected inputs for matplotlib's extent).
 		self.TLF +=  np.sign(self.TLF)*(self.pixelSize/2)
-		# Get the top left front and bottom right back voxels for caclualting extent.
-		voxelIndex1 = np.array([0,0,0,1]).reshape((4,1))
-		voxelIndex2 = np.array([shape[0],shape[1],shape[2],1]).reshape((4,1))
 		# Construct the transformation matrix, M.
 		self.M = np.zeros((4,4))
 		self.M[:3,0] = self.pixelSize[0]*x
@@ -139,169 +153,155 @@ class dicom_ct(QtCore.QObject):
 		self.M[:3,2] = self.pixelSize[2]*z
 		self.M[:3,3] = self.TLF
 		self.M[3,3] = 1
+
+		# progress.setValue(1)
+
+		# Get the top left front and bottom right back indices for caclualting extent.
+		voxelIndex1 = np.array([0,0,0,1]).reshape((4,1))
+		voxelIndex2 = np.array([shape[0],shape[1],shape[2],1]).reshape((4,1))
 		# Compute the voxel indices in mm.
 		voxelPosition1 = self.M@voxelIndex1
 		voxelPosition2 = self.M@voxelIndex2
-
 		# Store the bottom right back position.
 		self.BRB = voxelPosition2[:3]
-
-		# Calculate Extent.
-		# self.extent, self.labels = calculateNewImageInformation(self.patientPosition,self.RCS,shape,self.pixelSize,self.leftTopFront
-		# Extent is [L,R,B,T,F,B]
+		# Extent is [Left,Right,Bottom,Top,Front,Back]
 		_x = [voxelPosition1[0],voxelPosition2[0]]
 		_y = [voxelPosition1[1],voxelPosition2[1]]
 		_z = [voxelPosition1[2],voxelPosition2[2]]
 		self.extent = np.array(_x+_y+_z).reshape((6,))
+		# Calculate the base extent.
+		self.baseExtent = np.array(sorted(_x)+sorted(_y)+sorted(_z)).reshape((6,))
+
+		# progress.setValue(2)
 
 		# Load array onto GPU for future reference.
-		gpu.loadData(self.pixelArray,extent=self.extent)
-
+		# self.gpu.loadData(self.pixelArray,extent=self.extent)
+		self.gpu.loadData(self.pixelArray)
 		# Create a 2d image list for plotting.
 		self.image = [Image2d(),Image2d()]
-		# Set the default.
-		self.changeView('AP')
 
-	def changeView(self,view,extent=None,flatteningMode='sum'):
-		"""
-		This only works for 90 deg rotations. (i.e. looking down various axes). This does not work for non-orthogonal rotations.
-		View must be a code: AP, PA, SI, IS, LR, RL etc.
-		"""
+		# Create an isocenter for treatment if desired. This must be in DICOM XYZ.
+		self.isocenter = None
+
+		# progress.setValue(3)
+
+		# Set the default.
+		self.calculateView('AP')
+
+		# progress.setValue(4)
+		# progress.reset()
+
+	def calculateExtent(self,RCS,roi=None):
+		""" Calculate the extent of the CT for a given view. """
+		# The RCS is the reference coordinate system for the desired ct view. X, Y and Z axis are numbered 1-3.
+		RCS = np.linalg.inv(RCS)@(np.identity(3)*[1,2,3])
+		# Start an empty extent list. This is [Left, Right, Top, Bottom, Front, Back]; note the difference from matplotlib's extent!
+		extent = []
+		# Iterate through each axis and take the correct extent values in the correct order.
+		for ax in RCS:
+			ax = ax[np.nonzero(ax)][0]
+			a = int(2*(np.abs(ax)-1))
+			b = int(a+2)
+			c = int(np.sign(ax))
+			if type(roi) is type(None):
+				extent += list(self.baseExtent[a:b][::c])
+			else:
+				extent += list(roi[a:b][::c])
+
+		logging.info("Calculating extent: \n(RCS) {} \n(ROI){} \n(Extent){}\n(Base Extent){}".format(RCS,roi,extent,self.baseExtent))
+		return extent
+
+	def calculateIndices(self,extent):
+		""" Calculate the indices of the CT array for a given ROI. """
+		# Take the extent and turn it into two voxel locations (Top-Front-Left and Bottom-Right-Back).
+		voxelPosition1 = extent[0::2]
+		voxelPosition2 = extent[1::2]
+		# Calculate the inverse transform of M.
+		Mi = np.linalg.inv(self.M)
+		# Compute the voxel positions in indices.
+		voxelIndex1 = Mi@voxelPosition1
+		voxelIndex2 = Mi@voxelPosition2
+		# Mix the two lists together again.
+		indices = [x for z in zip(voxelIndex1, voxelIndex2) for x in z]
+
+		return indices
+
+	def calculateView(self,view,roi=None,flatteningMethod='sum'):
+		""" Rotate the CT array for a new view of the dataset. """
+		logging.info("Calculating CT view {}".format(view))
+		# Make the RCS for each view. 
 		default = np.array([[1,0,0],[0,1,0],[0,0,1]])
 		si = np.array([[-1,0,0],[0,1,0],[0,0,-1]])
 		lr = np.array([[0,0,1],[0,1,0],[-1,0,0]])
 		rl = np.array([[0,0,-1],[0,1,0],[1,0,0]])
 		ap = np.array([[1,0,0],[0,0,1],[0,-1,0]])
 		pa = np.array([[-1,0,0],[0,0,-1],[0,-1,0]])
-
-		# Assign matrix, m, to the view matrix.
-		# if view == 0:
-		# 	m = si
-		# 	t1 = 'SI'
-		# 	t2 = 'RL'
-		# if view == 1:
-		# 	m = default
-		# 	t1 = 'IS'
-		# 	t2 = 'LR'
-		# if view == 2:
-		# 	m = lr
-		# 	t1 = 'LR'
-		# 	t2 = 'SI'
-		# if view == 3:
-		# 	m = rl
-		# 	t1 = 'RL'
-		# 	t2 = 'IS'
-		if view == 'AP':
-			m = ap
+		# Assign matrix, m, to the view matrix and axis titles.
+		if view == 'SI':
+			M = si
+			t1 = 'SI'
+			t2 = 'RL'
+		elif view == 'IS':
+			M = default
+			t1 = 'IS'
+			t2 = 'LR'
+		elif view == 'LR':
+			M = lr
+			t1 = 'LR'
+			t2 = 'SI'
+		elif view == 'RL':
+			M = rl
+			t1 = 'RL'
+			t2 = 'IS'
+		elif view == 'AP':
+			M = ap
 			t1 = 'AP'
 			t2 = 'LR'
 		elif view == 'PA':
-			m = pa
+			M = pa
 			t1 = 'PA'
 			t2 = 'RL'
 
+		# Calculate a transform, W, that takes us from the original CT RCS to the new RCS.
+		W = wcs2wcs(self.RCS,M)
+		# W = wcs2wcs(M,self.RCS)
+		logging.info("\nCT RCS \n{}".format(self.RCS))
+		logging.info("\nView RCS \n{}".format(M))
+		logging.info("\nRCS to RCS \n{}".format(W))
+		# Rotate the CT if required.
+		if np.array_equal(W,np.identity(3)):
+			pixelArray = self.pixelArray
+		else:
+			pixelArray = self.gpu.rotate(W)
 
-		# XYZ axes are assumed to align with the DICOM XYZ (in it's default HFS orientation). 
-		# Axes for numpy sum are swapped for X and Y as the 0 python axis refers to rows (which is DICOM Y) and vice versa for X.
+		if type(roi) is type(None):
+			# Calculate the new extent using the existing extent.
+			extent = self.calculateExtent(M)
+		else:
+			# If an ROI is defined, we must take it from the standard DICOM XYZ CS and convert it into the desired RCS.
+			extent = self.calculateExtent(M,roi)
+			# Get the array indices that match the roi.
+			_extent = self.calculateExtent(self.RCS,roi)
+			indices = self.calculateIndices(_extent)
+			x1,x2,y1,y2,z1,z2 = indices
+			# Slice the array.
+			pixelArray = pixelArray[y1:y2,x1:x2,z1:z2]
 
-		# Calculate the transformation matrix, M, that takes CT position in indices to mm (and vice versa).
-		Mi = np.linalg.inv(self.M)
-
-		# Calculate the selected CT ROI in mm as array indices.
-		# Use the original array extent if none is provided.
-		if extent == None: extent = self.extent
-		logging.critical("Extent: {}".format(extent))
-		x1, x2, y1, y2, z1, z2 = extent
-		# Get the two extreme vertices of the array as p1 and p2.
-		p1 = np.array([x1,y1,z1,1])
-		p2 = np.array([x2,y2,z2,1])
-		# Convert them into index location.
-		i1 = Mi@p1
-		i2 = Mi@p2
-		# Update the indices.
-		x1, y1, z1, _ = i1.astype(int)
-		x2, y2, z2, _ = i2.astype(int)
-		logging.critical("P1: {} P2: {}".format(p1,p2))
-		logging.critical("I1: {} I2: {}".format(i1.astype(int),i2.astype(int)))
-
-		# Get new X axis.
-		_x = np.absolute(m[0,:]).argmax()
-		# Direction.
-		_xd = int(np.sign(m[0,:][_x]))
-		# Extent.
-		_xe = [extent[0],extent[1]]
-		if np.sign(_xd) == np.sign(-1): _xe = _xe[::-1]
-		# Now assign the direction to what the new X (global) axis is.
-		_xd = int(np.sign(m[:,0][_x]))
-
-		# Get new Y axis.
-		_y = np.absolute(m[1,:]).argmax()
-		# Direction.
-		_yd = int(np.sign(m[1,:][_y]))
-		# Extent.
-		_ye = [extent[2],extent[3]]
-		if np.sign(_yd) == np.sign(-1): _ye = _ye[::-1]
-		# Now assign the direction to what the new Y (global) axis is.
-		_yd = int(np.sign(m[:,1][_y]))
-
-		# Get new Z axis.
-		_z = np.absolute(m[2,:]).argmax()
-		# Direction.
-		_zd = int(np.sign(m[2,:][_z]))
-		# Extent.
-		_ze = [extent[4],extent[5]]
-		if np.sign(_zd) == np.sign(-1): _ze = _ze[::-1]
-		# Now assign the direction to what the new Z (global) axis is.
-		_zd = int(np.sign(m[:,2][_z]))
-
-		# Get the axis to sum along (the new Z axis).
-		if _z == 0: _sum1 = 1
-		elif _z == 1: _sum1 = 0
-		elif _z == 2: _sum1 = 2
-		# Get the axis to sum along (the new X axis).
-		if _x == 0: _sum2 = 1
-		elif _x == 1: _sum2 = 0
-		elif _x == 2: _sum2 = 2
-
+		# Split up into x, y and z extents for 2D image.
+		x,y,z = [extent[i:i+2] for i in range(0,len(extent),2)]
+		logging.critical(extent)
 		# Get the first flattened image.
-		if flatteningMode == 'sum': self.image[0].pixelArray = np.sum(self.pixelArray[y1:y2,x1:x2,z1:z2],axis=_sum1)
-		elif flatteningMode == 'max': self.image[0].pixelArray = np.amax(self.pixelArray[y1:y2,x1:x2,z1:z2],axis=_sum1)
-		# If we sum down axis 0 we need to transpose the array, just because of numpy.
-		if _sum1 == 0: self.image[0].pixelArray = np.flipud(np.transpose(self.image[0].pixelArray))
-		elif _sum1 == 1: self.image[0].pixelArray = np.flipud(np.transpose(self.image[0].pixelArray))
-		# If the axis direction is negative, we need to flip it from left to right.
-		if np.sign(_zd) == np.sign(-1): self.image[0].pixelArray = np.fliplr(self.image[0].pixelArray)
-		# The LR extent for the array comes from the axis along 0. The extents are also already ordered to match the direction of the axis.
-		if _x == 0: _lr = _xe
-		elif _y == 0: _lr = _ye
-		elif _z == 0: _lr = _ze
-		# The BT extent for the array comes from the axis along 1. The extents are also already ordered to match the direction of the DICOM axis (not the python axis).
-		if _x == 1: _tb = _xe
-		elif _y == 1: _tb = _ye
-		elif _z == 1: _tb = _ze
-		_bt = _tb[::-1]
-		self.image[0].extent = np.array(_lr+_bt)
+		if flatteningMethod == 'sum': self.image[0].pixelArray = np.sum(pixelArray,axis=0)
+		elif flatteningMethod == 'max': self.image[0].pixelArray = np.amax(pixelArray,axis=0)
+		self.image[0].extent = np.array(list(x)+list(y[::-1]))
 		self.image[0].view = { 'title':t1 }
-
 		# Get the second flattened image.
-		if flatteningMode == 'sum': self.image[1].pixelArray = np.sum(self.pixelArray[y1:y2,x1:x2,z1:z2],axis=_sum2)
-		elif flatteningMode == 'max': self.image[1].pixelArray = np.amax(self.pixelArray[y1:y2,x1:x2,z1:z2],axis=_sum2)
-		# If we sum down axis 0 we need to transpose the array, just because of numpy.
-		if _sum2 == 0: self.image[1].pixelArray = np.flipud(np.transpose(self.image[1].pixelArray))
-		elif _sum2 == 1: self.image[1].pixelArray = np.fliplr(np.flipud(np.transpose(self.image[1].pixelArray)))
-		# If the axis direction is negative, we need to flip it from left to right.
-		if np.sign(_xd) == np.sign(-1): self.image[1].pixelArray = np.fliplr(self.image[1].pixelArray)
-		# The LR extent for the array comes from the axis along 2. The extents are also already ordered to match the direction of the axis.
-		if _x == 2: _lr = _xe
-		elif _y == 2: _lr = _ye
-		elif _z == 2: _lr = _ze
-		# The BT extent for the array comes from the axis along 1. The extents are also already ordered to match the direction of the DICOM axis (not the python axis).
-		if _x == 1: _tb = _xe
-		elif _y == 1: _tb = _ye
-		elif _z == 1: _tb = _ze
-		_bt = _tb[::-1]
-		self.image[1].extent = np.array(_lr+_bt)
+		if flatteningMethod == 'sum': self.image[1].pixelArray = np.sum(pixelArray,axis=2)
+		elif flatteningMethod == 'max': self.image[1].pixelArray = np.amax(pixelArray,axis=2)
+		self.image[1].extent = np.array(list(z)+list(y[::-1]))
 		self.image[1].view = { 'title':t2 }
+
+		print(self.image[1].pixelArray.shape)
 
 		# Emit a signal to say a new view has been loaded.
 		self.newCtView.emit()
@@ -321,11 +321,11 @@ class beamClass:
 		self._arr2bcs = None
 		self._dcm2bcs = None
 
-class dicom_rtplan:
+class rtplan:
 	def __init__(self,rtplan,ct,gpu):
 		"""
-			BCS: Beam Coordinate System (Linac)
 			RCS: Reference Coordinate System (Patient)
+			BCS: Beam Coordinate System (Linac)
 			PCS: Pyhon Coordinate System (DICOM to Python)
 		"""
 		self.PCS = np.array([[0,1,0],[1,0,0],[0,0,1]])
@@ -337,8 +337,7 @@ class dicom_rtplan:
 		# Get the isocenter. Current only supports a single isocenter.
 		self.isocenter = np.array(list(map(float,ref.BeamSequence[0].ControlPointSequence[0].IsocenterPosition)))
 
-		logging.info("Isocenter (DICOM) {}".format(self.isocenter))
-		self.isocenter = np.array(list(map(float,ref.BeamSequence[0].ControlPointSequence[0].IsocenterPosition)))
+		# logging.info("Isocenter (DICOM) {}".format(self.isocenter))
 
 		for i in range(len(self.beam)):
 			# Get the appropriate data for each beam.
@@ -391,7 +390,7 @@ class dicom_rtplan:
 			axes = ['y','z']
 			cs_linac = (BCS@activeRotation(np.identity(3),rotations,axes))@np.linalg.inv(BCS)
 
-			# Calculate the new patient coordinate system.
+			# Calculate the new patient coordin ate system.
 			# A passive rotation of the patient position w.r.t to the LCS.
 			temp = ct.RCS@cs_bed
 			# A passive rotation of the inverse beam port takes the WCS into the view of the BCS w.r.t the WCS.

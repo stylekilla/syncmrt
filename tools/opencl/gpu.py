@@ -63,12 +63,19 @@ class gpu:
 		# If an extent for the array is specified, save that too.
 		if (type(extent) != type(None)) & (len(np.array(extent).shape) == 6): 
 			self._inputExtent = extent
+		# Set an output buffer.
+		self._outputBuffer = None
+		self._outputBufferShape = None
 
 	def getData(self):
 		""" Should return the last calculated output. """
-		arrOut = np.zeros(self._outputBufferShape)
-		cl.enqueue_copy(self.queue, arrOut, self._outputBuffer)
-		return arrOut
+		# Only do this if there is an outputBuffer.
+		if type(self._outputBuffer) is type(None):
+			return
+		else:
+			arrOut = np.zeros(self._outputBufferShape)
+			cl.enqueue_copy(self.queue, arrOut, self._outputBuffer)
+			return arrOut
 
 	def rotate(self,rotationMatrix):
 		"""
@@ -103,12 +110,12 @@ class gpu:
 		arrOut = np.zeros(outputShape).astype(np.int32)-1000
 		# Swap the x and y size of the arr shape.
 		arrOutShape = np.array(arrOut.shape).astype(np.int32)
-		'''
+		"""
 		The GPU wizardry:
 			- First we do the data transfer from host to device.
 			- Then we run the program.
 			- Then we get the results.
-		'''
+		"""
 		# Create memory flags.
 		mf = cl.mem_flags
 		# GPU buffers.
@@ -166,15 +173,14 @@ class gpu:
 		return arrOut
 
 	def generateRotationMatrix(self,rotationList):
-
-		'''
+		"""
 		Generate a 3x3 rotation matrix.
 		Here we make the following assumptions:
 			- Axes are 0/1/2 which match real world x/y/z which match python y/x/z (as python is row-major).
 			- Inputs are a list of strings in the format of: 
 				- '190' means take the first axis, '1' and rotate '90' degrees about it.
 				- '0-90' means take the first axis, '0' and rotate '-90' degrees about it.
-		'''
+		"""
 		# Begin with identity matrix.
 		pymat = np.identity(3)
 		gpumat = np.identity(3)

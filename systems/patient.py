@@ -33,11 +33,11 @@ class Patient(QtCore.QObject):
 		elif modality == 'CT': 
 			# Create a GPU context for the ct array.
 			self._gpuContext = gpu()
-			self.ct = importer.dicom_ct(dataset,self._gpuContext)
+			self.ct = importer.ct(dataset,self._gpuContext)
 			
 		elif modality == 'RTPLAN': 
 			if self.ct != None: 
-				self.rtplan = importer.dicom_rtplan(
+				self.rtplan = importer.rtplan(
 						dataset,
 						self.ct,
 						self._gpuContext
