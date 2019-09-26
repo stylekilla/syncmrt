@@ -85,8 +85,13 @@ class gpu:
 		"""
 		# OpenCL Coordinate System w.r.t WCS.
 		OCS = np.array([[0,-1,0],[-1,0,0],[0,0,-1]])
+		"""
+		My problem is that I need to take my rotationMatrix into the frame of reference of the OCL coordinate system, do the rotation, then bring it back.
+		How is that done mathematically?
+		"""
 		# Put the rotation matrix (World CS) in the context of the OCL CS, then take it back into the frame of reference of the IEC CS.
 		gpuRotationMatrix = (OCS@rotationMatrix)@np.linalg.inv(OCS)
+		# logging.critical(gpuRotationMatrix)
 		# Create a basic box for calculations of a cube. Built off (row,cols,depth).
 		basicBox = np.array([
 			[0,0,0],

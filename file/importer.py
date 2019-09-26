@@ -238,36 +238,37 @@ class ct(QtCore.QObject):
 		pa = np.array([[-1,0,0],[0,0,-1],[0,-1,0]])
 		# Assign matrix, m, to the view matrix and axis titles.
 		if view == 'SI':
-			M = si
+			RCS = si
 			t1 = 'SI'
 			t2 = 'RL'
 		elif view == 'IS':
-			M = default
+			RCS = default
 			t1 = 'IS'
 			t2 = 'LR'
 		elif view == 'LR':
-			M = lr
+			RCS = lr
 			t1 = 'LR'
 			t2 = 'SI'
 		elif view == 'RL':
-			M = rl
+			RCS = rl
 			t1 = 'RL'
 			t2 = 'IS'
 		elif view == 'AP':
-			M = ap
+			RCS = ap
 			t1 = 'AP'
 			t2 = 'LR'
 		elif view == 'PA':
-			M = pa
+			RCS = pa
 			t1 = 'PA'
 			t2 = 'RL'
 
 		# Calculate a transform, W, that takes us from the original CT RCS to the new RCS.
-		W = wcs2wcs(self.RCS,M)
-		# W = wcs2wcs(M,self.RCS)
+		W = wcs2wcs(self.RCS,RCS)
+
 		logging.info("\nCT RCS \n{}".format(self.RCS))
-		logging.info("\nView RCS \n{}".format(M))
+		logging.info("\nView RCS \n{}".format(RCS))
 		logging.info("\nRCS to RCS \n{}".format(W))
+
 		# Rotate the CT if required.
 		if np.array_equal(W,np.identity(3)):
 			pixelArray = self.pixelArray
@@ -276,10 +277,10 @@ class ct(QtCore.QObject):
 
 		if type(roi) is type(None):
 			# Calculate the new extent using the existing extent.
-			extent = self.calculateExtent(M)
+			extent = self.calculateExtent(RCS)
 		else:
 			# If an ROI is defined, we must take it from the standard DICOM XYZ CS and convert it into the desired RCS.
-			extent = self.calculateExtent(M,roi)
+			extent = self.calculateExtent(RCS,roi)
 			# Get the array indices that match the roi.
 			_extent = self.calculateExtent(self.RCS,roi)
 			indices = self.calculateIndices(_extent)
