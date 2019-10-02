@@ -139,7 +139,7 @@ class ct(QtCore.QObject):
 		# Calculate spacing between slices as it isn't always provided.
 		z1 = list(map(float,ref.ImagePositionPatient))[2]
 		z2 = list(map(float,dicom.dcmread(dataset[-1]).ImagePositionPatient))[2]
-		spacingBetweenSlices = (z2-z1)/len(dataset)
+		spacingBetweenSlices = (z2-z1)/(len(dataset)-1)
 		# Get the pixel size.
 		self.pixelSize = np.append(np.array(list(map(float,ref.PixelSpacing))),spacingBetweenSlices)
 		# Get the top left front pixel position in the RCS (set as the centre of the voxel).
@@ -173,9 +173,9 @@ class ct(QtCore.QObject):
 		self.baseExtent = np.array(sorted(_x)+sorted(_y)+sorted(_z)).reshape((6,))
 
 		# progress.setValue(2)
+		logging.critical("M \n{}".format(self.M))
 
 		# Load array onto GPU for future reference.
-		# self.gpu.loadData(self.pixelArray,extent=self.extent)
 		self.gpu.loadData(self.pixelArray)
 		# Create a 2d image list for plotting.
 		self.image = [Image2d(),Image2d()]
@@ -213,16 +213,20 @@ class ct(QtCore.QObject):
 
 	def calculateIndices(self,extent):
 		""" Calculate the indices of the CT array for a given ROI. """
+		voxelPosition1 = np.ones((4,),dtype=float)
+		voxelPosition2 = np.ones((4,),dtype=float)
 		# Take the extent and turn it into two voxel locations (Top-Front-Left and Bottom-Right-Back).
-		voxelPosition1 = extent[0::2]
-		voxelPosition2 = extent[1::2]
+		voxelPosition1[:3] = extent[0::2]
+		voxelPosition2[:3] = extent[1::2]
 		# Calculate the inverse transform of M.
 		Mi = np.linalg.inv(self.M)
 		# Compute the voxel positions in indices.
 		voxelIndex1 = Mi@voxelPosition1
 		voxelIndex2 = Mi@voxelPosition2
 		# Mix the two lists together again.
-		indices = [x for z in zip(voxelIndex1, voxelIndex2) for x in z]
+		indices = [x for z in zip(voxelIndex1[:3], voxelIndex2[:3]) for x in z]
+		# Round the indicies to integers and put back into a list.
+		indices = list(np.rint(indices).astype(int))
 
 		return indices
 
@@ -265,15 +269,14 @@ class ct(QtCore.QObject):
 		# Calculate a transform, W, that takes us from the original CT RCS to the new RCS.
 		W = wcs2wcs(self.RCS,RCS)
 
-		logging.info("\nCT RCS \n{}".format(self.RCS))
-		logging.info("\nView RCS \n{}".format(RCS))
-		logging.info("\nRCS to RCS \n{}".format(W))
-
 		# Rotate the CT if required.
 		if np.array_equal(W,np.identity(3)):
 			pixelArray = self.pixelArray
 		else:
 			pixelArray = self.gpu.rotate(W)
+
+		logging.critical("self.pixelArray.shape {}".format(self.pixelArray.shape))
+		logging.critical("pixelArray.shape {}".format(pixelArray.shape))
 
 		if type(roi) is type(None):
 			# Calculate the new extent using the existing extent.
@@ -284,7 +287,12 @@ class ct(QtCore.QObject):
 			# Get the array indices that match the roi.
 			_extent = self.calculateExtent(self.RCS,roi)
 			indices = self.calculateIndices(_extent)
+			logging.critical(indices)
 			x1,x2,y1,y2,z1,z2 = indices
+			# Order the indices
+			x1,x2 = sorted([x1,x2])
+			y1,y2 = sorted([y1,y2])
+			z1,z2 = sorted([z1,z2])
 			# Slice the array.
 			pixelArray = pixelArray[y1:y2,x1:x2,z1:z2]
 
@@ -292,17 +300,15 @@ class ct(QtCore.QObject):
 		x,y,z = [extent[i:i+2] for i in range(0,len(extent),2)]
 		logging.critical(extent)
 		# Get the first flattened image.
-		if flatteningMethod == 'sum': self.image[0].pixelArray = np.sum(pixelArray,axis=0)
-		elif flatteningMethod == 'max': self.image[0].pixelArray = np.amax(pixelArray,axis=0)
+		if flatteningMethod == 'sum': self.image[0].pixelArray = np.sum(pixelArray,axis=2)
+		elif flatteningMethod == 'max': self.image[0].pixelArray = np.amax(pixelArray,axis=2)
 		self.image[0].extent = np.array(list(x)+list(y[::-1]))
 		self.image[0].view = { 'title':t1 }
 		# Get the second flattened image.
-		if flatteningMethod == 'sum': self.image[1].pixelArray = np.sum(pixelArray,axis=2)
-		elif flatteningMethod == 'max': self.image[1].pixelArray = np.amax(pixelArray,axis=2)
+		if flatteningMethod == 'sum': self.image[1].pixelArray = np.sum(pixelArray,axis=1)
+		elif flatteningMethod == 'max': self.image[1].pixelArray = np.amax(pixelArray,axis=1)
 		self.image[1].extent = np.array(list(z)+list(y[::-1]))
 		self.image[1].view = { 'title':t2 }
-
-		print(self.image[1].pixelArray.shape)
 
 		# Emit a signal to say a new view has been loaded.
 		self.newCtView.emit()
