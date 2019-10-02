@@ -275,9 +275,6 @@ class ct(QtCore.QObject):
 		else:
 			pixelArray = self.gpu.rotate(W)
 
-		logging.critical("self.pixelArray.shape {}".format(self.pixelArray.shape))
-		logging.critical("pixelArray.shape {}".format(pixelArray.shape))
-
 		if type(roi) is type(None):
 			# Calculate the new extent using the existing extent.
 			extent = self.calculateExtent(RCS)
@@ -426,23 +423,28 @@ class rtplan:
 			# Create the 2d projection images.
 			self.beam[i].image = [Image2d(),Image2d()]
 
-			# Find which rotated axis is on which fixed global axis.
-			testAxes = np.absolute(self.beam[i].W)
+			# testAxes = np.absolute(self.beam[i].W)
+			# Find the RCS of the beam view.
+			testAxes = np.absolute(self.beam[i].RCS)
 			# Axes (x is fixed, so which ever arg is maxed means that axis is mapped onto our x fixed axis).
 			x = np.argmax(testAxes[:,0])
 			y = np.argmax(testAxes[:,1])
 			z = np.argmax(testAxes[:,2])
+			print(self.beam[i].RCS)
+			print(x,y,z)
 			# Directions. Add +1 to axis identifiers since you can't have -0 but you can have -1...
-			xd = (x+1)*np.sign(testAxes[x,0])
-			yd = (y+1)*np.sign(testAxes[y,1])
-			zd = (z+1)*np.sign(testAxes[z,2])
+			xd = (x+1)*np.sign(self.beam[i].RCS[x,0])
+			yd = (y+1)*np.sign(self.beam[i].RCS[y,1])
+			zd = (z+1)*np.sign(self.beam[i].RCS[z,2])
+			print(xd,yd,zd)
 
 			# Extent.
 			# Axis tells us which extent modifer to take and in what order.
-			xe = ct.extent[x*2:x*2+2][::np.sign(xd).astype(int)]
-			ye = ct.extent[y*2:y*2+2][::np.sign(yd).astype(int)]
-			ze = ct.extent[z*2:z*2+2][::np.sign(zd).astype(int)]
+			xe = ct.baseExtent[x*2:x*2+2][::np.sign(xd).astype(int)]
+			ye = ct.baseExtent[y*2:y*2+2][::np.sign(yd).astype(int)]
+			ze = ct.baseExtent[z*2:z*2+2][::np.sign(zd).astype(int)]
 			self.beam[i].extent = np.hstack((xe,ye,ze)).reshape((6,))
+			print(self.beam[i].extent)
 
 			# Top left front.
 			self.beam[i].TLF = self.beam[i].extent[::2]
@@ -467,11 +469,11 @@ class rtplan:
 
 			# Flatten the 3d image to the two 2d images.
 			self.beam[i].image[0].pixelArray = np.sum(self.beam[i].pixelArray,axis=2)
-			self.beam[i].image[0].extent = np.array([self.beam[i].extent[0],self.beam[i].extent[1],self.beam[i].extent[2],self.beam[i].extent[3]])
+			# self.beam[i].image[0].extent = np.array([self.beam[i].extent[0],self.beam[i].extent[1],self.beam[i].extent[2],self.beam[i].extent[3]])
+			self.beam[i].image[0].extent = np.array([self.beam[i].extent[0],self.beam[i].extent[1],self.beam[i].extent[3],self.beam[i].extent[2]])
 			self.beam[i].image[1].pixelArray = np.sum(self.beam[i].pixelArray,axis=1)
-			self.beam[i].image[1].extent = np.array([self.beam[i].extent[4],self.beam[i].extent[5],self.beam[i].extent[2],self.beam[i].extent[3]])
-			# self.beam[i].image[1].pixelArray = np.sum(self.beam[i].pixelArray,axis=0)
-			# self.beam[i].image[1].extent = np.array([self.beam[i].extent[0],self.beam[i].extent[1],self.beam[i].extent[4],self.beam[i].extent[5]])
+			# self.beam[i].image[1].extent = np.array([self.beam[i].extent[4],self.beam[i].extent[5],self.beam[i].extent[2],self.beam[i].extent[3]])
+			self.beam[i].image[1].extent = np.array([self.beam[i].extent[4],self.beam[i].extent[5],self.beam[i].extent[3],self.beam[i].extent[2]])
 
 	def getIsocenter(self,beamIndex):
 		return self.PCS@self.beam[beamIndex].isocenter
