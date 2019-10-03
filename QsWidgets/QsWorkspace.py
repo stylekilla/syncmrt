@@ -192,6 +192,7 @@ class QPlotEnvironment(QtWidgets.QSplitter):
 
 	def updateIsocenter(self,x,y,z):
 		""" Update the isocenter in each plot. """
+		self.isocenter = [x,y,z]
 		for i in range(len(self.plot)):
 			if i == 0: self.plot[i].updatePatientIsocenter(x,y)
 			elif i == 1: self.plot[i].updatePatientIsocenter(z,y)
@@ -216,9 +217,9 @@ class QPlotTableModel(QtGui.QStandardItemModel):
 		self.items = {}
 		self._locked = False
 		self.setHorizontalHeaderLabels([
-			labels.get('title','-'),
-			labels.get('xLabel','-'),
-			labels.get('yLabel','-')
+			labels.get('title','Undefined'),
+			labels.get('xLabel','Horizontal'),
+			labels.get('yLabel','Vertical')
 		])
 
 	def addPoint(self,row,x,y):
@@ -264,10 +265,15 @@ class QPlotTableModel(QtGui.QStandardItemModel):
 
 	def setLabels(self,labels):
 		# Set the column header labels.
+		# self.setHorizontalHeaderLabels([
+		# 	'View: '+labels.get('title','Undefined'),
+		# 	labels.get('xLabel','Horizontal'),
+		# 	labels.get('yLabel','Vertical')
+		# ])
 		self.setHorizontalHeaderLabels([
-			'View: '+labels.get('title','Unknown?'),
-			labels.get('xLabel','X?'),
-			labels.get('yLabel','Y?')
+			'View: '+labels.get('title','Undefined'),
+			'Horizontal',
+			'Vertical'
 		])
 
 	def clearMarkers(self,newRows):

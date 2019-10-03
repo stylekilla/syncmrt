@@ -353,7 +353,7 @@ class QTreatment(QtWidgets.QWidget):
 		self.setLayout(self.layout)
 
 	def populateTreatments(self):
-		'''Once treatment plan is loaded, add the treatments to the workflow.'''
+		""" Once treatment plan is loaded, add the treatments to the workflow. """
 		# Remove the no treatment widget.
 		self.widget['noTreatment'].deleteLater()
 		del self.widget['noTreatment']
@@ -382,7 +382,6 @@ class QTreatment(QtWidgets.QWidget):
 			self.widget['beam'][i]['interlock'].setChecked(True)
 			self.widget['beam'][i]['interlock'].setEnabled(False)
 			self.widget['beam'][i]['deliver'].setEnabled(False)
-			# Signals and Slots
 			# Signals and Slots
 			self.widget['beam'][i]['calculate'].clicked.connect(partial(self._emitCalculate,i))
 			self.widget['beam'][i]['align'].clicked.connect(partial(self._emitAlign,i))
@@ -514,6 +513,7 @@ class QSettings(QtWidgets.QWidget):
 class QXrayProperties(QtWidgets.QWidget):
 	toggleOverlay = QtCore.pyqtSignal(int,bool)
 	isocenterUpdated = QtCore.pyqtSignal(float,float,float)
+	align = QtCore.pyqtSignal(int)
 
 	def __init__(self,parent=None):
 		super().__init__()
@@ -561,12 +561,13 @@ class QXrayProperties(QtWidgets.QWidget):
 		# Create an isocenter widget with XYZ toggles in it.
 		self.widget['isocenter']['editIso'] = QtWidgets.QWidget()
 		label1 = QtWidgets.QLabel('Isocenter (mm)')
-		label2 = QtWidgets.QLabel('x: ')
+		label2 = QtWidgets.QLabel('H1: ')
 		self.widget['isocenter']['editIsoX'] = QtWidgets.QLineEdit()
-		label3 = QtWidgets.QLabel('y: ')
+		label3 = QtWidgets.QLabel('V: ')
 		self.widget['isocenter']['editIsoY'] = QtWidgets.QLineEdit()
-		label4 = QtWidgets.QLabel('z: ')
+		label4 = QtWidgets.QLabel('H2: ')
 		self.widget['isocenter']['editIsoZ'] = QtWidgets.QLineEdit()
+		self.widget['isocenter']['align'] = QtWidgets.QPushButton("Align")
 		# Layout
 		lytEditIsocenter = QtWidgets.QFormLayout()
 		lytEditIsocenter.setContentsMargins(0,0,0,0)
@@ -587,13 +588,17 @@ class QXrayProperties(QtWidgets.QWidget):
 		# Defaults
 		self.widget['isocenter']['editIso'].setEnabled(False)
 		self.widget['isocenter']['editIso'].setVisible(False)
+		self.widget['isocenter']['align'].setEnabled(False)
+		self.widget['isocenter']['align'].setVisible(False)
 		# Signals and Slots
 		self.widget['isocenter']['editIsoX'].editingFinished.connect(self._updateIsocenter)
 		self.widget['isocenter']['editIsoY'].editingFinished.connect(self._updateIsocenter)
 		self.widget['isocenter']['editIsoZ'].editingFinished.connect(self._updateIsocenter)
+		self.widget['isocenter']['align'].clicked.connect(partial(self.align.emit,-1))
 		# Set the layout of group.
 		lytIsocenter.addWidget(self.widget['isocenter']['cbCustomIsoc'])
 		lytIsocenter.addWidget(self.widget['isocenter']['editIso'])
+		lytIsocenter.addWidget(self.widget['isocenter']['align'])
 		self.group['isocenter'].setLayout(lytIsocenter)
 		# Add group to sidebar layout.
 		self.layout.addWidget(self.group['isocenter'])
@@ -617,6 +622,8 @@ class QXrayProperties(QtWidgets.QWidget):
 		""" Toggles the manual setting of the isocenter on and off. """
 		self.widget['isocenter']['editIso'].setEnabled(bool(state))
 		self.widget['isocenter']['editIso'].setVisible(bool(state))
+		self.widget['isocenter']['align'].setEnabled(bool(state))
+		self.widget['isocenter']['align'].setVisible(bool(state))
 
 	def _updateIsocenter(self):
 		""" Send a signal with updated x,y coordinates. """

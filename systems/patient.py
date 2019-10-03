@@ -21,7 +21,6 @@ class Patient(QtCore.QObject):
 
 	def load(self,dataset,modality):
 		""" Load Patient Data. """
-		logging.info("Loading {} with {} files.".format(modality,len(dataset)))
 		if modality == 'DX': 
 			# Close the open one first.
 			if self.dx != None: 
@@ -30,6 +29,9 @@ class Patient(QtCore.QObject):
 			self.dx = importer.sync_dx(dataset)
 			self.newDXfile.emit(dataset)
 
+		elif modality == 'SYNCPLAN':
+			self.rtplan = importer.csvPlan(dataset)
+			
 		elif modality == 'CT': 
 			# Create a GPU context for the ct array.
 			self._gpuContext = gpu()
@@ -42,9 +44,15 @@ class Patient(QtCore.QObject):
 						self.ct,
 						self._gpuContext
 					)
-			else: 
-				logging.critical('No CT Dataset loaded. Cannot import treatment plan.')
-		else: logging.critical('No importer for file type: ',modality)
+			else:
+				error = QtWidgets.QMessageBox()
+				error.setText("Cannot open an RTPLAN without a CT dataset.")
+				error.exec()
+
+		else:
+			error = QtWidgets.QMessageBox()
+			error.setText("Could not find an importer option for files of type {}.".format(modality))
+			error.exec()
 
 	def new(self,fp,modality):
 		""" Create a new HDF5 file for x-ray data. """

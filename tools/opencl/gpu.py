@@ -97,7 +97,8 @@ class gpu:
 			[0,0,1],
 			[0,1,1],
 			[1,0,1],
-			[1,1,1]])
+			[1,1,1]
+		])
 		# Input array shape
 		inputShape =  basicBox*self._inputBufferShape
 		# Output array shape after rotation.

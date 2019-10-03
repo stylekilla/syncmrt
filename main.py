@@ -106,6 +106,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		# Connect menubar items.
 		self._menuBar['new_xray'].triggered.connect(partial(self.newFile,'xray'))
 		self._menuBar['load_xray'].triggered.connect(partial(self.openFiles,'xray'))
+		self._menuBar['load_syncplan'].triggered.connect(partial(self.openFiles,'syncplan'))
 		self._menuBar['load_ct'].triggered.connect(partial(self.openFiles,'ct'))
 		self._menuBar['load_rtplan'].triggered.connect(partial(self.openFiles,'rtp'))
 		self._menuBar['load_folder'].triggered.connect(partial(self.openFiles,'folder'))
@@ -149,7 +150,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 
 	def testing(self):
 		pass
-		# self.openXray('../scratch/test.hdf5')
+		self.openXray('../scratch/test.hdf5')
 		# dataset = []
 		# modality = 'CT'
 		# # for root, subdir, fp in os.walk('../scratch/head-phant/'):
@@ -264,6 +265,13 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 			file, dtype = fileDialogue.getOpenFileNames(self, "Open Xray dataset", "", fileFormat)
 			if len(file) > 0: self.openXray(file[0])
 
+		elif modality == 'syncplan':
+			fileFormat = 'CSV (*.csv)'
+			fileDialogue = QtWidgets.QFileDialog()
+			fileDialogue.setFileMode(QtWidgets.QFileDialog.ExistingFiles)
+			file, dtype = fileDialogue.getOpenFileNames(self, "Open Synchrotron Treatment Plan", "", fileFormat)
+			if len(file) > 0: self.openSyncPlan(file[0])
+
 		elif modality == 'rtp':
 			fileFormat = 'DICOM (*.dcm)'
 			fileDialogue = QtWidgets.QFileDialog()
@@ -350,6 +358,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		widget = self.sidebar.addPage('xrayImageProperties',QsWidgets.QXrayProperties(),addList=False)
 		widget.toggleOverlay.connect(partial(self.envXray.toggleOverlay))
 		widget.isocenterUpdated.connect(self.envXray.updateIsocenter)
+		widget.align.connect(self.patientCalculateAlignment)
 		# What is this?
 		self.sbImaging.enableAcquisition()
 		self.sbImaging.resetImageSetList()
@@ -365,6 +374,11 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		# Populate new histograms.
 		histogram = self.envXray.getPlotHistogram()
 		self.sidebar.widget['xrayImageProperties'].addPlotHistogramWindow(histogram)
+
+	def openSyncPlan(self,file):
+		""" Open Synchrotron Treatment Plan. """
+		self.patient.load(file,'SYNCPLAN')
+		# Now populate the treatment delivery pane... lol.
 
 	def openCT(self,files):
 		"""Open CT modality files."""
@@ -525,43 +539,60 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 			except:
 				pass
 
-	def patientCalculateAlignment(self,index=-1):
-		""" Send coordinates to algorithm and align. """
+	def patientCalculateAlignment(self,index):
+		""" 
+		Send coordinates to algorithm and align.
+		Index 	0: CT with a preset 0,0,0 DICOM iso or a defined one.
+				1+: Beam's Eye View Number (BEV#)
+				-1: Local x-ray isocenter, no other paired imaging/data
+		"""
 		# Treatment index will tell the method where the call was made from.
 		logging.info('Calulating patient alignment with condition '+str(index))
 
-		# Check first if we at least have an x-ray plus a CT or RTPLAN open.
-		if (self._isXrayOpen & (self._isCTOpen|self._isRTPOpen) ) is False:
-			logging.error('Need at least two datasets open: xray('+str(self._isXrayOpen)+'), ct('+str(self._isCTOpen)+'), rtplan('+str(self._isRTPOpen)+').')
-			return
+		if index == -1:
+			# Align to x-ray isocenter.
+			error = QtWidgets.QMessageBox()
+			error.setText("Made it this far!")
+			error.exec()
+		elif index == 0:
+			# Align to a CT.
+			if (self._isXrayOpen|self._isCTOpen) is False:
+				error = QtWidgets.QMessageBox()
+				error.setText('Must have both a local x-ray dataset and CT dataset open.')
+				error.exec()
+				return
+			# Do stuff.
+		elif index > 0:
+			# Align to a BEV.
+			if (self._isXrayOpen|self._isCTOpen|self._isRTPOpen) is False:
+				error = QtWidgets.QMessageBox()
+				error.setText('Must have a local x-ray, CT and Treatment Plan dataset open.')
+				error.exec()
+				return
+			# Do stuff.
 
+		# In any case, the amount of x-ray images open will determine whether we do a 2D or 3D alignment.
+		_3D = False
+		if len(self.envXray.plot) == 2: _3D = True
 
 		# Initialise points (l:Dicom, r:Xray).
 		numberOfPoints = self.sbAlignment.widget['maxMarkers'].value()
 		l = np.zeros((numberOfPoints,3))
 		r = np.zeros((numberOfPoints,3))
 
-		# Check that each plot has enough points.
-		if (len(self.envXray.plot[0].pointsX) != numberOfPoints): 
-			logging.error("At least {} points required in X-ray for calculation.".format(numberOfPoints))
-			return
-
-		# 2D or 3D? (Default is 2D)
-		# Dependent on how many x-ray images are used.
-		_3D = False
-		if len(self.envXray.plot) == 2: _3D = True
-
-		# Get the x-ray (right) points.
+		# Get the x-ray (right) points. These are always in terms of the fixed synchrotron axes.
 		if _3D:
-			if (len(self.envXray.plot[1].pointsX) != numberOfPoints): 
-				logging.error("At least {} points required in X-ray for calculation.".format(numberOfPoints))
+			if (len(self.envXray.plot[1].pointsX) != numberOfPoints):
+				error = QtWidgets.QMessageBox()
+				error.setText("{} out of {} markers were specified. Please select the rest of the markers.".format(len(self.envXray.plot[1].pointsX),numberOfPoints))
+				error.exec()
 				return
 			p1 = self.envXray.plot[0].markers()
 			p2 = self.envXray.plot[1].markers()
 			# Now we need to go through the new routine for non-orthogonal imaging.
 			t1 = self.envXray.plot[0]._imagingAngle
 			t2 = self.envXray.plot[1]._imagingAngle
-
+			# Calculate the 3D points.
 			r = nonOrthogonalImaging.calculate(p1,p2,t1,t2)
 		else:
 			r[:,1] = self.envXray.plot[0].pointsX
@@ -570,32 +601,63 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		# Now we need to make sure they are in a cartesian Right-Hand XYZ format.
 		# I think they are at this point. The output of nonOrthogonalImaging.calculate() should do this.
 
-		# Now we need to take the dicom points.
 		if index == -1:
-			# Check that each plot has enough points.
-			if (len(self.envCt.plot[0].pointsX) != numberOfPoints) or (len(self.envCt.plot[1].pointsX) != numberOfPoints): 
-				logging.error("At least {} points required in CT for calculation.".format(numberOfPoints))
-				return
-			iso = np.array([0,0,0])
-			# Take the depth down the BEV as X.
-			l[:,0] = self.envCt.plot[1].pointsX
-			# Take the BEV lateral view as Y.
-			l[:,1] = self.envCt.plot[0].pointsX
-			# Take the vertical of the BEV as Z.
-			l[:,2] = (np.array(self.envCt.plot[0].pointsY)+np.array(self.envCt.plot[1].pointsY))/2
-
-		else:
-			# Check that each plot has enough points.
-			if (len(self.envRtplan[index].plot[0].pointsX) != numberOfPoints) or (len(self.envRtplan[index].plot[1].pointsX) != numberOfPoints): 
-				logging.error("At least {} points required in BEV{} for calculation.".format(numberOfPoints,treatmentIndex))
-				return
-			iso = self.patient.rtplan.beam[index].isocenter
-			# Take the depth down the BEV as X.
-			l[:,0] = self.envRtplan[index].plot[1].pointsX
-			# Take the BEV lateral view as Y.
-			l[:,1] = self.envRtplan[index].plot[0].pointsX
-			# Take the vertical of the BEV as Z.
-			l[:,2] = (np.array(self.envRtplan[index].plot[0].pointsY)+np.array(self.envRtplan[index].plot[1].pointsY))/2
+			# Align to x-ray isocenter.
+			isocenter = self.envXray.getIsocenter()
+			# Make the left and right points the same.
+			l = r
+		elif index == 0:
+			# Align to a CT.
+			# Get the CT isocenter.
+			isocentrer = self.envCt.getIsocenter()
+			# Get the relevant points.
+			if _3D:
+				if (len(self.envCt.plot[0].pointsX) != numberOfPoints):
+					error = QtWidgets.QErrorMessage()
+					error.showMessage("Please ensure {} markers are selected in the CT images.".format(numberOfPoints))
+					return
+				else:
+					# Take the depth down the BEV as SYNCH X.
+					l[:,0] = self.envCt.plot[1].pointsX
+					# Take the BEV lateral view as SYNCH Y.
+					l[:,1] = self.envCt.plot[0].pointsX
+					# Take the vertical of the BEV as Z.
+					l[:,2] = (np.array(self.envCt.plot[0].pointsY)+np.array(self.envCt.plot[1].pointsY))/2
+			else:
+				if (len(self.envCt.plot[0].pointsX) != numberOfPoints)|(len(self.envCt.plot[1].pointsX) != numberOfPoints):
+					error = QtWidgets.QErrorMessage()
+					error.showMessage("Please ensure {} markers are selected in the CT images.".format(numberOfPoints))
+					return
+				else:
+					# Take the BEV lateral view as SYNCH Y.
+					l[:,1] = self.envCt.plot[0].pointsX
+					# Take the vertical of the BEV as Z.
+					l[:,2] = self.envCt.plot[0].pointsY
+		elif index > 0:
+			# Align to a BEV.
+			isocenter = self.patient.rtplan.beam[index-1].isocenter
+			if _3D:
+				if (len(self.envRtplan[index-1].plot[0].pointsX) != numberOfPoints):
+					error = QtWidgets.QErrorMessage()
+					error.showMessage("Please ensure {} markers are selected in the BEV{} images.".format(numberOfPoints,index))
+					return
+				else:
+					# Take the depth down the BEV as SYNCH X.
+					l[:,0] = self.envRtplan[index-1].plot[1].pointsX
+					# Take the BEV lateral view as SYNCH Y.
+					l[:,1] = self.envRtplan[index-1].plot[0].pointsX
+					# Take the vertical of the BEV as Z.
+					l[:,2] = (np.array(self.envRtplan[index-1].plot[0].pointsY)+np.array(self.envRtplan[index-1].plot[1].pointsY))/2
+			else:
+				if (len(self.envRtplan[index-1].plot[0].pointsX) != numberOfPoints)|(len(self.envRtplan[index-1].plot[1].pointsX) != numberOfPoints):
+					error = QtWidgets.QErrorMessage()
+					error.showMessage("Please ensure {} markers are selected in the BEV{} images.".format(numberOfPoints,index))
+					return
+				else:
+					# Take the BEV lateral view as SYNCH Y.
+					l[:,1] = self.envRtplan[index-1].plot[0].pointsX
+					# Take the vertical of the BEV as Z.
+					l[:,2] = self.envRtplan[index-1].plot[0].pointsY
 
 		# Now we need to make sure they are also in a cartesian Right-Hand XYZ format.
 		# Unsure if this is the case.
@@ -604,8 +666,8 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		self.system.solver.setInputs(
 			left=l,
 			right=r,
-			patientIsoc=iso
-			)
+			patientIsoc=isocenter
+		)
 
 		# We have some points. Calculate the global result.
 		alignment6d = self.system.solver.solve()

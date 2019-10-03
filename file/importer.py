@@ -7,9 +7,10 @@ from tools.opencl import gpu as gpuInterface
 from tools.math import wcs2wcs
 from natsort import natsorted
 from PyQt5 import QtCore, QtWidgets
+import csv
 import logging
 
-np.set_printoptions(formatter={'float': lambda x: "{0:0.2f}".format(x)})
+np.set_printoptions(formatter={'float': lambda x: "{0:0.3f}".format(x)})
 
 '''
 The importer class takes DICOM/HDF5 images and turns them into a
@@ -57,6 +58,64 @@ class sync_dx:
 			logging.critical("Unable to load image set. Most likely does not contain the correct attributes.")
 			
 		return imageSet
+
+class csvPlan(QtCore.QObject):
+	newSequence = QtCore.pyqtSignal()
+
+	def __init__(self,file=None):
+		"""
+		Create a customised treatment plan that can be delivered on the beamline.
+		"""
+		super().__init__()
+		# Create an empty sequence.
+		self.sequence = []
+		if type(file) != type(None):
+			self.loadPlan(file)
+
+	def addSequence(self,position,speed,contour):
+		""" Add a new delivery sequence to the plan. """
+		kwargs = {}
+		kwargs['position'] = position
+		kwargs['speed'] = speed
+		kwargs['contour'] = contour
+		kwargs['treated'] = False
+		self.sequence.append(kwargs)
+
+	def insertSequence(self,index,position,speed,contour):
+		""" Insert a new delivery sequence in the plan. """
+		kwargs = {}
+		kwargs['position'] = position
+		kwargs['speed'] = speed
+		kwargs['contour'] = contour
+		kwargs['treated'] = False
+		self.sequence.insert(index,kwargs)
+
+	def removeSequence(self,index):
+		""" Remove a beam delivery sequence. """
+		del self.sequence[index]
+
+	def getSequence(self,index):
+		""" Get a specified delivery sequence. """
+		return self.sequence[index]
+
+	def numberOfBeams(self):
+		""" Return the number of beam delivery sequences present in the plan. """
+		return len(self.sequence)
+
+	def loadPlan(self,file):
+		""" Load a csv file containing the plan. """
+		import csv
+		with open(file) as csvfile:
+			reader = csv.DictReader(csvfile)
+			for row in reader:
+				row['Sequence'] = int(row['Sequence'])
+				row['Position'] = list(map(float,row['Position'][1:-1].split(',')))
+				row['Speed'] = float(row['Speed'])
+				self.sequence.append(row)
+
+	def reset(self):
+		""" Reset the plan. This removes all sequences. """
+		self.sequence = []
 
 
 def checkDicomModality(dataset,modality):
@@ -430,13 +489,10 @@ class rtplan:
 			x = np.argmax(testAxes[:,0])
 			y = np.argmax(testAxes[:,1])
 			z = np.argmax(testAxes[:,2])
-			print(self.beam[i].RCS)
-			print(x,y,z)
 			# Directions. Add +1 to axis identifiers since you can't have -0 but you can have -1...
 			xd = (x+1)*np.sign(self.beam[i].RCS[x,0])
 			yd = (y+1)*np.sign(self.beam[i].RCS[y,1])
 			zd = (z+1)*np.sign(self.beam[i].RCS[z,2])
-			print(xd,yd,zd)
 
 			# Extent.
 			# Axis tells us which extent modifer to take and in what order.
@@ -444,7 +500,6 @@ class rtplan:
 			ye = ct.baseExtent[y*2:y*2+2][::np.sign(yd).astype(int)]
 			ze = ct.baseExtent[z*2:z*2+2][::np.sign(zd).astype(int)]
 			self.beam[i].extent = np.hstack((xe,ye,ze)).reshape((6,))
-			print(self.beam[i].extent)
 
 			# Top left front.
 			self.beam[i].TLF = self.beam[i].extent[::2]
@@ -469,10 +524,8 @@ class rtplan:
 
 			# Flatten the 3d image to the two 2d images.
 			self.beam[i].image[0].pixelArray = np.sum(self.beam[i].pixelArray,axis=2)
-			# self.beam[i].image[0].extent = np.array([self.beam[i].extent[0],self.beam[i].extent[1],self.beam[i].extent[2],self.beam[i].extent[3]])
 			self.beam[i].image[0].extent = np.array([self.beam[i].extent[0],self.beam[i].extent[1],self.beam[i].extent[3],self.beam[i].extent[2]])
 			self.beam[i].image[1].pixelArray = np.sum(self.beam[i].pixelArray,axis=1)
-			# self.beam[i].image[1].extent = np.array([self.beam[i].extent[4],self.beam[i].extent[5],self.beam[i].extent[2],self.beam[i].extent[3]])
 			self.beam[i].image[1].extent = np.array([self.beam[i].extent[4],self.beam[i].extent[5],self.beam[i].extent[3],self.beam[i].extent[2]])
 
 	def getIsocenter(self,beamIndex):
