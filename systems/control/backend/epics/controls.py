@@ -131,8 +131,8 @@ class detector:
 		self.pv['CAM:Acquire'] = None
 		self.pv['CAM:DataType_RBV'] = None
 		self.pv['IMAGE:ArrayData'] = None
-		self.pv['IMAGE:ArraySize0_RBV'] = None
-		self.pv['IMAGE:ArraySize0_RBV'] = None
+		# self.pv['IMAGE:ArraySize0_RBV'] = None
+		# self.pv['IMAGE:ArraySize0_RBV'] = None
 		# Set to False to start.
 		self._connected = False
 		# Connect the PV's
@@ -143,8 +143,8 @@ class detector:
 		self.pv['CAM:Acquire'] = epics.PV(self._pv+':CAM:Acquire',connection_timeout=1)
 		self.pv['CAM:DataType_RBV'] = epics.PV(self._pv+':CAM:DataType_RBV',connection_timeout=1)
 		self.pv['IMAGE:ArrayData'] = epics.PV(self._pv+':IMAGE:ArrayData',connection_timeout=1)
-		self.pv['IMAGE:ArraySize0_RBV'] = epics.PV(self._pv+':IMAGE:ArraySize0_RBV',connection_timeout=1)
-		self.pv['IMAGE:ArraySize1_RBV'] = epics.PV(self._pv+':IMAGE:ArraySize1_RBV',connection_timeout=1)
+		# self.pv['IMAGE:ArraySize0_RBV'] = epics.PV(self._pv+':IMAGE:ArraySize0_RBV',connection_timeout=1)
+		# self.pv['IMAGE:ArraySize1_RBV'] = epics.PV(self._pv+':IMAGE:ArraySize1_RBV',connection_timeout=1)
 		# Connections.
 		state = []
 		for key in self.pv.keys():
@@ -174,10 +174,11 @@ class detector:
 			# 	image = np.array(im,dtype='uint16')
 			image = None
 			while image is None:
-				self.pv['CAM:Acquire'].put(1)
+				self.pv['CAM:Acquire'].put(1,wait=True)
 				image = self.pv['IMAGE:ArrayData'].get()
 
-			x = self.pv['IMAGE:ArraySize1_RBV'].get()
-			y = self.pv['IMAGE:ArraySize0_RBV'].get()
-			logging.info("Flipping RUBY images because it is retarded.")
-			return np.fliplr(np.flipud(image.reshape(x,y)))
+			# x = self.pv['IMAGE:ArraySize1_RBV'].get()
+			# y = self.pv['IMAGE:ArraySize0_RBV'].get()
+			# logging.info("Flipping RUBY images because it is retarded.")
+			# return np.fliplr(np.flipud(image.reshape(x,y)))
+			return image.reshape(616,1216)

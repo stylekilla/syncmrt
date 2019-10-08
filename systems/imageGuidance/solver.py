@@ -45,13 +45,6 @@ class solver:
 		if self._patientIsocenter is None:
 			self._patientIsocenter = self._leftCentroid
 
-		print('Left Points:\n',self._leftPoints)
-		print('Left Ctd:',self._leftCentroid)
-		print('Right Points:\n',self._rightPoints)
-		print('Right Ctd:',self._rightCentroid)
-		print('Patient Isoc:',self._patientIsocenter)
-		print('Machine Isoc:',self._machineIsocenter)
-
 		# Find the LEFT and RIGHT points in terms of their centroids (notation: LEFT Prime, RIGHT Prime)
 		_leftPrime = np.zeros([n,3])
 		_rightPrime = np.zeros([n,3])
@@ -82,14 +75,22 @@ class solver:
 		rotation = angles(R)
 
 		# Translation 1: Centroid to patient isocenter.
-		translation1 = -(self._leftCentroid - self._patientIsocenter)
+		translation1 = self._patientIsocenter - self._leftCentroid
+		# translation1 = -(self._leftCentroid - self._patientIsocenter)
 
-		# Translation 2: Centroid isoc to machine isocenter.
-		translation2 = self._machineIsocenter - self._rightCentroid
+		# Translation 2: Machine isocenter to ctd iso.
+		translation2 = self._rightCentroid - self._machineIsocenter
+		# translation2 = self._machineIsocenter - self._rightCentroid
 
 		# Final translation is a combination of all other translations.
-		translation = translation2 - translation1
-		self.transform[:3,3] = translation.transpose()
+		translation = -(translation1 + translation2)
+
+		logging.critical("self._patientIsocenter: {}".format(self._patientIsocenter))
+		logging.critical("translation1: {}".format(translation1))
+		logging.critical("translation2: {}".format(translation2))
+		logging.critical("translation: {}".format(translation))
+
+		self.transform[:3,3] = translation.transpose().ravel()
 
 		# Extract scale.
 		# if synchRotIsoc is not None:
@@ -98,15 +99,11 @@ class solver:
 		# 		self._rightPoints[i,:] = np.subtract(self._rightPoints[i,:],self._rightCentroid)
 
 		self.scale = scale(self._leftPoints,self._rightPoints,R)
-		self.solution = np.hstack((translation,rotation))
+		self.solution = np.hstack((translation.ravel(),rotation.ravel()))
+		logging.critical("Solution: {}".format(self.solution))
 
 		# Calculate the patient isoc in the synchrotron frame of reference for plotting.
 		self._syncPatientIsocenter = self._rightCentroid + translation1
-
-		print('Translation 1: patisoc - leftctd',translation1)
-		print('Translation 2: machiso - patisoc',translation2)
-		print('Overall transpose:',translation)
-		print('Synch Patient Iso:',self._syncPatientIsocenter)
 
 		return self.solution
 

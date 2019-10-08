@@ -109,9 +109,12 @@ class csvPlan(QtCore.QObject):
 			reader = csv.DictReader(csvfile)
 			for row in reader:
 				row['Sequence'] = int(row['Sequence'])
-				row['Position'] = list(map(float,row['Position'][1:-1].split(',')))
+				# row['Position'] = list(map(float,row['Position'][1:-1].split(',')))
+				row['Angle'] = float(row['Angle'])
 				row['Speed'] = float(row['Speed'])
 				self.sequence.append(row)
+
+		self.newSequence.emit()
 
 	def reset(self):
 		""" Reset the plan. This removes all sequences. """

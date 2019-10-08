@@ -1,6 +1,6 @@
 import epics
 from systems.control.backend.epics import controls
-from PyQt5 import QtCore
+from PyQt5 import QtCore, QtWidgets
 import logging
 import numpy as np
 from datetime import datetime as dt
@@ -26,8 +26,8 @@ class detector(QtCore.QObject):
 		# Controllers.
 		self._controller = controls.detector(pv)
 		# Setup.
-		logging.critical("Turning off detector setup for development.")
-		# self.setup()
+		# logging.critical("Turning off detector setup for development.")
+		self.setup()
 
 	def reconnect(self):
 		if self._controller is not None:
@@ -36,8 +36,8 @@ class detector(QtCore.QObject):
 	def setup(self):
 		if self._controller._connected:
 			epics.caput(self.pv+':CAM:ImageMode','Single')
-			epics.caput(self.pv+':CAM:AcquireTime',.055)
-			epics.caput(self.pv+':CAM:AcquirePeriod',.055)
+			epics.caput(self.pv+':CAM:AcquireTime',.1)
+			epics.caput(self.pv+':CAM:AcquirePeriod',0)
 			epics.caput(self.pv+':TIFF:AutoSave','No')
 		# Region of interest.
 		# self._roix = PV(':CAM:SizeX_RBV')
@@ -68,7 +68,8 @@ class detector(QtCore.QObject):
 
 		else:
 			# Return a tuple of the image and metadata.
-			logging.critical("Turning images upside down in controller cos ruby sucks.")
+			logging.critical("Waiting for x-ray tube.")
+			QtWidgets.QMessageBox.warning(None,"Image Acquisition","Press OK to start image acquisition.")
 			return (self._controller.readImage(), metadata)
 
 	def acquireContinous(self,array):

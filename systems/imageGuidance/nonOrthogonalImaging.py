@@ -24,41 +24,42 @@ def calculate(p1,p2,t1,t2):
 		p
 			The calculated location of the object with respect to the fixed synchrotron XYZ axes.
 	"""
-	p1 = np.array(p1)
-	p2 = np.array(p2)
+	if not isinstance(p1,float):
+		# If a single number is passed then turn it into a numpy array.
+		p1 = np.array([p1])
+		p2 = np.array([p2])
+	else:
+		p1 = np.array(p1)
+		p2 = np.array(p2)
 
 	result = np.zeros((len(p1),3))
 
-	# Expect at least 3 points.
-	if p1.ndim != 2:
-		logging.critical("Cannot interpret input of array with ndim {}.".format(p1.ndim))
-		return
-	else:
-		for i in range(len(p1)):
-			# Convert angles to radians, calculate them from +/- 45 deg virtual axes.
-			alpha = np.deg2rad(45-t2)
-			beta = np.deg2rad(t1+45)
-			# Unpack the two points.
-			a, z2 = p2[i]
-			b, z1 = p1[i]
-			# Do some safe conversions if zeros are encountered.
-			if a == 0: a = 1e-9
-			if b == 0: b = 1e-9
-			# Calculate the separation of each imaging axis from the true X axis.
-			phi = np.pi/2 - alpha - beta
-			psi_a = np.arctan((a*np.sin(phi))/(a*np.cos(phi)+b))
-			psi_b = np.pi/2-alpha-beta-psi_a
-			# Calculate the radius of the point p from the origin.
-			r1 = a/np.sin(psi_a)
-			r2 = b/np.sin(psi_b)
-			r = (r1+r2)/2
-			# Calculate the point with respect to the virtual X and Y axes (rotated +45deg).
-			xv = r*np.sin(psi_b+beta)
-			yv = r*np.sin(psi_a+alpha)
-			# Calculate the point with respect to the true synchrotron XYZ axes.
-			x = -(np.sqrt(2)/2)*xv - (np.sqrt(2)/2)*yv
-			y = -(np.sqrt(2)/2)*xv + (np.sqrt(2)/2)*yv
-			z = (z1+z2)/2
-			# Add the new points to the result.
-			result[i,:] = [x,y,z]
+	for i in range(len(p1)):
+		# Convert angles to radians, calculate them from +/- 45 deg virtual axes.
+		alpha = np.deg2rad(45-t2)
+		beta = np.deg2rad(t1+45)
+		# Unpack the two points.
+		a, z2 = p2[i]
+		b, z1 = p1[i]
+		# Do some safe conversions if zeros are encountered.
+		if a == 0: a = 1e-9
+		if b == 0: b = 1e-9
+		# Calculate the separation of each imaging axis from the true X axis.
+		phi = np.pi/2 - alpha - beta
+		psi_a = np.arctan((a*np.sin(phi))/(a*np.cos(phi)+b))
+		psi_b = np.pi/2-alpha-beta-psi_a
+		# Calculate the radius of the point p from the origin.
+		r1 = a/np.sin(psi_a)
+		r2 = b/np.sin(psi_b)
+		r = (r1+r2)/2
+		# Calculate the point with respect to the virtual X and Y axes (rotated +45deg).
+		xv = r*np.sin(psi_a+alpha)
+		yv = r*np.sin(psi_b+beta)
+		# Calculate the point with respect to the true synchrotron XYZ axes.
+		x = (np.sqrt(2)/2)*xv + (np.sqrt(2)/2)*yv
+		y = -(np.sqrt(2)/2)*xv + (np.sqrt(2)/2)*yv
+		z = (z1+z2)/2
+		# Add the new points to the result.
+		result[i,:] = [x,y,z]
+
 	return result

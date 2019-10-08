@@ -190,8 +190,17 @@ class QPlotEnvironment(QtWidgets.QSplitter):
 	def toggleImageSettings(self):
 		self.toggleSettings.emit()
 
+	def getIsocenter(self):
+		""" Get the isocenter value from each plot. """
+		p = []
+		t = []
+		for i in range(len(self.plot)):
+			p.append(self.plot[i].patientIsocenter)
+			t.append(self.plot[i]._imagingAngle)
+		return p,t
+
 	def updateIsocenter(self,x,y,z):
-		""" Update the isocenter in each plot. """
+		""" Update the isocenter in each plot. xyz are in the frame of reference of the two images. """
 		self.isocenter = [x,y,z]
 		for i in range(len(self.plot)):
 			if i == 0: self.plot[i].updatePatientIsocenter(x,y)

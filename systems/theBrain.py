@@ -47,7 +47,6 @@ class Brain(QtCore.QObject):
 
 	def calculateAlignment(self):
 		""" This is where the calculation magic happens. """
-
 		# Update variables.
 		# self.solver.setVariable()
 		# Solve for alignment solution.
@@ -55,7 +54,7 @@ class Brain(QtCore.QObject):
 		# Decompose.
 		self.patientSupport.calculateMotion(self.solver.transform,self.solver.solution)
 		# Apply solution.
-		# self.patientSupport.shiftPosition(stageSolution)
+		self.patientSupport.applyMotion()
 
 	def applyAlignment(self):
 		# Tell the patientSupport to apply the calculated/prepared motion.
@@ -72,191 +71,100 @@ class Brain(QtCore.QObject):
 		self._routine = ImagingRoutine()
 		# Theta and trans are relative values.
 		# How many xrays to acquire?
-		self._routine.imageCounter = 0
-		self._routine.imageCounterLimit = len(theta)
-		logging.info('Acquiring {} images at {} between {}.'.format(len(theta),theta,trans))
+		self._routine.counter = 0
+		self._routine.counterLimit = len(theta)
+		logging.info('Acquiring {} images at {}.'.format(len(theta),theta))
 		# Get delta z.
-		self._routine.tz = trans
+		# self._routine.tz = trans
+		self._routine.tz = [0,0]
 		self._routine.theta = theta
-		self._routine.roiZ = np.absolute(trans[1]-trans[0])
-		logging.info("Calculated z range as {}".format(self._routine.roiZ))
-		self._routine.beamHeight = 10.00
-		logging.critical("Hard coding a beam height for now. This could be read off pappas and hutch mode.")
+		self._routine.theta_relative = np.hstack([np.array([theta[0]]),np.diff(theta)])
+		# self._routine.dz = np.absolute(trans[1]-trans[0])
+		# logging.info("Calculated delta z as {}".format(self._routine.dz))
 		# Get the current patient position.
 		self._routine.preImagingPosition = self.patientSupport.position()
 		logging.info("Pre-imaging position at: {}".format(self._routine.preImagingPosition))
 		# Signals and slots: Connections.
-		# self.patientSupport.finishedMove.connect(partial(self._acquireXray,roiZ))
+		# self.patientSupport.finishedMove.connect(partial(self._acquireXray,dz))
 		# self.detector.imageAcquired.connect()
+		self._startScan()
+
+		# 	# Calculate a relative change for the next imaging angle.
+		# 	try: 
+		# 		theta[i+1] = -(theta[i]-theta[i+1])
+		# 	except:
+		# 		pass
+
+	def _startScan(self):
 		logging.info("Starting scan.")
 		# Setup vars.
 		tx = ty = rx = ry = 0
 		# Move to first position.
-		self.patientSupport.finishedMove.connect(self._startImage)
-		# Added minus sign in to first shift to lower the object into the imaging frame (to get the top position).
-		self.patientSupport.shiftPosition([tx,ty,-self._routine.tz[1],rx,ry,self._routine.theta[0]])
+		self.patientSupport.finishedMove.connect(partial(self._continueScan,'imaging'))
+		self.imager.imageAcquired.connect(partial(self._continueScan,'moving'))
+		logging.info("Adding -32.7deg offset.")
+		self.patientSupport.shiftPosition([tx,ty,self._routine.tz[0],rx,ry,self._routine.theta_relative[0]-32.7])
 
-	def _startImage(self):
-		# Assume step for now.
-		mode = 'step'
-		if mode == 'step':
-			# Note the first imaging location.
-			self._routine.firstStepPosition = self.patientSupport.position()
-			# Signals and slots.
-			self.imager.imageAcquired.connect(partial(self._step,'imageAcquired'))
-			self.patientSupport.finishedMove.disconnect()
-			self.patientSupport.finishedMove.connect(partial(self._step,'finishedMove'))
-			# Calculate routine vars.
-			"""
-			Redo this so it repeats until current Z pos is less than/greater than the final Z position.
-			Then no counter is needed.
-			"""
-			self._routine.stepCounterLimit = round(self._routine.roiZ/self._routine.beamHeight)+1
-			self._routine.stepSize = self._routine.beamHeight
-			# Up the step counter by 1.
-			self._routine.stepCounter += 1
-			# We are in the first position. Take an image.
-			self.imager.acquireStep(self._routine.beamHeight)
-
-	def _step(self,status):
-		logging.info("In image step method {}/{} with status {}.".format(int(self._routine.stepCounter),int(self._routine.stepCounterLimit),status))
-		# Get the last known image position.
-		self._routine.lastStepPosition = self.patientSupport.position()
-		logging.info("Last known imaging position: {}".format(self._routine.lastStepPosition))
-		if self._routine.stepCounter < self._routine.stepCounterLimit:
-			if status == 'finishedMove':
-				self._routine.stepCounter += 1
-				# Acquire an image.
-				self.imager.acquireStep(self._routine.beamHeight)
-			elif status == 'imageAcquired':
-				# Image was acquired. Move the patient up one step.
-				self.patientSupport.shiftPosition([0,0,self._routine.stepSize,0,0,0])
-		else:
-			# Set up the sigansl to move to the continue scan method.
-			self.imager.imageAcquired.disconnect()
-			self.imager.imageAcquired.connect(self._continueScan)
-			self.patientSupport.finishedMove.disconnect()
-			# Get the final image position.
-			# self._routine.lastStepPosition = self.patientSupport.position()
-			# Metadata.
-			tx,ty,tz,rx,ry,rz = self._routine.preImagingPosition
+	def _continueScan(self,operation):
+		logging.info("In continue scan method conducting: {}.".format(operation))
+		# So far this will acquire 1 image per angle. It will not do step and shoot or scanning yet.
+		if operation == 'imaging':
+			# Finished a move, acquire an x-ray.
+			self._routine.counter += 1
+			tx,ty,tz,rx,ry,rz = self.patientSupport.position()
 			metadata = {
-				'Image Angle': self._routine.theta[self._routine.imageCounter-1],
+				'Image Angle': self._routine.theta[self._routine.counter-1],
 				'Patient Support Position': (tx,ty,tz),
 				'Patient Support Angle': (rx,ry,rz),
-				'Image Index': self._routine.imageCounter,
+				'Image Index': self._routine.counter,
 			}
-			# Update the imaging counter.
-			self._routine.imageCounter += 1
-			# Reset the routine steps.
-			self._routine.stepCounter = 0
-			# Stitch the image.
-			# self.imager.stitch(self._routine.imageCounter,metadata,tz,self._routine.tz)
-			self.imager.stitch(
-				self._routine.imageCounter,
-				metadata,
-				self._routine.preImagingPosition[2],
-				self._routine.lastStepPosition[2],
-				self._routine.firstStepPosition[2]
-				)
+			self.imager.acquire(self._routine.counter,metadata)
+		elif operation == 'moving':
+			if self._routine.counter < self._routine.counterLimit:
+				# Defaults for now.
+				tx = ty = rx = ry = 0
+				# Finished a move, acquire an x-ray.
+				self.patientSupport.shiftPosition([tx,ty,self._routine.tz[0],rx,ry,self._routine.theta_relative[self._routine.counter]])
+			else:
+				self._endScan()
 
+	def _step(self):
+		# Take over the _continueScan operation.
+		self.patientSupport.finishedMove.disconnect()
+		self.patientSupport.finishedMove.connect(self._step)
+		# Move the patient up one step.
+		self.patientSupport.shiftPosition([0,0,_dstep,0,0,0])
+		# Acquire part of an image.
+		# self.
 
 	def _scan(self):
 		pass
 
-	def _continueScan(self):
-		# So far this will acquire 1 image per angle. It will not do step and shoot or scanning yet.
-		# Set position to pos before last image.
-		# self.patientSupport.setPosition(self._routine.preImagingStepPosition)
-		logging.info("Sending LAPS to position {}".format(self._routine.preImagingPosition))
-		self.patientSupport.setPosition(self._routine.preImagingPosition)
-		logging.info("In continue scan method {}/{}, continuing: {}.".format(self._routine.imageCounter,self._routine.imageCounterLimit,(self._routine.imageCounter < self._routine.imageCounterLimit)))
-		if self._routine.imageCounter < self._routine.imageCounterLimit:
-			# Defaults for now.
-			tx = ty = rx = ry = 0
-			# Signals for moving.
-			self.imager.imageAcquired.disconnect()
-			self.patientSupport.finishedMove.connect(self._startImage)
-			# Move to the next imaging position
-			_pos = np.array(self._routine.preImagingPosition) + np.array([tx,ty,self._routine.tz[0],rx,ry,self._routine.theta[self._routine.imageCounter]])
-			# self.patientSupport.shiftPosition(_pos)
-			logging.info("Sending LAPS to position {} for next scan".format(_pos))
-			self.patientSupport.setPosition(_pos)
-		else:
-			self._endScan()
-
 	def _endScan(self):
-		logging.info("Ending the scan.")
 		# Disconnect signals.
-		try:
-			self.imager.imageAcquired.disconnect()
-			self.patientSupport.finishedMove.disconnect()
-		except:
-			pass
+		self.patientSupport.finishedMove.disconnect()
+		self.imager.imageAcquired.disconnect()
 		# Finalise image set.
 		self.imager.addImagesToDataset()
 		# Put patient back where they were.
 		self.patientSupport.finishedMove.connect(self._finishedScan)
-		# logging.info("Sending LAPS to position {}".format(self._routine.preImagingPosition))
-		# self.patientSupport.setPosition(self._routine.preImagingPosition)
+		logging.debug("Setting patient position to initial pre-imaging position.")
+		self.patientSupport.setPosition(self._routine.preImagingPosition)
 
 	def _finishedScan(self):
-		logging.info("Emitting finished signal.")
+		logging.debug("Finished scan.")
 		# Disconnect signals.
 		self.patientSupport.finishedMove.disconnect()
 		# Send a signal saying how many images were acquired.
-		self.imagesAcquired.emit(self._routine.imageCounterLimit)
+		self.imagesAcquired.emit(self._routine.counterLimit)
 		# Reset routine.
 		self._routine = None
 
-	def _acquireXray(self,deltaZ,mode='scan'):
-		# logging.info("In continue scan method conducting: {}.".format(operation))
-		# # So far this will acquire 1 image per angle. It will not do step and shoot or scanning yet.
-		# if operation == 'imaging':
-		# 	# Finished a move, acquire an x-ray.
-		# 	self._routine.imageCounter += 1
-		# 	tx,ty,tz,rx,ry,rz = self.patientSupport.position()
-		# 	metadata = {
-		# 		'Image Angle': self._routine.theta[self._routine.imageCounter-1],
-		# 		'Patient Support Position': (tx,ty,tz),
-		# 		'Patient Support Angle': (rx,ry,rz),
-		# 		'Image Index': self._routine.imageCounter,
-		# 	}
-		# 	self.imager.acquire(self._routine.imageCounter,metadata)
-		# elif operation == 'moving':
-		# 	if self._routine.imageCounter < self._routine.imageCounterLimit:
-		# 		# Defaults for now.
-		# 		tx = ty = rx = ry = 0
-		# 		# Finished a move, acquire an x-ray.
-		# 		_pos = np.array(self._routine.preImagingPosition) + np.array([tx,ty,self._routine.tz[0],rx,ry,self._routine.theta[self._routine.imageCounter]])
-		# 		self.patientSupport.shiftPosition(_pos)
-		# 	else:
-		# 		self._endScan()
-		pass
-
 class ImagingRoutine:
 	theta = []
+	theta_relative = []
 	tz = [0,0]
-	roiZ = 0
+	dz = 0
 	preImagingPosition = None
-	beamHeight = 0
-	"""
-	Image routine.
-	"""
-	imageCounter = 0
-	imageCounterLimit = 0
-	"""
-	Step routine.
-	"""
-	# preImagingStepPosition = None
-	firstStepPosition = None
-	lastStepPosition = None
-	stepCounter = 0
-	stepCounterLimit = 0
-	stepSize = 0
-	"""
-	Scan routine.
-	"""
-	# stepCounter = 0
-	# stepCounterLimit = 0
-	# stepSize = 0
+	counter = 0
+	counterLimit = 0

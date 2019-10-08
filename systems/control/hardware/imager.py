@@ -46,6 +46,7 @@ class Imager(QtCore.QObject):
 		super().__init__()
 		# Information
 		self.detector = None
+		self.name = None
 		# File.
 		self.file = None
 		self.config = config
@@ -80,6 +81,7 @@ class Imager(QtCore.QObject):
 		logging.info("Loading the {} detector.".format(name))
 		if name in self.deviceList:
 			self.detector = detector(name,self.detectors[name])
+			self.name = name
 			self.detector.imageIsocenter = self.config.isocenter
 			self.detector.pixelSize = self.config.pixelSize
 
@@ -115,11 +117,12 @@ class Imager(QtCore.QObject):
 		# Get the image and update the metadata.
 		_data = self.detector.acquire(continuous)
 		metadata.update(_data[1])
+		image = _data[0]
 		# Calculate the extent.
-		l = self.detector.imageIsocenter[0]*self.detector.pixelSize[0]
-		r = l - _data[0].shape[0]*self.detector.pixelSize[0]
-		t = self.detector.imageIsocenter[1]*self.detector.pixelSize[1]
-		b = t - _data[0].shape[1]*self.detector.pixelSize[1]
+		l = self.detector.imageIsocenter[1]*self.detector.pixelSize[1]
+		r = l - image.shape[1]*self.detector.pixelSize[1]
+		t = self.detector.imageIsocenter[0]*self.detector.pixelSize[0]
+		b = t - image.shape[0]*self.detector.pixelSize[0]
 		extent = (l,r,b,t)
 		# Add the transformation matrix into the images frame of reference.
 		# Imagers FOR is a RH-CS where +x propagates down the beamline.

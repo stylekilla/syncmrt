@@ -98,8 +98,8 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 
 		# Create alignment table.
 		self.property.addSection('Alignment')
-		self.property.addVariable('Alignment',['Rotation','x','y','z'],[0,0,0])
-		self.property.addVariable('Alignment',['Translation','x','y','z'],[0,0,0])
+		self.property.addVariable('Alignment',['Rotation','X','Y','Z'],[0,0,0])
+		self.property.addVariable('Alignment',['Translation','X','Y','Z'],[0,0,0])
 		self.property.addVariable('Alignment','Scale',0)
 		self.propertyTree.expandAll()
 
@@ -150,7 +150,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 
 	def testing(self):
 		pass
-		self.openXray('../scratch/test.hdf5')
+		# self.openXray('../scratch/test.hdf5')
 		# dataset = []
 		# modality = 'CT'
 		# # for root, subdir, fp in os.walk('../scratch/head-phant/'):
@@ -550,10 +550,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		logging.info('Calulating patient alignment with condition '+str(index))
 
 		if index == -1:
-			# Align to x-ray isocenter.
-			error = QtWidgets.QMessageBox()
-			error.setText("Made it this far!")
-			error.exec()
+			pass
 		elif index == 0:
 			# Align to a CT.
 			if (self._isXrayOpen|self._isCTOpen) is False:
@@ -582,34 +579,51 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 
 		# Get the x-ray (right) points. These are always in terms of the fixed synchrotron axes.
 		if _3D:
-			if (len(self.envXray.plot[1].pointsX) != numberOfPoints):
+			if index == -1:
+				# Align to x-ray isocenter.
+				iso,theta = self.envXray.getIsocenter()
+				# Make the isocenter in the frame of reference of the synchrotron axes.
+				p1, p2 = iso
+				t1, t2 = theta
+				logging.info("Returned isocenter for x-ray as: p1({}), p2({}), theta({})".format(p1,p2,theta))
+				# Calculate the 3D points.
+				isocenter = nonOrthogonalImaging.calculate(p1,p2,t1,t2)
+				logging.info("Non orthogonal iso returned: {}".format(isocenter))
+
+			elif (len(self.envXray.plot[1].pointsX) != numberOfPoints):
 				error = QtWidgets.QMessageBox()
 				error.setText("{} out of {} markers were specified. Please select the rest of the markers.".format(len(self.envXray.plot[1].pointsX),numberOfPoints))
 				error.exec()
 				return
-			p1 = self.envXray.plot[0].markers()
-			p2 = self.envXray.plot[1].markers()
-			# Now we need to go through the new routine for non-orthogonal imaging.
-			t1 = self.envXray.plot[0]._imagingAngle
-			t2 = self.envXray.plot[1]._imagingAngle
-			# Calculate the 3D points.
-			r = nonOrthogonalImaging.calculate(p1,p2,t1,t2)
+			else:
+				p1 = self.envXray.plot[0].markers()
+				p2 = self.envXray.plot[1].markers()
+				# Now we need to go through the new routine for non-orthogonal imaging.
+				t1 = self.envXray.plot[0]._imagingAngle
+				t2 = self.envXray.plot[1]._imagingAngle
+				# Calculate the 3D points.
+				r = nonOrthogonalImaging.calculate(p1,p2,t1,t2)
 		else:
-			r[:,1] = self.envXray.plot[0].pointsX
-			r[:,2] = self.envXray.plot[0].pointsY
+			if index == -1:
+				# Align to x-ray isocenter.
+				iso,theta = self.envXray.getIsocenter()
+				p1 = iso
+				p2 = [0,iso[1]]
+				t1 = theta
+				t2 = theta+90
+				# Calculate the 3D points.
+				isocenter = nonOrthogonalImaging.calculate(p1,p2,t1,t2)
+			else:
+				r[:,1] = self.envXray.plot[0].pointsX
+				r[:,2] = self.envXray.plot[0].pointsY
 
 		# Now we need to make sure they are in a cartesian Right-Hand XYZ format.
 		# I think they are at this point. The output of nonOrthogonalImaging.calculate() should do this.
 
-		if index == -1:
-			# Align to x-ray isocenter.
-			isocenter = self.envXray.getIsocenter()
-			# Make the left and right points the same.
-			l = r
-		elif index == 0:
+		if index == 0:
 			# Align to a CT.
-			# Get the CT isocenter.
-			isocentrer = self.envCt.getIsocenter()
+			# Get the CT DICOM? isocenter.
+			isocenter = self.envCt.getIsocenter()
 			# Get the relevant points.
 			if _3D:
 				if (len(self.envCt.plot[0].pointsX) != numberOfPoints):
@@ -675,11 +689,14 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		# synchrotron6d = [-alignment6d[2],alignment6d[1],-alignment6d[0],-alignment6d[5],alignment6d[4],-alignment6d[3]]
 
 		# If table already exists, update information...
-		self.property.updateVariable('Alignment',['Rotation','x','y','z'],[float(alignment6d[3]),float(alignment6d[4]),float(alignment6d[5])])
-		self.property.updateVariable('Alignment',['Translation','x','y','z'],[float(alignment6d[0]),float(alignment6d[1]),float(alignment6d[2])])
+		self.property.updateVariable('Alignment',['Rotation','X','Y','Z'],[float(alignment6d[3]),float(alignment6d[4]),float(alignment6d[5])])
+		self.property.updateVariable('Alignment',['Translation','X','Y','Z'],[float(alignment6d[0]),float(alignment6d[1]),float(alignment6d[2])])
 		self.property.updateVariable('Alignment','Scale',float(self.system.solver.scale))
 
-	def patientApplyAlignment(self,index=-1):
+		# Calculate alignment for stage.
+		self.system.calculateAlignment()
+
+	def patientApplyAlignment(self,index):
 		"""Calculate alignment first."""
 		self.patientCalculateAlignment(index=index)
 
