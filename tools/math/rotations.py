@@ -41,7 +41,7 @@ def fixedRotation(p,cor,rx,ry,rz):
 	y = np.deg2rad(ry)
 	z = np.deg2rad(rz)
 	rx = np.array([[1,0,0],[0,np.cos(x),-np.sin(x)],[0,np.sin(x),np.cos(x)]])
-	ry = np.array([[np.cos(y),0,-np.sin(y)],[0,1,0],[np.sin(y),0,np.cos(y)]])
+	ry = np.array([[np.cos(y),0,np.sin(y)],[0,1,0],[-np.sin(y),0,np.cos(y)]])
 	rz = np.array([[np.cos(z),-np.sin(z),0],[np.sin(z),np.cos(z),0],[0,0,1]])
 	r = rz @ ry @ rx
 
