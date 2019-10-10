@@ -39,8 +39,12 @@ class patientSupport(QtCore.QObject):
 		self.motors = []
 		self.deviceList = set()
 		for row in r:
-			self.motors.append(row)
-			self.deviceList.add(row['PatientSupport'])
+			# Check for commented out lines first.
+			if row['PatientSupport'].startswith('--'): 
+				continue
+			else:
+				self.motors.append(row)
+				self.deviceList.add(row['PatientSupport'])
 
 	def load(self,name):
 		logging.info("Loading patient support: {}.".format(name))

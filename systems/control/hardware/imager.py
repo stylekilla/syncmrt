@@ -2,6 +2,7 @@ from systems.control.hardware.detector import detector
 from file import hdf5
 from PyQt5 import QtCore
 import numpy as np
+import csv, os
 import logging
 
 class Imager(QtCore.QObject):
@@ -58,7 +59,6 @@ class Imager(QtCore.QObject):
 		self.sid = self.config.sid
 		self.sad = self.config.sad
 		# Get list of motors.
-		import csv, os
 		# Open CSV file
 		f = open(database)
 		r = csv.DictReader(f)
@@ -66,8 +66,12 @@ class Imager(QtCore.QObject):
 		self.detectors = {}
 		self.deviceList = set()
 		for row in r:
-			self.detectors[row['Detector']] = row['PV Root']
-			self.deviceList.add(row['Detector'])
+			# Check for commented out lines first.
+			if row['Detector'].startswith('--'): 
+				continue
+			else:
+				self.detectors[row['Detector']] = row['PV Root']
+				self.deviceList.add(row['Detector'])
 
 	def load(self,name):
 		"""
