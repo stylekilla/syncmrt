@@ -1,4 +1,5 @@
 import numpy as np
+from PyQt5 import QtWidgets
 import logging
 
 def calculate(p1,p2,t1,t2):
@@ -15,9 +16,9 @@ def calculate(p1,p2,t1,t2):
 		p2 : [float,float]
 			The position of the object (?,z) in imaging frame 2.
 		t1 : float
-			The angular separation (in degrees) of the first imaging angle and Xv.
+			The angle of image plane 1 relative to the patient.
 		t2 : float
-			The angular separation (in degrees) of the second imaging angle and Yv.
+			The angle of image plane 2 relative to the patient.
 
 		Returns
 		-------
@@ -34,13 +35,17 @@ def calculate(p1,p2,t1,t2):
 
 	result = np.zeros((len(p1),3))
 
+	if t1 > t2:
+		QtWidgets.QMessageBox.warning("The calculation will fail since the first image angle is greater than the second. The first image angle must always be less than the second, i.e. t1 = -45 and t2 = +45.")
+		return
+
 	for i in range(len(p1)):
 		# Convert angles to radians, calculate them from +/- 45 deg virtual axes.
-		alpha = np.deg2rad(45-t2)
-		beta = np.deg2rad(t1+45)
+		alpha = np.deg2rad(t1+45)
+		beta = np.deg2rad(45-t2)
 		# Unpack the two points.
-		a, z2 = p2[i]
-		b, z1 = p1[i]
+		a, z1 = p1[i]
+		b, z2 = p2[i]
 		# Do some safe conversions if zeros are encountered.
 		if a == 0: a = 1e-9
 		if b == 0: b = 1e-9
@@ -53,8 +58,8 @@ def calculate(p1,p2,t1,t2):
 		r2 = b/np.sin(psi_b)
 		r = (r1+r2)/2
 		# Calculate the point with respect to the virtual X and Y axes (rotated +45deg).
-		xv = r*np.sin(psi_a+alpha)
-		yv = r*np.sin(psi_b+beta)
+		xv = r*np.cos(psi_a+alpha)
+		yv = r*np.cos(psi_b+beta)
 		# Calculate the point with respect to the true synchrotron XYZ axes.
 		x = (np.sqrt(2)/2)*xv + (np.sqrt(2)/2)*yv
 		y = -(np.sqrt(2)/2)*xv + (np.sqrt(2)/2)*yv

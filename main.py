@@ -584,8 +584,9 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 				iso,theta = self.envXray.getIsocenter()
 				# Make the isocenter in the frame of reference of the synchrotron axes.
 				p1, p2 = iso
-				t1, t2 = theta
-				logging.info("Returned isocenter for x-ray as: p1({}), p2({}), theta({})".format(p1,p2,theta))
+				# Theta needs to be inverted to account for the fact that we are rotating the patient with a fixed view, not rotating a view around a patient.
+				t1, t2 = -np.-array(theta)
+				logging.info(-"Returned isocenter for x-ray as: p1({}), p2({}), theta({})".format(p1,p2,theta))
 				# Calculate the 3D points.
 				isocenter = nonOrthogonalImaging.calculate(p1,p2,t1,t2)
 				logging.info("Non orthogonal iso returned: {}".format(isocenter))
@@ -599,8 +600,8 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 				p1 = self.envXray.plot[0].markers()
 				p2 = self.envXray.plot[1].markers()
 				# Now we need to go through the new routine for non-orthogonal imaging.
-				t1 = self.envXray.plot[0]._imagingAngle
-				t2 = self.envXray.plot[1]._imagingAngle
+				t1 = -self.envXray.plot[0]._imagingAngle
+				t2 = -self.envXray.plot[1]._imagingAngle
 				# Calculate the 3D points.
 				r = nonOrthogonalImaging.calculate(p1,p2,t1,t2)
 		else:
@@ -610,7 +611,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 				p1 = iso
 				p2 = [0,iso[1]]
 				t1 = theta
-				t2 = theta+90
+				t2 = -theta+90
 				# Calculate the 3D points.
 				isocenter = nonOrthogonalImaging.calculate(p1,p2,t1,t2)
 			else:

@@ -123,8 +123,12 @@ class Imager(QtCore.QObject):
 		metadata.update(_data[1])
 		image = _data[0]
 		# Calculate the extent.
-		l = self.detector.imageIsocenter[1]*self.detector.pixelSize[1]
-		r = l - image.shape[1]*self.detector.pixelSize[1]
+		if index == 1:
+			l = self.detector.imageIsocenter[1]*self.detector.pixelSize[1]
+			r = l - image.shape[1]*self.detector.pixelSize[1]
+		elif index == 2:
+			l = -self.detector.imageIsocenter[1]*self.detector.pixelSize[1]
+			r = l + image.shape[1]*self.detector.pixelSize[1]
 		t = self.detector.imageIsocenter[0]*self.detector.pixelSize[0]
 		b = t - image.shape[0]*self.detector.pixelSize[0]
 		extent = (l,r,b,t)
