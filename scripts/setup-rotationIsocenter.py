@@ -74,6 +74,8 @@ epics.caput('SR08ID01DET01:CAM:Acquire.VAL',1,wait=True)
 
 # Distance to travel in mm.
 _distance = 10
+# Ball bearing sizes.
+_bb = 2.0
 
 closeShutter()
 # Get darkfield.
@@ -105,14 +107,14 @@ _width = 30
 logging.info("Taking line profiles of images.")
 line = []
 for i in range(len(image)):
+	image[i] = gaussian_filter(image[i],sigma=10)
 	temp = image[i][_line,:].astype(float)
 	line.append(np.absolute(temp-temp.max()))
-
 # Find the peaks.
 peaks = []
 for i in range(len(line)):
-	_peaks, _ = find_peaks(line[i],width=_width)
-	peaks.append(_peaks)
+	peak = np.argmax(line[i])
+	peaks.append(peak)
 
 fig,ax = plt.subplots(2,2)
 ax = ax.flatten()
@@ -122,7 +124,7 @@ ax[2].imshow(image[0],cmap='gray')
 ax[3].imshow(image[1],cmap='gray')
 plt.show()
 
-pixelSize = _distance/np.absolute(peaks[1]-peaks[0])[0]
+pixelSize = _distance/np.absolute(peaks[1]-peaks[0])
 logging.critical("Pixel Size: {} mm".format(pixelSize))
 
 
@@ -152,16 +154,14 @@ image.append((getImage(save=True,fname='bb-90d')-dark)/flood)
 # Take line profile of each.
 line = []
 for i in range(len(image)):
+	image[i] = gaussian_filter(image[i],sigma=10)
 	temp = image[i][_line,:].astype(float)
 	line.append(np.absolute(temp-temp.max()))
-	# line.append(np.absolute(np.invert(temp)))
-
 # Find the peaks.
 peaks = []
 for i in range(len(line)):
-	_peaks, _ = find_peaks(line[i],width=_width)
-	peaks.append(_peaks)
-
+	peak = np.argmax(line[i])
+	peaks.append(peak)
 # Calculate relative movements.
 d_h1 = (peaks[1]-peaks[3])*pixelSize/2
 d_h2 = (peaks[0]-peaks[2])*pixelSize/2
@@ -201,15 +201,21 @@ logging.info("Acquiring final image of centre of rotation.")
 finalImage = (getImage(save=True,fname='bb-isocenter')-dark)/flood
 closeShutter()
 
-# Take line profile of each.
-temp = finalImage[_line,:].astype(float)
-line = np.absolute(temp-temp.max())
+# Blur the image for smoothing.
+finalImage = gaussian_filter(finalImage,sigma=10)
+# Take line profiles and find the horiz and vertical centre of the bb.
+# Horizontal.
+temp_horiz = finalImage[_line,:].astype(float)
+line_horiz = np.absolute(temp_horiz-temp_horiz.max())
+col = np.argmax(line_horiz)
+# Vertical.
+temp_vert = finalImage[:,col].astype(float)
+line_vert = np.absolute(temp_vert-temp_vert.max())
+row = np.argmax(line_vert)
+# Position.
+pos = [row,col]
+logging.critical("Image isocenter (row,col): {}".format(pos))
 
-# Find the peaks.
-_peaks, _ = find_peaks(line,width=_width)
-pos = np.array(finalImage.shape)/2
-pos[1] = _peaks[0]
-logging.critical("Image isocenter: {}".format(pos))
 
 # Set rotation back to home.
 logging.info("Moving ball-bearing back to 0 deg rotation.")
@@ -217,9 +223,9 @@ epics.caput('SR08ID01SST25:ROTATION.VAL',0,wait=True)
 
 logging.info("Finished! Wasn't that easy?")
 
-# fig,ax = plt.subplots(1,2)
-# ax = ax.flatten()
-# ax[0].imshow(finalImage)
-# # ax[0].hlines(_line)
-# ax[0].scatter(pos[1],pos[0],marker='+',color='r')
-# plt.show()
+fig,ax = plt.subplots(1,2)
+ax = ax.flatten()
+ax[0].imshow(finalImage)
+ax[0].scatter(pos[1],pos[0],marker='+',color='r')
+ax[1].plot(line_horiz)
+plt.show()
