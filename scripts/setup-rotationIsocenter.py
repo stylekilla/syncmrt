@@ -1,14 +1,13 @@
 import numpy as np
 from matplotlib import pyplot as plt
-from scipy.signal import find_peaks
+from scipy.ndimage import median_filter, gaussian_filter
 import epics
 import time
 import imageio
 
 
 import logging, coloredlogs
-coloredlogs.install(fmt='%(asctime)s,%(msecs)d %(levelname)-8s [%(filename)s:%(lineno)d] %(message)s',datefmt='%H:%M:%S',level=logging.DEBUG)
-
+coloredlogs.install(fmt='%(asctime)s,%(msecs)d %(levelname)-8s [%(filename)s:%(lineno)d] %(message)s',datefmt='%H:%M:%S',level=logging.INFO)
 
 """
 Assumes:
@@ -20,12 +19,13 @@ Assumes:
 # ballbearing on the stage.
 # RUBY is in beam.
 
+SAVE = False
 
 # This is the left bottom top right of the field in RUBY in pixels.
 l = 0
 r = 2560
-b = 1250
-t = 1019
+b = 1181
+t = 944
 
 def getImage(save=False,fname=''):
 	logging.info("Acquiring an image.")
@@ -34,10 +34,13 @@ def getImage(save=False,fname=''):
 	_x = epics.caget('SR08ID01DET01:IMAGE:ArraySize1_RBV')
 	_y = epics.caget('SR08ID01DET01:IMAGE:ArraySize0_RBV')
 	time.sleep(0.1)
-	ary = np.flipud(np.array(arr,dtype=np.uint16).reshape(_x,_y))[t:b,l:r]
+	arr = np.flipud(np.array(arr,dtype=np.uint16).reshape(_x,_y))[t:b,l:r]
+	# Remove any weird values.
+	arr = np.nan_to_num(arr)
+	arr = median_filter(arr,size=(2,2))
 	if save:
-		imageio.imsave('./{}.tif'.format(fname),ary)
-	return ary
+		imageio.imsave('./cache/{}.tif'.format(fname),arr)
+	return arr
 
 def closeShutter():
 	logging.info("Closing 1A shutter.")
@@ -58,7 +61,7 @@ epics.caput('SR08ID01SST25:ROTATION.VAL',0,wait=True)
 ########################
 # START RUBY ACQUISITION
 ########################
-exposureTime = 1.0
+exposureTime = 0.1
 logging.info("Setting up RUBY acquisition parameters.")
 epics.caput('SR08ID01DET01:CAM:Acquire.VAL',0,wait=True)
 epics.caput('SR08ID01DET01:CAM:AcquireTime.VAL',exposureTime)
@@ -80,22 +83,22 @@ _bb = 2.0
 closeShutter()
 # Get darkfield.
 logging.info("Getting darkfield.")
-dark = getImage(save=True,fname='darkfield')
+dark = getImage(save=SAVE,fname='darkfield')
 # Get flood field.
 epics.caput('SR08ID01SST25:SAMPLEV.TWV',5,wait=True)
 epics.caput('SR08ID01SST25:SAMPLEV.TWR',1,wait=True)
 openShutter()
 logging.info("Getting floodfield.")
-flood = getImage(save=True,fname='flood') - dark
+flood = getImage(save=SAVE,fname='flood') - dark
 epics.caput('SR08ID01SST25:SAMPLEV.TWF',1,wait=True)
 
 image = []
 # Get first image.
-image.append((getImage(save=True,fname='bb-trans-p1')-dark)/flood)
+image.append((getImage(save=SAVE,fname='bb-trans-p1')-dark)/flood)
 # Move to 1 mm.
 epics.caput('SR08ID01SST25:SAMPLEH2.VAL',_distance,wait=True)
 # Get second image.
-image.append((getImage(save=True,fname='bb-trans-p2')-dark)/flood)
+image.append((getImage(save=SAVE,fname='bb-trans-p2')-dark)/flood)
 # Put H2 back.
 epics.caput('SR08ID01SST25:SAMPLEH2.VAL',0,wait=True)
 
@@ -116,13 +119,13 @@ for i in range(len(line)):
 	peak = np.argmax(line[i])
 	peaks.append(peak)
 
-fig,ax = plt.subplots(2,2)
-ax = ax.flatten()
-ax[0].plot(np.linspace(0,len(line[0]),len(line[0])),line[0])
-ax[1].plot(np.linspace(0,len(line[0]),len(line[0])),line[1])
-ax[2].imshow(image[0],cmap='gray')
-ax[3].imshow(image[1],cmap='gray')
-plt.show()
+# fig,ax = plt.subplots(2,2)
+# ax = ax.flatten()
+# ax[0].plot(np.linspace(0,len(line[0]),len(line[0])),line[0])
+# ax[1].plot(np.linspace(0,len(line[0]),len(line[0])),line[1])
+# ax[2].imshow(image[0],cmap='gray')
+# ax[3].imshow(image[1],cmap='gray')
+# plt.show()
 
 pixelSize = _distance/np.absolute(peaks[1]-peaks[0])
 logging.critical("Pixel Size: {} mm".format(pixelSize))
@@ -135,21 +138,21 @@ logging.info("Calculating centre of rotation.")
 
 image = []
 # Rotate to -180.
-logging.info("Calculating centre of rotation: -180.")
-epics.caput('SR08ID01SST25:ROTATION.VAL',-180,wait=True)
-image.append((getImage(save=True,fname='bb-n180d')-dark)/flood)
+logging.info("Calculating centre of rotation: 180.")
+epics.caput('SR08ID01SST25:ROTATION.VAL',180,wait=True)
+image.append((getImage(save=SAVE,fname='bb-180d')-dark)/flood)
 # Rotate to -90.
-logging.info("Calculating centre of rotation: -90.")
-epics.caput('SR08ID01SST25:ROTATION.VAL',-90,wait=True)
-image.append((getImage(save=True,fname='bb-n90d')-dark)/flood)
+logging.info("Calculating centre of rotation: 90.")
+epics.caput('SR08ID01SST25:ROTATION.VAL',90,wait=True)
+image.append((getImage(save=SAVE,fname='bb-90d')-dark)/flood)
 # Rotate to 0.
 logging.info("Calculating centre of rotation: 0.")
 epics.caput('SR08ID01SST25:ROTATION.VAL',0,wait=True)
-image.append((getImage(save=True,fname='bb-0d')-dark)/flood)
+image.append((getImage(save=SAVE,fname='bb-0d')-dark)/flood)
 # Rotate to 90
-logging.info("Calculating centre of rotation: 90.")
-epics.caput('SR08ID01SST25:ROTATION.VAL',90,wait=True)
-image.append((getImage(save=True,fname='bb-90d')-dark)/flood)
+logging.info("Calculating centre of rotation: -90.")
+epics.caput('SR08ID01SST25:ROTATION.VAL',-90,wait=True)
+image.append((getImage(save=SAVE,fname='bb-n90d')-dark)/flood)
 
 # Take line profile of each.
 line = []
@@ -163,8 +166,8 @@ for i in range(len(line)):
 	peak = np.argmax(line[i])
 	peaks.append(peak)
 # Calculate relative movements.
-d_h1 = (peaks[1]-peaks[3])*pixelSize/2
-d_h2 = (peaks[0]-peaks[2])*pixelSize/2
+d_h1 = np.absolute(peaks[1]-peaks[3])*pixelSize/2
+d_h2 = np.absolute(peaks[0]-peaks[2])*pixelSize/2
 
 # fig,ax = plt.subplots(2,4)
 # ax = ax.flatten()
@@ -191,14 +194,14 @@ else:
 	epics.caput('SR08ID01SST25:SAMPLEH1.TWR',1,wait=True)
 # Move H2.
 epics.caput('SR08ID01SST25:SAMPLEH2.TWV',d_h2,wait=True)
-if peaks[0] < peaks[2]:
+if peaks[2] < peaks[0]:
 	epics.caput('SR08ID01SST25:SAMPLEH2.TWF',1,wait=True)
 else:
 	epics.caput('SR08ID01SST25:SAMPLEH2.TWR',1,wait=True)
 
 logging.info("Acquiring final image of centre of rotation.")
 # Take final image of iso.
-finalImage = (getImage(save=True,fname='bb-isocenter')-dark)/flood
+finalImage = (getImage(save=SAVE,fname='bb-isocenter')-dark)/flood
 closeShutter()
 
 # Blur the image for smoothing.
@@ -223,9 +226,9 @@ epics.caput('SR08ID01SST25:ROTATION.VAL',0,wait=True)
 
 logging.info("Finished! Wasn't that easy?")
 
-fig,ax = plt.subplots(1,2)
-ax = ax.flatten()
-ax[0].imshow(finalImage)
-ax[0].scatter(pos[1],pos[0],marker='+',color='r')
-ax[1].plot(line_horiz)
-plt.show()
+# fig,ax = plt.subplots(1,2)
+# ax = ax.flatten()
+# ax[0].imshow(finalImage)
+# ax[0].scatter(pos[1],pos[0],marker='+',color='r')
+# ax[1].plot(line_horiz)
+# plt.show()

@@ -22,4 +22,4 @@ image = getImage()
 
 import imageio
 
-imageio.imsave('./LOOKATME.tif',image.astype('float32'))
+imageio.imsave('./HamaPapaCalib.tif',image.astype('float32'))

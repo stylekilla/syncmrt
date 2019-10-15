@@ -585,8 +585,8 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 				# Make the isocenter in the frame of reference of the synchrotron axes.
 				p1, p2 = iso
 				# Theta needs to be inverted to account for the fact that we are rotating the patient with a fixed view, not rotating a view around a patient.
-				t1, t2 = -np.-array(theta)
-				logging.info(-"Returned isocenter for x-ray as: p1({}), p2({}), theta({})".format(p1,p2,theta))
+				t1, t2 = -np.array(theta)
+				logging.info("Returned isocenter for x-ray as: p1({}), p2({}), theta({})".format(p1,p2,theta))
 				# Calculate the 3D points.
 				isocenter = nonOrthogonalImaging.calculate(p1,p2,t1,t2)
 				logging.info("Non orthogonal iso returned: {}".format(isocenter))

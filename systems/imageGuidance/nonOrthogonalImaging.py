@@ -35,6 +35,7 @@ def calculate(p1,p2,t1,t2):
 
 	result = np.zeros((len(p1),3))
 
+	# if t1 > t2:
 	if t1 > t2:
 		QtWidgets.QMessageBox.warning("The calculation will fail since the first image angle is greater than the second. The first image angle must always be less than the second, i.e. t1 = -45 and t2 = +45.")
 		return

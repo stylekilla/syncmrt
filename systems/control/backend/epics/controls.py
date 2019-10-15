@@ -174,7 +174,9 @@ class detector:
 			# 	image = np.array(im,dtype='uint16')
 			image = None
 			while image is None:
-				self.pv['CAM:Acquire'].put(1,wait=True)
+				logging.critical("epics wait=True for hamapapa times out...")
+				self.pv['CAM:Acquire'].put(1,wait=False)
+				time.sleep(1)
 				image = self.pv['IMAGE:ArrayData'].get()
 
 			# x = self.pv['IMAGE:ArraySize1_RBV'].get()
