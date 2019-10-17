@@ -158,9 +158,34 @@ class QImaging(QtWidgets.QWidget):
 		self.widget['numImages'].valueChanged.connect(self.updateNumImages)
 		imagingSequence_layout.addRow(lblImages,self.widget['numImages'])
 		imagingSequence_layout.addRow(QHLine())
+
+		# Angular range.
+		self.widget['theta_range'] = QtWidgets.QLabel("Imaging Angles:")
+		imagingSequence_layout.addRow(self.widget['theta_range'])
+		# Theta 1
+		self.widget['theta1_label'] = QtWidgets.QLabel("\u03B8<sub>1</sub>\u00B0 [0,90]")
+		self.widget['theta1'] = QtWidgets.QDoubleSpinBox()
+		self.widget['theta1'].setMinimumSize(55,20)
+		self.widget['theta1'].setDecimals(1)
+		self.widget['theta1'].setMinimum(0)
+		self.widget['theta1'].setMaximum(self.thetaRange[1])
+		self.widget['theta1'].setValue(90)
+		imagingSequence_layout.addRow(self.widget['theta1_label'],self.widget['theta1'])
+		# Theta 2
+		self.widget['theta2_label'] = QtWidgets.QLabel("\u03B8<sub>2</sub>\u00B0 [-90,0]")
+		self.widget['theta2'] = QtWidgets.QDoubleSpinBox()
+		self.widget['theta2'].setMinimumSize(55,20)
+		self.widget['theta2'].setDecimals(1)
+		self.widget['theta2'].setMinimum(self.thetaRange[0])
+		self.widget['theta2'].setMaximum(0)
+		self.widget['theta2'].setValue(0)
+		imagingSequence_layout.addRow(self.widget['theta2_label'],self.widget['theta2'])
+
 		# Translation Range.
-		self.widget['translation_range'] = QtWidgets.QLabel("Region Of Interest:")
-		imagingSequence_layout.addRow(self.widget['translation_range'])
+		lblROI = QtWidgets.QLabel("Region Of Interest:")
+		self.widget['regionOfInterest'] = QtWidgets.QCheckBox()
+		self.widget['regionOfInterest'].setChecked(False)
+		imagingSequence_layout.addRow(lblROI,self.widget['regionOfInterest'])
 		# translation 1
 		self.widget['translation1_label'] = QtWidgets.QLabel("Z<sub>upper</sub> mm")
 		self.widget['translation1'] = QtWidgets.QDoubleSpinBox()
@@ -179,28 +204,7 @@ class QImaging(QtWidgets.QWidget):
 		self.widget['translation2'].setMaximum(self.translationRange[1])
 		self.widget['translation2'].setValue(self.translation[0])
 		imagingSequence_layout.addRow(self.widget['translation2_label'],self.widget['translation2'])
-		# Range.
-		# imagingSequence_layout.addRow(QtWidgets.QLabel("Image Angles"))
-		self.widget['theta_range'] = QtWidgets.QLabel("Angles Range ({}, {})\xB0:".format(self.thetaRange[0],self.thetaRange[1]))
-		imagingSequence_layout.addRow(self.widget['theta_range'])
-		# Theta 1
-		self.widget['theta1_label'] = QtWidgets.QLabel("\u03B8<sub>1</sub>\u00B0")
-		self.widget['theta1'] = QtWidgets.QDoubleSpinBox()
-		self.widget['theta1'].setMinimumSize(55,20)
-		self.widget['theta1'].setDecimals(1)
-		self.widget['theta1'].setMinimum(0)
-		self.widget['theta1'].setMaximum(self.thetaRange[1])
-		self.widget['theta1'].setValue(90)
-		imagingSequence_layout.addRow(self.widget['theta1_label'],self.widget['theta1'])
-		# Theta 2
-		self.widget['theta2_label'] = QtWidgets.QLabel("\u03B8<sub>2</sub>\u00B0")
-		self.widget['theta2'] = QtWidgets.QDoubleSpinBox()
-		self.widget['theta2'].setMinimumSize(55,20)
-		self.widget['theta2'].setDecimals(1)
-		self.widget['theta2'].setMinimum(self.thetaRange[0])
-		self.widget['theta2'].setMaximum(0)
-		self.widget['theta2'].setValue(0)
-		imagingSequence_layout.addRow(self.widget['theta2_label'],self.widget['theta2'])
+
 		# Comments.
 		self.widget['comment'] = QtWidgets.QLineEdit()
 		# self.widget['comment'].setAcceptRichText(False)
@@ -217,10 +221,12 @@ class QImaging(QtWidgets.QWidget):
 		self.widget['acquire'] = QtWidgets.QPushButton("Acquire X-rays")
 		self.widget['acquire'].setEnabled(False)
 		self.widget['acquire'].clicked.connect(self.acquireImages)
-		# imagingSequence_layout.addRow(self.widget['step'],self.widget['scan'])
 		imagingSequence_layout.addRow(self.widget['acquire'])
 		# Set the group layout.
 		self.group['imagingSequence'].setLayout(imagingSequence_layout)
+		# Signals.
+		self.widget['regionOfInterest'].toggled.connect(self._toggleROI)
+		self._toggleROI()
 
 		# Add the widgets to the layout.
 		self.layout.addWidget(self.group['availableImages'])
@@ -235,6 +241,14 @@ class QImaging(QtWidgets.QWidget):
 	def _imageModeChanged(self,mode,state):
 		if state is True:
 			self.imageModeChanged.emit(mode)
+
+	def _toggleROI(self):
+		""" Toggle the ROI widgets based on the state of the checkbox. """
+		state = self.widget['regionOfInterest'].isChecked()
+		self.widget['translation1_label'].setVisible(state)
+		self.widget['translation1'].setVisible(state)
+		self.widget['translation2_label'].setVisible(state)
+		self.widget['translation2'].setVisible(state)
 
 	def updateSeparationRange(self,newRange):
 		# Get new range.
