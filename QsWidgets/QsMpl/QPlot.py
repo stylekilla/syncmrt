@@ -347,6 +347,7 @@ class QPlot:
 
 		# Refresh
 		self.canvas.draw()
+		
 	def setMaskSize(self,size):
 		""" Set the mask size and toggle the overlay if it is enabled. """
 		self.maskSize = size

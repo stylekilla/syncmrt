@@ -40,23 +40,21 @@ class sync_dx:
 		logging.debug("Reading image set {}.".format(idx))
 		_set = self.file.getImageSet(idx)
 		imageSet = []
-		try:
-			for i in range(len(_set)):
-				# Get the image and its attributes.
-				image = Image2d()
-				image.pixelArray = _set[str(i+1)][()]
-				image.extent = _set[str(i+1)].attrs['Extent']
-				image.patientIsocenter = _set[str(i+1)].attrs['Image Isocenter']
-				image.patientPosition = list(_set[str(i+1)].attrs['Patient Support Position']) + list(_set[str(i+1)].attrs['Patient Support Angle'])
-				image.view['title'] = str(_set[str(i+1)].attrs['Image Angle'])+"\u00B0"
-				image.imagingAngle = _set[str(i+1)].attrs['Image Angle']
-				image.M = _set[str(i+1)].attrs['M']
-				image.Mi = _set[str(i+1)].attrs['Mi']
-				# Append the image.
-				imageSet.append(image)
-		except:
-			logging.critical("Unable to load image set. Most likely does not contain the correct attributes.")
-			
+		for i in range(len(_set)):
+			# Get the image and its attributes.
+			image = Image2d()
+			image.pixelArray = _set[str(i+1)][()]
+			image.extent = _set[str(i+1)].attrs.get('Extent',default=None)
+			image.patientIsocenter = _set[str(i+1)].attrs.get('Image Isocenter',default=None)
+			image.patientPosition = list(_set[str(i+1)].attrs.get('Patient Support Position',default=None)) + list(_set[str(i+1)].attrs.get('Patient Support Angle',default=None))
+			image.view['title'] = str(_set[str(i+1)].attrs.get('Image Angle',default="None"))+"\u00B0"
+			image.imagingAngle = _set[str(i+1)].attrs.get('Image Angle',default=None)
+			image.M = _set[str(i+1)].attrs.get('M',default=None)
+			image.Mi = _set[str(i+1)].attrs.get('Mi',default=None)
+			image.comment = _set[str(i+1)].attrs.get('Comment',default=None)
+			# Append the image.
+			imageSet.append(image)
+		
 		return imageSet
 
 class csvPlan(QtCore.QObject):

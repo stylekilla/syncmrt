@@ -1,4 +1,4 @@
-# Qt widgets.
+165# Qt widgets.
 from PyQt5 import QtWidgets, QtGui, QtCore
 from QsWidgets import QsMpl
 # Matplotlib widgets.
@@ -129,9 +129,6 @@ class QPlotEnvironment(QtWidgets.QSplitter):
 		# Set max markers.
 
 	def removeSubplot(self,amount):
-		# Take the layout item, get the widget of the item and remove it.
-		# item = self.layout.takeAt(self.layout.count()-1)
-		# item.widget().setParent(None)
 		# Remove the widgets from the lists.
 		for i in range(amount):
 			# Remove the widget.
@@ -161,31 +158,33 @@ class QPlotEnvironment(QtWidgets.QSplitter):
 
 	def setMaskSize(self,size):
 		""" Set each plot's mask size. """
-		self.plot[0].setMaskSize(size)
-		self.plot[1].setMaskSize(size)
+		for plot in self.plot:
+			plot.setMaskSize(size)
 
 	def set(self,setting,value):
 		if setting == 'maxMarkers':
 			self._maxMarkers = value
-			for i in range(len(self.plot)):
-				self.plot[i].markerModel.setMarkerRows(value)
-				self.plot[i].markersMaximum = value
+			for plot in self.plot:
+				plot.markerModel.setMarkerRows(value)
+				plot.markersMaximum = value
 		elif setting == 'patIso':
 			self.plot[0].patientIsocenter = [value[1],value[0]]
-			self.plot[1].patientIsocenter = [value[2],value[0]]
+			if len(self.plot) == 2:
+				self.plot[1].patientIsocenter = [value[2],value[0]]
 		elif setting == 'patMask':
 			# Only show the mask in the first view. There is none to show in the second view.
 			for i in range(len(self.plot)):
 				self.plot[i].mask = value
 		elif setting == 'markerCtd':
 			self.plot[0].ctd = [value[1],value[0]]
-			self.plot[1].ctd = [value[2],value[0]]
+			if len(self.plot) == 2:
+				self.plot[1].ctd = [value[2],value[0]]
 		else:
 			pass
 
 	def toggleOverlay(self,overlay,state):
-		for i in range(len(self.plot)):
-			self.plot[i].toggleOverlay(overlay,state)
+		for plot in self.plot:
+			plot.toggleOverlay(overlay,state)
 
 	def toggleImageSettings(self):
 		self.toggleSettings.emit()
@@ -194,9 +193,9 @@ class QPlotEnvironment(QtWidgets.QSplitter):
 		""" Get the isocenter value from each plot. """
 		p = []
 		t = []
-		for i in range(len(self.plot)):
-			p.append(self.plot[i].patientIsocenter)
-			t.append(self.plot[i]._imagingAngle)
+		for plot in self.plot:
+			p.append(plot.patientIsocenter)
+			t.append(plot._imagingAngle)
 		return p,t
 
 	def updateIsocenter(self,x,y,z):

@@ -21,12 +21,8 @@ class Image2d:
 		# Transform for getting into and out of the image frame of reference.
 		self.M = None
 		self.Mi = None
-
-	def forIn(self,points):
-		pass
-
-	def forOut(self,points):
-		pass
+		# Comment saving.
+		self.comment = None
 
 # class image3d:
 # 	def __init__(self):

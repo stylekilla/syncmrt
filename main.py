@@ -61,18 +61,17 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 
 		# Sidebar panel.
 		self.sidebar = ui.sidebar.Sidebar(self.frameSidebarStack,self.frameSidebarList)
+		# Sidebar: Imaging
+		self.sidebar.addPage('Imaging',QsWidgets.QImaging(),before='all')
+		self.sbImaging = self.sidebar.getPage('Imaging')
 		# Sidebar: Alignment.
-		self.sbAlignment = self.sidebar.addPage('Alignment',QsWidgets.QAlignment(),before='all')
+		self.sbAlignment = self.sidebar.addPage('Alignment',QsWidgets.QAlignment(),after='Imaging')
 		self.sbAlignment.widget['maxMarkers'].valueChanged.connect(partial(self.updateSettings,'global',self.sbAlignment.widget['maxMarkers']))
 		self.sbAlignment.widget['calcAlignment'].clicked.connect(partial(self.patientCalculateAlignment,index=-1))
 		self.sbAlignment.widget['doAlignment'].clicked.connect(partial(self.patientApplyAlignment,index=-1))
 		self.sbAlignment.widget['optimise'].toggled.connect(partial(self.toggleOptimise))
-		# Sidebar: Imaging
-		self.sidebar.addPage('Imaging',QsWidgets.QImaging(),after='Alignment')
-		self.sbImaging = self.sidebar.getPage('Imaging')
-		# self.sbImaging.acquire.connect(self.acquireXrays)
 		# Add treatment section to sidebar.
-		self.sidebar.addPage('Treatment',QsWidgets.QTreatment(),after='Imaging')
+		self.sidebar.addPage('Treatment',QsWidgets.QTreatment(),after='Alignment')
 		self.sbTreatment = self.sidebar.getPage('Treatment')
 		# Add image properties section to sidebar.
 		self.sidebar.addPage('ImageProperties',None,after='Treatment')
@@ -367,6 +366,8 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		logging.debug("Reading image set {}.".format(_set))
 		# When the current image set is changed, get images and plot them.
 		images = self.patient.dx.getImageSet(_set)
+		# Update the sidebar comment label.
+		self.sbImaging.updateCurrentImageDetails(images[0].comment)
 		# Set the amount of images required.
 		self.envXray.loadImages(images)	
 		# Toggle the ovelrays on and off to refresh them.
@@ -586,10 +587,8 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 				p1, p2 = iso
 				# Theta needs to be inverted to account for the fact that we are rotating the patient with a fixed view, not rotating a view around a patient.
 				t1, t2 = -np.array(theta)
-				logging.info("Returned isocenter for x-ray as: p1({}), p2({}), theta({})".format(p1,p2,theta))
 				# Calculate the 3D points.
 				isocenter = nonOrthogonalImaging.calculate(p1,p2,t1,t2)
-				logging.info("Non orthogonal iso returned: {}".format(isocenter))
 
 			elif (len(self.envXray.plot[1].pointsX) != numberOfPoints):
 				error = QtWidgets.QMessageBox()
@@ -610,8 +609,8 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 				iso,theta = self.envXray.getIsocenter()
 				p1 = iso
 				p2 = [0,iso[1]]
-				t1 = theta
-				t2 = -theta+90
+				t1 = -theta
+				t2 = -(theta-90)
 				# Calculate the 3D points.
 				isocenter = nonOrthogonalImaging.calculate(p1,p2,t1,t2)
 			else:

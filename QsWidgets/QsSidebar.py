@@ -117,7 +117,7 @@ class QImaging(QtWidgets.QWidget):
 	def __init__(self):
 		super().__init__()
 		# Vars.
-		self.theta = [-2,2]
+		self.theta = [90,0]
 		self.translation = [-10,15]
 		self.thetaRange = [-90,90]
 		self.translationRange = [-100,100]
@@ -128,37 +128,31 @@ class QImaging(QtWidgets.QWidget):
 		GROUP: Available Images
 		'''
 		# Imaging settings.
-		self.group['availableImages'] = QtWidgets.QGroupBox("Imaging Sequence")
+		self.group['availableImages'] = QtWidgets.QGroupBox("Select Image")
 		imagingSequence_layout = QtWidgets.QFormLayout()
 		# imagingSequence_layout.setLabelAlignment(QtCore.Qt.AlignLeft)
 		# Num images.
 		lblImages = QtWidgets.QLabel("Select Image:")
 		self.widget['imageList'] = QtWidgets.QComboBox()
 		self.widget['imageList'].setMinimumSize(65,20)
-		# self.widget['imageList'].addItem("<new>")
-		# self.widget['imageList'].valueChanged.connect()
+		commentLabel = QtWidgets.QLabel("Comment:")
+		self.widget['currentImageComment'] = QtWidgets.QLabel("-")
 		imagingSequence_layout.addRow(lblImages,self.widget['imageList'])
-		# Acquire button.
-		# self.widget['load'] = QtWidgets.QPushButton("load")
-		# self.widget['load'].setEnabled(False)
-		# self.widget['load'].clicked.connect(self.loadImages)
-		# imagingSequence_layout.addRow(self.widget['load'])
+		imagingSequence_layout.addRow(commentLabel,self.widget['currentImageComment'])
 		# Set the group layout.
 		self.group['availableImages'].setLayout(imagingSequence_layout)
-
 
 		'''
 		GROUP: Imaging Angles
 		'''
 		# Imaging settings.
-		self.group['imagingSequence'] = QtWidgets.QGroupBox("Imaging Sequence")
+		self.group['imagingSequence'] = QtWidgets.QGroupBox("Acquire New Image")
 		imagingSequence_layout = QtWidgets.QFormLayout()
 		# imagingSequence_layout.setLabelAlignment(QtCore.Qt.AlignLeft)
 		# Num images.
 		lblImages = QtWidgets.QLabel("Number of Images")
 		self.widget['numImages'] = QtWidgets.QSpinBox()
 		self.widget['numImages'].setMinimumSize(55,20)
-		# self.widget['numImages'].setMaximumSize(55,20)
 		self.widget['numImages'].setRange(1,2)
 		self.widget['numImages'].setValue(2)
 		self.widget['numImages'].valueChanged.connect(self.updateNumImages)
@@ -194,9 +188,9 @@ class QImaging(QtWidgets.QWidget):
 		self.widget['theta1'] = QtWidgets.QDoubleSpinBox()
 		self.widget['theta1'].setMinimumSize(55,20)
 		self.widget['theta1'].setDecimals(1)
-		self.widget['theta1'].setMinimum(self.thetaRange[0])
+		self.widget['theta1'].setMinimum(0)
 		self.widget['theta1'].setMaximum(self.thetaRange[1])
-		self.widget['theta1'].setValue(self.theta[0])
+		self.widget['theta1'].setValue(90)
 		imagingSequence_layout.addRow(self.widget['theta1_label'],self.widget['theta1'])
 		# Theta 2
 		self.widget['theta2_label'] = QtWidgets.QLabel("\u03B8<sub>2</sub>\u00B0")
@@ -204,8 +198,8 @@ class QImaging(QtWidgets.QWidget):
 		self.widget['theta2'].setMinimumSize(55,20)
 		self.widget['theta2'].setDecimals(1)
 		self.widget['theta2'].setMinimum(self.thetaRange[0])
-		self.widget['theta2'].setMaximum(self.thetaRange[1])
-		self.widget['theta2'].setValue(self.theta[1])
+		self.widget['theta2'].setMaximum(0)
+		self.widget['theta2'].setValue(0)
 		imagingSequence_layout.addRow(self.widget['theta2_label'],self.widget['theta2'])
 		# Comments.
 		self.widget['comment'] = QtWidgets.QLineEdit()
@@ -250,11 +244,11 @@ class QImaging(QtWidgets.QWidget):
 		self.widget['theta_range'].setText("Range: ({}, {})\xB0".format(a,b))
 		# Update double spin boxes.
 		# Theta 1
-		self.widget['theta1'].setMinimum(self.thetaRange[0])
-		self.widget['theta1'].setMaximum(self.thetaRange[1])
+		self.widget['theta1'].setMinimum(self.thetaRange[1])
+		self.widget['theta1'].setMaximum(0)
 		# Theta 2
-		self.widget['theta2'].setMinimum(self.thetaRange[0])
-		self.widget['theta2'].setMaximum(self.thetaRange[1])
+		self.widget['theta2'].setMinimum(0)
+		self.widget['theta2'].setMaximum(self.thetaRange[0])
 
 	def updateNumImages(self):
 		# Get current value.
@@ -306,6 +300,11 @@ class QImaging(QtWidgets.QWidget):
 			self.widget['imageList'].addItem(_setName)
 		# Set to the latest image set.
 		self.widget['imageList'].setCurrentIndex(self.widget['imageList'].count()-1)
+
+	def updateCurrentImageDetails(self,comment):
+		""" Update the current image comment. """
+		text = str(comment)
+		self.widget['currentImageComment'].setText(text)
 
 class QTreatment(QtWidgets.QWidget):
 	calculate = QtCore.pyqtSignal(int)
