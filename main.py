@@ -146,7 +146,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		# When the image mode changes tell the system.
 		self.sbImaging.imageModeChanged.connect(self.system.setImagingMode)
 
-		self.testing()
+		# self.testing()
 
 	def testing(self):
 		self.openXray('../scratch/test.hdf5')
