@@ -31,7 +31,7 @@ def populate(mb):
 	for item in os.listdir('./scripts/'):
 		if item.endswith('.py'):
 			# Capitilise the strings.
-			scriptName = item.capitalize()[:-3]
+			scriptName = item[:-3]
 			# Add the actions.
 			script = tools_scripts.addAction(scriptName)
 			# When clicked then run the file in a separate python instance.
