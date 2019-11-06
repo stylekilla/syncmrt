@@ -42,6 +42,9 @@ class Brain(QtCore.QObject):
 		self.imager.load(name)
 
 	def setImagingMode(self,mode):
+		"""
+		Describe the imaging mode. Single frame or continuous imaging??
+		"""
 		logging.debug("Imaging mode changed to {}.".format(mode))
 		self._imagingMode = mode
 

@@ -118,7 +118,7 @@ class QImaging(QtWidgets.QWidget):
 		super().__init__()
 		# Vars.
 		self.theta = [90,0]
-		self.translation = [-10,15]
+		self.translation = [-20,20]
 		self.thetaRange = [-90,90]
 		self.translationRange = [-100,100]
 		# Layout.
@@ -183,9 +183,7 @@ class QImaging(QtWidgets.QWidget):
 
 		# Translation Range.
 		lblROI = QtWidgets.QLabel("Region Of Interest:")
-		self.widget['regionOfInterest'] = QtWidgets.QCheckBox()
-		self.widget['regionOfInterest'].setChecked(False)
-		imagingSequence_layout.addRow(lblROI,self.widget['regionOfInterest'])
+		imagingSequence_layout.addRow(lblROI)
 		# translation 1
 		self.widget['translation1_label'] = QtWidgets.QLabel("Z<sub>upper</sub> mm")
 		self.widget['translation1'] = QtWidgets.QDoubleSpinBox()
@@ -224,9 +222,6 @@ class QImaging(QtWidgets.QWidget):
 		imagingSequence_layout.addRow(self.widget['acquire'])
 		# Set the group layout.
 		self.group['imagingSequence'].setLayout(imagingSequence_layout)
-		# Signals.
-		self.widget['regionOfInterest'].toggled.connect(self._toggleROI)
-		self._toggleROI()
 
 		# Add the widgets to the layout.
 		self.layout.addWidget(self.group['availableImages'])
@@ -241,14 +236,6 @@ class QImaging(QtWidgets.QWidget):
 	def _imageModeChanged(self,mode,state):
 		if state is True:
 			self.imageModeChanged.emit(mode)
-
-	def _toggleROI(self):
-		""" Toggle the ROI widgets based on the state of the checkbox. """
-		state = self.widget['regionOfInterest'].isChecked()
-		self.widget['translation1_label'].setVisible(state)
-		self.widget['translation1'].setVisible(state)
-		self.widget['translation2_label'].setVisible(state)
-		self.widget['translation2'].setVisible(state)
 
 	def updateSeparationRange(self,newRange):
 		# Get new range.
