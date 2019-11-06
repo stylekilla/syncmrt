@@ -1,0 +1,10 @@
+Name,Attribute,Value
+# Can take the form of either of the following:
+# Hamamatsu, PV, PVNAME
+# Hamamatsu, PixelSize, 0.200
+
+# Hamamatsu Detector (Large Field)
+Hamamatsu, PixelSize, 0.200
+
+# RUBY 1
+RUBY 1, PixelSize, 0.100
