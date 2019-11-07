@@ -8,6 +8,7 @@ from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from PyQt5 import QtGui, QtCore, QtWidgets
 from systems.imageGuidance import optimiseFiducials
 from functools import partial
+import logging
 
 __all__ = ['QPlot','QHistogramWindow']
 
@@ -350,6 +351,7 @@ class QPlot:
 		
 	def setMaskSize(self,size):
 		""" Set the mask size and toggle the overlay if it is enabled. """
+		logging.critical("Changed mask size to: {}".format(size))
 		self.maskSize = size
 		self.toggleOverlay(3,'beamArea' in self.overlay)
 		self.toggleOverlay(3,'beamArea' in self.overlay)

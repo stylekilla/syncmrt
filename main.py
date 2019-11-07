@@ -322,6 +322,10 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		if self._isXrayOpen:
 			# Re-initialise the environment.
 			self.envXray.reset()
+			# Connect the settings mask size to the plot.
+			self.sbSettings.maskSizeChanged.connect(self.envXray.setMaskSize)
+			# Force marker update for table.
+			self.envXray.set('maxMarkers',config.markers.quantity)
 		else:
 			self.createWorkEnvironmentXray()
 		# Open the x-ray file.
@@ -336,9 +340,6 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		self.sidebar.widget['xrayImageProperties'].addPlotHistogramWindow(histogram)
 		# Connect the settings mask size to the plot.
 		self.sbSettings.maskSizeChanged.connect(self.envXray.setMaskSize)
-		# Get the plot isocenter widgets and give them to the sidebar widget.
-		# isocenter = self.envXray.getPlotIsocenter()
-		# self.sidebar.widget['xrayImageProperties'].addEditableIsocenter(isocenter)
 		# Force marker update for table.
 		self.envXray.set('maxMarkers',config.markers.quantity)
 		# Finalise import. Set open status to true and open the workspace.
@@ -369,13 +370,17 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		if _set == "":
 			# No valid image is selected, assume the file is empty, so reset the plot environment and return.
 			self.envXray.reset()
+			# Connect the settings mask size to the plot.
+			self.sbSettings.maskSizeChanged.connect(self.envXray.setMaskSize)
+			# Force marker update for table.
+			self.envXray.set('maxMarkers',config.markers.quantity)
 			return
 		# When the current image set is changed, get images and plot them.
 		images = self.patient.dx.getImageSet(_set)
 		# Update the sidebar comment label.
 		self.sbImaging.updateCurrentImageDetails(images[0].comment)
 		# Set the amount of images required.
-		self.envXray.loadImages(images)	
+		self.envXray.loadImages(images)
 		# Toggle the ovelrays on and off to refresh them.
 		self.sidebar.widget['xrayImageProperties'].refreshOverlays()
 		# Populate new histograms.
