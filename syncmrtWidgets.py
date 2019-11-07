@@ -32,7 +32,6 @@ class QsStackedWidget(QtWidgets.QStackedWidget):
 
 	def addPage(self,name,widget,before=None,after=None):
 		'''Before and after must be names of other pages.'''
-		# self.stackDict[name] = QtWidgets.QWidget()
 		if name in self.page:
 			# Do nothing it already exists.
 			return
@@ -83,6 +82,7 @@ class QsListWidget(QtWidgets.QListWidget):
 		'''Before and after must be names of other pages.'''
 		self.page[name] = QtWidgets.QListWidgetItem()
 		self.page[name].setText(name)
+		self.page[name].setToolTip(name)
 		# Add Icon.
 		icon = QtGui.QIcon(resourceFilepath+'/images/'+name+'.png')
 		icon.pixmap(50,50)

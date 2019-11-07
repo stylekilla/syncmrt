@@ -20,13 +20,19 @@ class QAlignment(QtWidgets.QWidget):
 		self.widget['maxMarkers'] = QtWidgets.QSpinBox()
 		self.widget['maxMarkers'].setRange(3,10)
 		self.widget['maxMarkers'].valueChanged.connect(self.updateMarkers)
+		self.widget['maxMarkers'].setToolTip("Number of markers to use for registration.")
 		self.widget['anatomical'] = QtWidgets.QRadioButton('Anatomical')
+		self.widget['anatomical'].setToolTip("Align using anatomical features.")
 		self.widget['fiducial'] = QtWidgets.QRadioButton('Fiducial')
+		self.widget['fiducial'].setToolTip("Align using fiducials, offers optimisation parameters.")
 		self.widget['optimise'] = QtWidgets.QCheckBox('Optimise')
+		self.widget['optimise'].setToolTip("Optimise the fiducial positions.")
 		label2 = QtWidgets.QLabel('Marker Size (mm):')
 		self.widget['markerSize'] = QtWidgets.QDoubleSpinBox()
+		self.widget['markerSize'].setToolTip("Choose the largest dimension of the fiducial markers used.")
 		label3 = QtWidgets.QLabel('Threshold (%):')
 		self.widget['threshold'] = QtWidgets.QDoubleSpinBox()
+		self.widget['threshold'].setToolTip("Threshold for optimisation. Playing with this will change optimisation results.")
 		# Layout
 		markerGroupLayout = QtWidgets.QFormLayout()
 		markerGroupLayout.addRow(label1,self.widget['maxMarkers'])
@@ -57,9 +63,11 @@ class QAlignment(QtWidgets.QWidget):
 
 		# Group 2: Checklist
 		alignGroup = QtWidgets.QGroupBox()
-		alignGroup.setTitle('Patient Alignment')
+		alignGroup.setTitle('Patient Alignment: CT')
 		self.widget['calcAlignment'] = QtWidgets.QPushButton('Calculate')
+		self.widget['calcAlignment'].setToolTip("Calculate alignment of XR to CT")
 		self.widget['doAlignment'] = QtWidgets.QPushButton('Align')
+		self.widget['doAlignment'].setToolTip("Perform the calculated alignment")
 		# Layout
 		alignGroupLayout = QtWidgets.QFormLayout()
 		alignGroupLayout.addRow(self.widget['calcAlignment'],self.widget['doAlignment'])
@@ -127,14 +135,20 @@ class QImaging(QtWidgets.QWidget):
 		'''
 		GROUP: Available Images
 		'''
+
+
+		'''
+		GROUP: Available Images
+		'''
 		# Imaging settings.
 		self.group['availableImages'] = QtWidgets.QGroupBox("Select Image")
 		imagingSequence_layout = QtWidgets.QFormLayout()
 		# imagingSequence_layout.setLabelAlignment(QtCore.Qt.AlignLeft)
 		# Num images.
-		lblImages = QtWidgets.QLabel("Select Image:")
+		lblImages = QtWidgets.QLabel("Select Existing Image:")
 		self.widget['imageList'] = QtWidgets.QComboBox()
 		self.widget['imageList'].setMinimumSize(65,20)
+		self.widget['imageList'].setToolTip("Select an existing image.")
 		commentLabel = QtWidgets.QLabel("Comment:")
 		self.widget['currentImageComment'] = QtWidgets.QLabel("-")
 		imagingSequence_layout.addRow(lblImages,self.widget['imageList'])
@@ -156,6 +170,7 @@ class QImaging(QtWidgets.QWidget):
 		self.widget['numImages'].setRange(1,2)
 		self.widget['numImages'].setValue(2)
 		self.widget['numImages'].valueChanged.connect(self.updateNumImages)
+		self.widget['numImages'].setToolTip("The number of images to acquire, this can be 1 (2D alignment) or 2 (3D alignment).")
 		imagingSequence_layout.addRow(lblImages,self.widget['numImages'])
 		imagingSequence_layout.addRow(QHLine())
 
@@ -170,6 +185,7 @@ class QImaging(QtWidgets.QWidget):
 		self.widget['theta1'].setMinimum(0)
 		self.widget['theta1'].setMaximum(self.thetaRange[1])
 		self.widget['theta1'].setValue(90)
+		self.widget['theta1'].setToolTip("Choose the first imaging angle, must be between 0 and 90.")
 		imagingSequence_layout.addRow(self.widget['theta1_label'],self.widget['theta1'])
 		# Theta 2
 		self.widget['theta2_label'] = QtWidgets.QLabel("\u03B8<sub>2</sub>\u00B0 [-90,0]")
@@ -179,10 +195,11 @@ class QImaging(QtWidgets.QWidget):
 		self.widget['theta2'].setMinimum(self.thetaRange[0])
 		self.widget['theta2'].setMaximum(0)
 		self.widget['theta2'].setValue(0)
+		self.widget['theta2'].setToolTip("Choose the second imaging angle, must be between -90 and 0.")
 		imagingSequence_layout.addRow(self.widget['theta2_label'],self.widget['theta2'])
 
 		# Translation Range.
-		lblROI = QtWidgets.QLabel("Region Of Interest:")
+		lblROI = QtWidgets.QLabel("Vertical Region Of Interest:")
 		imagingSequence_layout.addRow(lblROI)
 		# translation 1
 		self.widget['translation1_label'] = QtWidgets.QLabel("Z<sub>upper</sub> mm")
@@ -192,6 +209,7 @@ class QImaging(QtWidgets.QWidget):
 		self.widget['translation1'].setMinimum(self.translationRange[0])
 		self.widget['translation1'].setMaximum(self.translationRange[1])
 		self.widget['translation1'].setValue(self.translation[1])
+		self.widget['translation1'].setToolTip("Distance to image above the current patient position.")
 		imagingSequence_layout.addRow(self.widget['translation1_label'],self.widget['translation1'])
 		# translation 2
 		self.widget['translation2_label'] = QtWidgets.QLabel("Z<sub>lower</sub> mm")
@@ -201,12 +219,14 @@ class QImaging(QtWidgets.QWidget):
 		self.widget['translation2'].setMinimum(self.translationRange[0])
 		self.widget['translation2'].setMaximum(self.translationRange[1])
 		self.widget['translation2'].setValue(self.translation[0])
+		self.widget['translation2'].setToolTip("Distance to image below the current patient position.")
 		imagingSequence_layout.addRow(self.widget['translation2_label'],self.widget['translation2'])
 
 		# Comments.
 		self.widget['comment'] = QtWidgets.QLineEdit()
 		# self.widget['comment'].setAcceptRichText(False)
 		self.widget['comment'].setMaximumHeight(20)
+		self.widget['comment'].setToolTip("Write a comment for the image(s).")
 		imagingSequence_layout.addRow(QtWidgets.QLabel("Comment:"))
 		imagingSequence_layout.addRow(self.widget['comment'])
 		imagingSequence_layout.addRow(QHLine())
@@ -219,6 +239,7 @@ class QImaging(QtWidgets.QWidget):
 		self.widget['acquire'] = QtWidgets.QPushButton("Acquire X-rays")
 		self.widget['acquire'].setEnabled(False)
 		self.widget['acquire'].clicked.connect(self.acquireImages)
+		self.widget['acquire'].setToolTip("Acquire x-ray image(s).")
 		imagingSequence_layout.addRow(self.widget['acquire'])
 		# Set the group layout.
 		self.group['imagingSequence'].setLayout(imagingSequence_layout)
