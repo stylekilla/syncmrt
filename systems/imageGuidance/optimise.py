@@ -1,5 +1,6 @@
 import numpy as np
 from scipy import ndimage
+import logging
 
 def optimiseFiducials(pts,data,extent,markersize,threshold):
 	'''
@@ -11,6 +12,7 @@ def optimiseFiducials(pts,data,extent,markersize,threshold):
 	- gives out points in mm
 	- input should be [row,col]; we have made exceptions to align x/y and row/col in here
 	'''
+	logging.critical("Should use smoothing to help the process, like a guassian filter or something. See work on fiducial detection in trigimaging.")
 
 	# Calculate pixel size in x-y (hor-vert)
 	pixelSize = np.absolute(np.array([
