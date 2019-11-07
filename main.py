@@ -139,7 +139,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		# When an image set is added to the HDF5 file, add it to the sidebar:QImaging:QComboBox.
 		self.system.newImageSet.connect(self.sbImaging.addImageSet)
 		# When the current xray image setlist set is changed, plot it.
-		self.sbImaging.imageSetChanged.connect(self.loadXraySet)
+		self.sbImaging.imageSetChanged.connect(self.loadXrayImage)
 		# Tell the system to acquire an x-ray.
 		self.sbImaging.acquire.connect(self.system.acquireXray)
 		# When the image mode changes tell the system.
@@ -362,8 +362,14 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		self.sbImaging.enableAcquisition()
 		self.sbImaging.resetImageSetList()
 
-	def loadXraySet(self,_set):
-		logging.debug("Reading image set {}.".format(_set))
+	def loadXrayImage(self,_set):
+		"""
+		Load an x-ray image from the HDF5 dataset into the plot environment.
+		"""
+		if _set == "":
+			# No valid image is selected, assume the file is empty, so reset the plot environment and return.
+			self.envXray.reset()
+			return
 		# When the current image set is changed, get images and plot them.
 		images = self.patient.dx.getImageSet(_set)
 		# Update the sidebar comment label.

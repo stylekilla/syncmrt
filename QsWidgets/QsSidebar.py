@@ -145,7 +145,7 @@ class QImaging(QtWidgets.QWidget):
 		imagingSequence_layout = QtWidgets.QFormLayout()
 		# imagingSequence_layout.setLabelAlignment(QtCore.Qt.AlignLeft)
 		# Num images.
-		lblImages = QtWidgets.QLabel("Select Existing Image:")
+		lblImages = QtWidgets.QLabel("Select Image:")
 		self.widget['imageList'] = QtWidgets.QComboBox()
 		self.widget['imageList'].setMinimumSize(65,20)
 		self.widget['imageList'].setToolTip("Select an existing image.")
