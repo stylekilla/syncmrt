@@ -219,6 +219,8 @@ row = np.argmax(line_vert)
 pos = [row,col]
 logging.critical("Image isocenter (row,col): {}".format(pos))
 
+# NOW NEED TO DO VERTICAL ALIGNMENT!!!!
+
 
 # Set rotation back to home.
 logging.info("Moving ball-bearing back to 0 deg rotation.")

@@ -1,10 +1,15 @@
 import matplotlib as mpl
 mpl.use('Qt5Agg')
+mpl.rcParams['toolbar'] = 'toolmanager'
+mpl.rcParams['datapath'] = './QsWidgets/QsMpl/mpl-data'
+
 import matplotlib.pyplot as plt
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg, FigureManagerQT
 from matplotlib.collections import PatchCollection
 from matplotlib.patches import Rectangle
+from .tools import ToolPickPoint, ToolPickIso, ToolClearPoints
+
 import numpy as np
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from PyQt5 import QtGui, QtCore, QtWidgets
 from systems.imageGuidance import optimiseFiducials
 from functools import partial
@@ -12,69 +17,168 @@ import logging
 
 __all__ = ['QPlot','QHistogramWindow']
 
-class QPlot:
-	'''
-	Documentation for now:
-	- imageLoad(filename, pixelsize, oreitnation, imagenumber(/2), fileformat): Load image into canvas.
-	- imageUpdate(newdata): Send new data to canvas.
-	- markerUpdate(): Called from eventFilter (cid: callbackID), appends new markers?
-	- markerReset(markerspecifier): Resets the markers (either one or all).
-	- eventFilter(event): Based on the event identifier we can tell it to do something.
-	'''
 
-	def __init__(self,tableModel):
-		self.image = None
-		self.plotDimensions = None
-		self.pointsX = []
-		self.pointsY = []
-		self.i = 0
-		self.markersMaximum = 0
-		self.markersList = []
-		self.markersListOptimised = []
-		self.markerModel = tableModel
-		self._radiographMode = 'sum'
-		self._R = np.identity(3)
-		self._imagingAngle = 0
-		self.mask = None
-		self.maskSize = 20.0
-		self.overlay = {}
-		self.machineIsocenter = [0,0]
-		self.patientIsocenter = [0,0]
-		self.ctd = None
-		# Centroid stores the [x,y] coordinate and the current overlay state [True/False].
-		# self.ctd = [None,False]
+class QPlot(QtWidgets.QWidget):
+	# Signal that emits the index of the axes that (x,y) originate from as well as (x,y) themselves.
+	newMarker = QtCore.pyqtSignal(int,float,float)
+	# New isocenter.
+	newIsocenter = QtCore.pyqtSignal(float,float,float)
+	# Clear all the markers.
+	clearMarkers = QtCore.pyqtSignal()
 
-		self.fig = plt.figure()
+	def __init__(self):
+		"""
+		QPlot is designed to interface with syncmrt.file.image.Image2D objects.
+
+		Parameters
+		----------
+		tableModel : QsWorkspace.QPlotTableModel object
+			A table model must be provided for the storage of marker locations.
+		"""
+		super().__init__()
+		# Create the figure/canvas.
+		self.fig = plt.figure(constrained_layout=True)
 		self.fig.patch.set_facecolor('#000000')
-		self.ax = self.fig.add_axes([0,0,1,1])
-		self.ax.set_facecolor('#000000')
-		self.ax.title.set_color('#FFFFFF')
-		self.ax.xaxis.label.set_color('#FFFFFF')
-		self.ax.yaxis.label.set_color('#FFFFFF')
-		self.ax.xaxis.set_label_coords(0.5,0.12)
-		self.ax.yaxis.set_label_coords(0.12,0.5)
-		self.ax.xaxis.label.set_size(20)
-		self.ax.yaxis.label.set_size(20)
-		# self.ax.yaxis.label.set_rotation(90)
-		self.ax.spines['left'].set_visible(False)
-		self.ax.spines['top'].set_visible(False)
-		self.ax.spines['right'].set_visible(False)
-		self.ax.spines['bottom'].set_visible(False)
-		self.ax.tick_params('both',which='both',length=7,width=1,pad=-35,direction='in',colors='#FFFFFF')
+		# Create the canvas.
+		self.canvas = FigureCanvasQTAgg(self.fig)
+		# Create the figure manager.
+		self.figureManager = FigureManagerQT(self.canvas,1)
+		# Create the toolbar manager.
+		self.toolbarManager = self.figureManager.toolbar.toolmanager
+		# Create the toolbar
+		self.toolbar = self.figureManager.toolbar
+		# Set up marker tracking.
+		self.markers = {}
+		self.markersMaximum = 0
+		self.ctd = [None,None]
 
-		# Create a canvas widget for Qt to use.
-		self.canvas = FigureCanvas(self.fig)
-		# self.canvas.setCursor(QtGui.QCursor(QtCore.Qt.CrossCursor))
-		# self.canvas.setCursor(QtCore.Qt.CrossCursor)
-		cursor = mpl.widgets.Cursor(self.ax, useblit=True, color='red', linewidth=2)
+		# Create 2 axes.
+		self.ax = self.fig.subplots(1,2,gridspec_kw={'hspace':0,'wspace':0})
+		for idx, ax in enumerate(self.ax):
+			# Set up tracking for markers in the axes.
+			self.markers[ax] = []
+			# Set up the axes.
+			ax.set_facecolor('#000000')
+			ax.title.set_color('#FFFFFF')
+			ax.xaxis.label.set_color('#FFFFFF')
+			ax.yaxis.label.set_color('#FFFFFF')
+			ax.xaxis.set_label_coords(0.5,0.12)
+			ax.yaxis.set_label_coords(0.12,0.5)
+			ax.xaxis.label.set_size(20)
+			ax.yaxis.label.set_size(20)
+			ax.yaxis.label.set_rotation(90)
+			ax.spines['left'].set_visible(False)
+			ax.spines['top'].set_visible(False)
+			ax.spines['right'].set_visible(False)
+			ax.spines['bottom'].set_visible(False)
+			ax.tick_params('both',which='both',length=7,width=1,pad=-35,direction='in',colors='#FFFFFF')
+
+		# Remove useless tools.
+		items = list(self.toolbar._toolitems.keys())
+		for item in items:
+			self.toolbar.remove_toolitem(item)
+
+		# Populate the toolbar manager.
+		self.toolbarManager.add_tool('home','ToolHome')
+		self.toolbarManager.add_tool('zoom','ToolZoom')
+		self.toolbarManager.add_tool('pan','ToolPan')
+		self.toolbarManager.add_tool('pick',ToolPickPoint)
+		self.toolbarManager.add_tool('pickIso',ToolPickIso)
+		self.toolbarManager.add_tool('clear',ToolClearPoints)
+
+		# Populate the toolbar.
+		self.toolbar.add_tool('home',"default")
+		self.toolbar.add_tool('zoom',"default")
+		self.toolbar.add_tool('pan',"default")
+		self.toolbar.add_tool('pick',"default")
+		self.toolbar.add_tool('clear',"default")
+
+		# Get the layout.
+		layout = QtWidgets.QVBoxLayout()
+		layout.addWidget(self.toolbar)
+		layout.addWidget(self.canvas)
+		self.setLayout(layout)
+
+		# Get tools.
+		pick = self.toolbarManager.get_tool('pick')
+		clear = self.toolbarManager.get_tool('clear')
+		pickIso = self.toolbarManager.get_tool('pickIso')
+
+		# Connect tool signals.
+		pick.newPoint.connect(self.addMarker)
+		clear.clearPoints.connect(self.removeMarkers)
+		pickIso.newIsocenter.connect(self._updateIsocenter)
+
+		# Reference to object lists. To reset these, use `del list[:]`.
+		self.images = []
 		# Refresh the canvas.
 		self.canvas.draw()
 
-		self.canvas._pickerActive = False
+		# self._radiographMode = 'sum'
+		# self._R = np.identity(3)
+		# self._imagingAngle = 0
+		# self.mask = None
+		self.maskSize = 20.0
+		self.overlay = {}
+		self.machineIsocenter = [0,0,0]
+		self.patientIsocenter = [0,0,0]
 
-	def updatePatientIsocenter(self,_x,_y):
+	def loadImages(self,images):
+		"""
+		Load up to 2 images into the plot environment.
+
+		Parameters
+		----------
+		images : list
+			A list containing up to two items of syncmrt.file.image.Image2D
+		"""
+		# Clear the axes.
+		for ax in self.ax:
+			ax.cla()
+		# Remove all previous images.
+		for image in self.images:
+			image.remove()
+		del self.images[:]
+		# Remove all previous markers.
+		for ax in self.ax:
+			del self.markers[ax][:]
+
+		# Create new empty list to store images/axes into.
+		self.images = [None]*len(images)
+		for i, image in enumerate(images):
+			# Load the image. Assumes 2D array, forces 32-bit floats.
+			self.images[i] = self.ax[i].imshow(np.array(image.pixelArray,dtype=np.float32), cmap='bone', extent=image.extent)
+			# Setup the axes.
+			self.ax[i].set_xlim(image.extent[0:2])
+			self.ax[i].set_ylim(image.extent[2:4])
+			self.ax[i].set_aspect("equal", "datalim")
+
+	def pickIsocenter(self):
+		""" Trigger the pick isocenter tool. """
+		self.toolbarManager.trigger_tool('pickIso')
+
+	def _updateIsocenter(self,ax,x,y):
+		""" Update the patient isocenter with mouse click in plot. """
+		# Get the axis index that it originated from.
+		index = np.argwhere(self.ax == ax)[0][0]
+		if index == 0:
+			self.patientIsocenter[0:2] = [x,y]
+		elif index == 1:
+			self.patientIsocenter[1:3] = [y,x]
+		# Update the overlays.
+		if 'patIso' in self.overlay:
+			self.toggleOverlay(2,False) 
+			self.toggleOverlay(2,True)
+		if 'beamArea' in self.overlay:
+			self.toggleOverlay(3,False) 
+			self.toggleOverlay(3,True)
+		# Emit the signal to say we have a new iso.
+		x,y,z = list(map(float,self.patientIsocenter))
+		self.newIsocenter.emit(x,y,z)
+
+	def updatePatientIsocenter(self,x,y,z):
 		""" Update the patient isocenter and refresh the overlay. """
-		self.patientIsocenter = [_x,_y]
+		self.patientIsocenter = [x,y,z]
 		if 'patIso' in self.overlay:
 			self.toggleOverlay(2,False) 
 			self.toggleOverlay(2,True)
@@ -82,167 +186,90 @@ class QPlot:
 			self.toggleOverlay(3,False) 
 			self.toggleOverlay(3,True)
 
-	def loadCoordinate(self,name,vector):
-		# Pull in DICOM information in XYZ mm and turn it into the current view of the dataset.
-		self.coordinate[name] = self._R@np.transpose(np.array(vector))
-
-	def imageLoad(self,array,extent=np.array([-1,1,-1,1])):
-		# Clear the canvas and start again:
-		self.ax.cla()
-
-		# Always make it float32. Always assume it is a flat 2D array.
-		self.data = np.array(array,dtype=np.float32)
-		self.extent = extent
-		
-		self.image = self.ax.imshow(self.data, cmap='bone', extent=self.extent)
-		self.ax.set_xlim(extent[0:2])
-		self.ax.set_ylim(extent[2:4])
-		self.ax.set_aspect("equal", "datalim")
-		self.canvas.draw()
-		# Start Callback ID
-		self.cid = self.canvas.mpl_connect('button_press_event', self.eventFilter)
-
-
 	def applyWindow(self,imin,imax):
 		# Set the color scale to match the window.
-		try:
-			self.image.set_clim(vmin=imin,vmax=imax)
+		if imin < imax:
+			for image in self.images:
+				image.set_clim(vmin=imin,vmax=imax)
 			self.canvas.draw()
-		except:
-			pass
+		else:
+			return
 
-	def markerAdd(self,x,y):
+	def addMarker(self,ax,x,y):
 		""" Append marker position if it is within the maximum marker limit."""
-		if self.i < self.markersMaximum:
-			self.pointsX.append(x)
-			self.pointsY.append(y)
-			self.i += 1
-			self.markerModel.addPoint(self.i,x,y)
-			# Re-calculate the centroid.
-			if self.i > 1:
-				ctd_x = np.sum(self.pointsX)/self.i
-				ctd_y = np.sum(self.pointsY)/self.i
-				self.ctd = [ctd_x,ctd_y]
-				if 'ctd' in self.overlay:
-					# Refresh it's position on the screen.
-					self.toggleOverlay(0,False)
-					self.toggleOverlay(0,True)
+		n = len(self.markers[ax])
+		if n < self.markersMaximum:
 			# Plot marker list.
-			scatter = self.ax.scatter(x,y,c='r',marker='+',s=50)
-			text = self.ax.text(x+1,y-3,self.i,color='r')
-			self.markersList += scatter,text
+			scatter = ax.scatter(x,y,c='r',marker='+',s=50)
+			text = ax.text(x+1,y,n+1,color='r')
+			self.markers[ax].append([scatter,text])
 			# Refresh views.
 			self.canvas.draw()
+			# Emit signal for new marker.
+			index = np.argwhere(self.ax == ax)[0][0]
+			self.newMarker.emit(index,x,y)
 
-	def markerUpdate(self,item):
+	def setCentroid(self,axes,ctd):
+		""" Set the centroid of a given axes. """
+		self.ctd[axes] = ctd
+		# If it's currently an overlay, then toggle it off and on.
+		if 'ctd' in self.overlay:
+			# Refresh it's position on the screen.
+			self.toggleOverlay(0,False)
+			self.toggleOverlay(0,True)
+
+	def markerUpdate(self,markers):
 		'''Redraw all the markers to their updated positions.'''
-		# Item = qabstractitemmodel item linking to the marker to be changed.
-		if self.markerModel._locked:
-			pass
-		else:
-			for key in self.markerModel.items:
-				for value in self.markerModel.items[key]:
-					if value == item:
-						index1 = self.markerModel.indexFromItem(self.markerModel.items[key][0])
-						index2 = self.markerModel.indexFromItem(self.markerModel.items[key][1])
-						x = self.markerModel.data(index1)
-						y = self.markerModel.data(index2)
-						# key is row which x,y is stored.
-						scatter = self.ax.scatter(x,y,c='r',marker='+',s=50)
-						text = self.ax.text(x+1,y-3,key+1,color='r')
-						# Remove old plots.
-						self.markersList[key*2].remove()
-						self.markersList[key*2+1].remove()
-						# Remove from list.
-						self.markersList.remove(self.markersList[key*2])
-						self.markersList.remove(self.markersList[key*2])
-						# Insert new.
-						self.markersList[key*2:key*2] = scatter,text
-						self.canvas.draw()
-						# Update pointsXY lists.
-						self.pointsX[key] = x
-						self.pointsY[key] = y
-						# Re-calculate the centroid.
-			if self.i > 1:
-				ctd_x = np.sum(self.pointsX)/self.i
-				ctd_y = np.sum(self.pointsY)/self.i
-				self.ctd[0] = [ctd_x,ctd_y]
-				if 'ctd' in self.overlay:
-					# Refresh it's position on the screen.
-					self.toggleOverlay(0,False)
-					self.toggleOverlay(0,True)
+		# markers = table.getPoints()
+		for ax in self.ax:
+			for pos, marker in enumerate(self.markers[ax]):
+				# marker[0].remove()
+				# marker[1].remove()
+				x,y = markers[pos]
+				marker[0] = ax.scatter(x,y,c='r',marker='+',s=50)
+				marker[1] = ax.text(x+1,y,pos+1,color='r')
+		# Refresh the canvas.
+		self.canvas.draw()
+		# If it's currently an overlay, then toggle it off and on.
+		if 'ctd' in self.overlay:
+			# Refresh it's position on the screen.
+			self.toggleOverlay(0,False)
+			self.toggleOverlay(0,True)
 
-	def removeMarker(self,marker=-1):
-		'''Clear the specified marker. Else clear all markers.'''
-		# Remove all markers: 
-		if marker == -1:
-			self.i = 0
-			self.pointsX = []
-			self.pointsY = []
-			self.ctd = None
-			# Remove the overlays if they exist.
+	def removeMarkers(self):
+		""" Clear the specified marker. Else clear all markers. """
+		# Remove stuff from plots.
+		for ax in self.ax:
+			for pos, marker in enumerate(self.markers[ax]):
+				marker[0].remove()
+				marker[1].remove()
+			# Reset the list to empty.
+			self.markers[ax] = []
+			# Reset centroid.
+			self.ctd = [None,None]
+			# If it's currently an overlay, then toggle it off and on.
 			if 'ctd' in self.overlay:
+				# Refresh it's position on the screen.
 				self.toggleOverlay(0,False)
-				self.overlay['ctd'] = None
-			if len(self.markersList) > 0:
-				for index in range(len(self.markersList)):
-					self.markersList[index].remove()
-			self.markersList = []
-			# Reset table values.
-			self.markerModel.clearMarkers(self.markersMaximum)
-			# Set to -2 to remove optimised markers as well.
-			marker = -2
-
-		elif marker == -2:
-			# Remove optimised markers, if any.
-			self.pointsXoptimised = []
-			self.pointsYoptimised = []
-			if len(self.markersListOptimised) > 0:
-				for i in range(len(self.markersListOptimised)):
-					self.markersListOptimised[-1].remove()
-					del(self.markersListOptimised[-1])
-
-		else: return
-
+				self.toggleOverlay(0,True)
+		# Refresh the canvas.
 		self.canvas.draw()
+		# Emit the signal to tell everything else we're done.
+		self.clearMarkers.emit()
 
-	def markerOptimise(self,fiducialSize,threshold):
-		'''Optimise markers that are selected in plot.'''
-		# Remove any existing markers.
-		self.removeMarker(marker=-2)
+	def clear(self):
+		""" Clears all images in the plot. """
+		for ax in self.ax:
+			ax.cla()
 
-		# Call syncMRT optimise points module. Send points,data,dims,markersize.
-		pointsIn = np.column_stack((self.pointsX,self.pointsY))
-		extent = self.image.get_extent()
-		# points = optimiseFiducials(pointsIn,self.data,extent,fiducialSize,threshold)
-		points = optimiseFiducials(pointsIn,np.array(self.data),extent,fiducialSize,threshold)
-		self.pointsXoptimised = points[:,0]
-		self.pointsYoptimised = points[:,1]
-
-		# Re-plot with optimised points over the top (in blue).
-		self.markersListOptimised = []
-		for i in range(len(self.pointsXoptimised)):
-			x = self.pointsXoptimised[i]
-			y = self.pointsYoptimised[i]
-			# Plot marker list.
-			scatter = self.ax.scatter(x,y,c='b',marker='+',s=50)
-			text = self.ax.text(x+1,y-3,i+1,color='b')
-			self.markersListOptimised += scatter,text
-
-		self.canvas.draw()
-
-	def markers(self):
-		""" Return the points in this plot as a list. """
-		return list(zip(self.pointsX,self.pointsY))
-
-	def updatePatientIsocenter(self,_x,_y):
-		# toggleOverlay
-		self.patientIsocenter = [_x,_y]
+	def updatePatientIsocenter(self,x,y,z):
+		""" Update the patient isocenter in 3D. """
+		self.patientIsocenter = [x,y,z]
 		if 'patIso' in self.overlay:
 			self.toggleOverlay(2,False) 
 			self.toggleOverlay(2,True)
 		if 'beamArea' in self.overlay:
-			self.toggleOverlay(3,False) 
+			self.toggleOverlay(3,False)
 			self.toggleOverlay(3,True)
 
 	def toggleOverlay(self,overlayType,state=False):
@@ -261,13 +288,16 @@ class QPlot:
 						obj.remove()
 				del(self.overlay['ctd'])
 			if state is True:
+				self.overlay['ctd'] = []
 				# Plot overlay scatter points.
-				if self.ctd is not None:
-					x,y = self.ctd
-					self.overlay['ctd'] = [
-							self.ax.scatter(x,y,c='b',marker='+',s=50),
-							self.ax.text(x+1,y-3,'ctd',color='b')
-						]
+				if self.ctd[0] != None: 
+					x,y = self.ctd[0]
+					self.overlay['ctd'].append(self.ax[0].scatter(x,y,c='b',marker='+',s=50))
+					self.overlay['ctd'].append(self.ax[0].text(x+1,y-3,'ctd',color='b'))
+				if self.ctd[1] != None: 
+					x,y = self.ctd[1]
+					self.overlay['ctd'].append(self.ax[1].scatter(x,y,c='b',marker='+',s=50))
+					self.overlay['ctd'].append(self.ax[1].text(x+1,y-3,'ctd',color='b'))
 			else:
 				pass
 
@@ -275,15 +305,21 @@ class QPlot:
 			# Machine isocenter overlay.
 			# Remove overlay lines.
 			if 'machIsoH' in self.overlay:
-				self.overlay['machIsoH'].remove()
+				for obj in self.overlay['machIsoH']:
+					obj.remove()
 				del(self.overlay['machIsoH'])
 			if 'machIsoV' in self.overlay:
-				self.overlay['machIsoV'].remove()
+				for obj in self.overlay['machIsoV']:
+					obj.remove()
 				del(self.overlay['machIsoV'])
 			if state is True:
+				self.overlay['machIsoV'] = []
+				self.overlay['machIsoH'] = []
 				# Plot overlay lines.
-				self.overlay['machIsoV'] = self.ax.axvline(self.machineIsocenter[0],c='r',alpha=0.5)
-				self.overlay['machIsoH'] = self.ax.axhline(self.machineIsocenter[1],c='r',alpha=0.5)
+				self.overlay['machIsoV'].append(self.ax[0].axvline(self.machineIsocenter[0],c='r',alpha=0.5))
+				self.overlay['machIsoV'].append(self.ax[1].axvline(self.machineIsocenter[2],c='r',alpha=0.5))
+				self.overlay['machIsoH'].append(self.ax[0].axhline(self.machineIsocenter[1],c='r',alpha=0.5))
+				self.overlay['machIsoH'].append(self.ax[1].axhline(self.machineIsocenter[1],c='r',alpha=0.5))
 			else:
 				pass
 		elif overlayType == 2:
@@ -294,73 +330,47 @@ class QPlot:
 					obj.remove()
 				del(self.overlay['patIso'])
 			if state is True:
-				# Create new patches.
-				self.overlay['patIso'] = [
-						self.ax.scatter(self.patientIsocenter[0],self.patientIsocenter[1],marker='+',color='y',s=50),
-						self.ax.text(self.patientIsocenter[0]+1,self.patientIsocenter[1]-3,'ptv',color='y')
-					]
+				self.overlay['patIso'] = []
+				# Plot patient iso.
+				self.overlay['patIso'].append(self.ax[0].scatter(self.patientIsocenter[0],self.patientIsocenter[1],marker='+',color='y',s=50))
+				self.overlay['patIso'].append(self.ax[0].text(self.patientIsocenter[0]+1,self.patientIsocenter[1]+1,'ptv',color='y'))
+				self.overlay['patIso'].append(self.ax[1].scatter(self.patientIsocenter[2],self.patientIsocenter[1],marker='+',color='y',s=50))
+				self.overlay['patIso'].append(self.ax[1].text(self.patientIsocenter[2]+1,self.patientIsocenter[1]+1,'ptv',color='y'))
 			else:
 				pass
 		elif overlayType == 3:
 			# Remove it first if it already exists.
-			if 'beamArea' in self.overlay:
-				self.overlay['beamArea'].remove()
-				del(self.overlay['beamArea'])
-			# Beam area overlay.
-			if state is True:
-				# Create new patches.
-				_beam = Rectangle((-self.maskSize/2,-self.maskSize/2), self.maskSize, self.maskSize,fc='r',ec='none')
-				_ptv = Rectangle((self.patientIsocenter[0]-self.maskSize/2,self.patientIsocenter[1]-self.maskSize/2), self.maskSize, self.maskSize,fc='y',ec='none')
-				pc = PatchCollection([_beam,_ptv],alpha=0.2,match_original=True)
-				self.overlay['beamArea'] = self.ax.add_collection(pc)
-			else:
-				pass
+			# if 'beamArea' in self.overlay:
+			# 	for obj in reversed(self.overlay['beamArea']):
+			# 		obj.remove()
+			# 	del(self.overlay['beamArea'])
+			# # Beam area overlay.
+			# if state is True:
+			# 	self.overlay['beamArea'] = []
+			# 	# Create new patches.
+			# 	_beam = Rectangle((-self.maskSize/2,-self.maskSize/2), self.maskSize, self.maskSize,fc='r',ec='none')
+			# 	_ptv = Rectangle((self.patientIsocenter[0]-self.maskSize/2,self.patientIsocenter[1]-self.maskSize/2), self.maskSize, self.maskSize,fc='y',ec='none')
+			# 	pc = PatchCollection([_beam,_ptv],alpha=0.2,match_original=True)
+			# 	for ax in self.ax:
+			# 		self.overlay['beamArea'].append(ax.add_collection(pc))
+			# else:
+				# pass
+			pass
 		# Update the canvas.
 		self.canvas.draw()
 
-	def setExtent(self,newExtent):
-		# Change extent and markers.
-		change = newExtent-self.extent
-
-		''' Update markers '''
-		# Get values and add changes.
-		for i in range(len(self.pointsX)):
-			self.pointsX[i] -= change[0]
-			self.pointsY[i] -= change[2]
-
-		x,y = self.pointsX,self.pointsY
-
-		# for key,val in self.pointsX.items():
-		# 	self.pointsX[key] += change[0]
-		# for key,val in self.pointsY.items():
-		# 	self.pointsY[key] += change[1]
-		# Get new positions
-		
-		# Remove markers
-		self.removeMarker()
-		# Add new points
-		for i in range(len(x)):
-			self.markerAdd(x[i],y[i])
-
-		# Update extent
-		self.extent = newExtent
-		self.image.set_extent(self.extent)
-
-		# Refresh
-		self.canvas.draw()
-		
 	def setMaskSize(self,size):
 		""" Set the mask size and toggle the overlay if it is enabled. """
-		logging.critical("Changed mask size to: {}".format(size))
 		self.maskSize = size
 		self.toggleOverlay(3,'beamArea' in self.overlay)
 		self.toggleOverlay(3,'beamArea' in self.overlay)
 
 	def eventFilter(self,event):
 		# If mouse button 1 is clicked (left click).
-		if (event.button == 1) & (self.canvas._pickerActive):
-			self.markerAdd(event.xdata,event.ydata)
-
+		if (event.button == 1):
+			# event.inaxes is the axes the click originated from
+			# event.xdata is the data point w.r.t. the active axes.
+			self.markerAdd(event.inaxes,event.xdata,event.ydata)
 
 CENTER_HEADING = """
 QGroupBox::title {
@@ -423,7 +433,7 @@ class Histogram:
 		# A figure instance to plot on.
 		self.figure = plt.figure()
 		# This is the Canvas Widget that displays the `figure`.
-		self.canvas = FigureCanvas(self.figure)
+		self.canvas = FigureCanvasQTAgg(self.figure)
 		# Add axes for plotting on.
 		self.ax = self.figure.add_axes([0,0,1,1])
 		# Draw the canvas.

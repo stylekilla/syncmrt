@@ -12,6 +12,13 @@ import numpy as np
 from PyQt5.QtCore import pyqtSlot as Slot
 from PyQt5 import QtCore, QtGui, QtWidgets, uic
 
+# Forcing a fix for MPL?
+import matplotlib as mpl
+mpl.use('Qt5Agg')
+mpl.rcParams['toolbar'] = 'toolmanager'
+
+# Some icons are used under the licence: https://fontawesome.com/license
+
 # For PyInstaller:
 if getattr(sys, 'frozen', False):
     # If the application is run as a bundle, the pyInstaller bootloader extends the sys module by a flag frozen=True and sets the app path into variable _MEIPASS'.
@@ -148,41 +155,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		self.testing()
 
 	def testing(self):
-		pass
-		# self.openXray('../scratch/test.hdf5')
-		# dataset = []
-		# modality = 'CT'
-		# # for root, subdir, fp in os.walk('../scratch/head-phant/'):
-		# for root, subdir, fp in os.walk('../scratch/HeadneckCT/'):
-		# 	for fn in fp:
-		# 		# if (fn.endswith('.dcm')) & (fn[:len(modality)] == modality):
-		# 		if fn.endswith('.dcm'):
-		# 			dataset.append(os.path.join(root,fn))
-		# if len(dataset) > 0:
-		# 	self.openCT(dataset)
-
-		# 2D test case.
-		# self.envXray.plot[0].markerAdd(10.61,30)
-		# self.envXray.plot[0].markerAdd(-10.61,30)
-		# self.envXray.plot[0].markerAdd(-5.3,-10)
-		# self.envCt.plot[0].markerAdd(15,30)
-		# self.envCt.plot[0].markerAdd(-15,30)
-		# self.envCt.plot[0].markerAdd(-7.5,-10)
-
-		# self.envXray.plot[0].markerAdd(0.0,-25)
-		# self.envXray.plot[0].markerAdd(0.0,25)
-		# self.envXray.plot[0].markerAdd(-53.03,25)
-		# self.envXray.plot[1].markerAdd(-35.35,-25)
-		# self.envXray.plot[1].markerAdd(-35.35,25)
-		# self.envXray.plot[1].markerAdd(-17.67,25)
-		# self.envCt.plot[0].markerAdd(-25,25)
-		# self.envCt.plot[0].markerAdd(-25,-25)
-		# self.envCt.plot[0].markerAdd(25,-25)
-		# self.envCt.plot[1].markerAdd(25,25)
-		# self.envCt.plot[1].markerAdd(25,-25)
-		# self.envCt.plot[1].markerAdd(50,-25)
-
-		# self.patientCalculateAlignment()
+		self.openXray('../scratch/test.hdf5')
 
 	@QtCore.pyqtSlot(int)
 	def calculateAlignment(self,index):
@@ -219,7 +192,6 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 			if file.endswith('.hdf5') is False:
 				file += '.hdf5'
 			self.patient.new(file,'DX')
-			# self.system.setLocalXrayFile(file)
 			# Create an xray workspace.
 			if not self._isXrayOpen:
 				self.createWorkEnvironmentXray()
@@ -231,14 +203,10 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 			# Get the plot histogram widgets and give them to the sidebar widget.
 			histogram = self.envXray.getPlotHistogram()
 			self.sidebar.widget['xrayImageProperties'].addPlotHistogramWindow(histogram)
-			# Get the plot isocenter widgets and give them to the sidebar widget.
-			# isocenter = self.envXray.getPlotIsocenter()
-			# self.sidebar.widget['xrayImageProperties'].addEditableIsocenter(isocenter)
 			# Force marker update for table.
 			self.envXray.set('maxMarkers',config.markers.quantity)
 			# Finalise import. Set open status to true and open the workspace.
 			self._isXrayOpen = True
-			# self.sbImaging.enableAcquisition()
 			self.environment.button['X-RAY'].clicked.emit()
 			self.sidebar.linkPages('ImageProperties','xrayImageProperties')
 
@@ -336,8 +304,8 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		self.sbImaging.resetImageSetList()
 		self.sbImaging.addImageSet(_list)
 		# Get the plot histogram widgets and give them to the sidebar widget.
-		histogram = self.envXray.getPlotHistogram()
-		self.sidebar.widget['xrayImageProperties'].addPlotHistogramWindow(histogram)
+		# histogram = self.envXray.getPlotHistogram()
+		# self.sidebar.widget['xrayImageProperties'].addPlotHistogramWindow(histogram)
 		# Connect the settings mask size to the plot.
 		self.sbSettings.maskSizeChanged.connect(self.envXray.setMaskSize)
 		# Force marker update for table.
@@ -353,12 +321,17 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		logging.debug('Creating X-RAY Work Environment')
 		# Make a widget for plot stuff.
 		self.envXray = self.environment.addPage('X-RAY',QsWidgets.QPlotEnvironment())
+		# Connect signal for number of markers.
+		self.sbAlignment.markersChanged.connect(partial(self.envXray.set,'maxMarkers'))
+		# Connect image properties page.
 		self.envXray.toggleSettings.connect(partial(self.sidebar.showStack,'ImageProperties'))
 		# Sidebar page for x-ray image properties.
 		widget = self.sidebar.addPage('xrayImageProperties',QsWidgets.QXrayProperties(),addList=False)
 		widget.toggleOverlay.connect(partial(self.envXray.toggleOverlay))
 		widget.isocenterUpdated.connect(self.envXray.updateIsocenter)
+		widget.pickIsocenter.connect(self.envXray.pickIsocenter)
 		widget.align.connect(self.patientCalculateAlignment)
+		self.envXray.newIsocenter.connect(widget.setIsocenter)
 		# What is this?
 		self.sbImaging.enableAcquisition()
 		self.sbImaging.resetImageSetList()
@@ -384,8 +357,8 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		# Toggle the ovelrays on and off to refresh them.
 		self.sidebar.widget['xrayImageProperties'].refreshOverlays()
 		# Populate new histograms.
-		histogram = self.envXray.getPlotHistogram()
-		self.sidebar.widget['xrayImageProperties'].addPlotHistogramWindow(histogram)
+		# histogram = self.envXray.getPlotHistogram()
+		# self.sidebar.widget['xrayImageProperties'].addPlotHistogramWindow(histogram)
 
 	def openSyncPlan(self,file):
 		""" Open Synchrotron Treatment Plan. """

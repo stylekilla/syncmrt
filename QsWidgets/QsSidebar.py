@@ -534,6 +534,7 @@ class QSettings(QtWidgets.QWidget):
 class QXrayProperties(QtWidgets.QWidget):
 	toggleOverlay = QtCore.pyqtSignal(int,bool)
 	isocenterUpdated = QtCore.pyqtSignal(float,float,float)
+	pickIsocenter = QtCore.pyqtSignal()
 	align = QtCore.pyqtSignal(int)
 
 	def __init__(self,parent=None):
@@ -582,17 +583,20 @@ class QXrayProperties(QtWidgets.QWidget):
 		# Create an isocenter widget with XYZ toggles in it.
 		self.widget['isocenter']['editIso'] = QtWidgets.QWidget()
 		label1 = QtWidgets.QLabel('Isocenter (mm)')
-		label2 = QtWidgets.QLabel('H1: ')
+		label2 = QtWidgets.QLabel('Horizontal 1: ')
 		self.widget['isocenter']['editIsoX'] = QtWidgets.QLineEdit()
-		label3 = QtWidgets.QLabel('V: ')
+		label3 = QtWidgets.QLabel('Vertical: ')
 		self.widget['isocenter']['editIsoY'] = QtWidgets.QLineEdit()
-		label4 = QtWidgets.QLabel('H2: ')
+		label4 = QtWidgets.QLabel('Horizontal 2: ')
 		self.widget['isocenter']['editIsoZ'] = QtWidgets.QLineEdit()
+		self.widget['isocenter']['pick'] = QtWidgets.QPushButton("Pick")
 		self.widget['isocenter']['align'] = QtWidgets.QPushButton("Align")
+		# Signals.
+		self.widget['isocenter']['pick'].clicked.connect(self.pickIsocenter.emit)
 		# Layout
 		lytEditIsocenter = QtWidgets.QFormLayout()
 		lytEditIsocenter.setContentsMargins(0,0,0,0)
-		lytEditIsocenter.addRow(label1)
+		lytEditIsocenter.addRow(label1,self.widget['isocenter']['pick'])
 		lytEditIsocenter.addRow(label2,self.widget['isocenter']['editIsoX'])
 		lytEditIsocenter.addRow(label3,self.widget['isocenter']['editIsoY'])
 		lytEditIsocenter.addRow(label4,self.widget['isocenter']['editIsoZ'])
@@ -645,6 +649,14 @@ class QXrayProperties(QtWidgets.QWidget):
 		self.widget['isocenter']['editIso'].setVisible(bool(state))
 		self.widget['isocenter']['align'].setEnabled(bool(state))
 		self.widget['isocenter']['align'].setVisible(bool(state))
+
+	def setIsocenter(self,x,y,z):
+		""" Set the isocenter from an external source. """
+		self.blockSignals(True)
+		self.widget['isocenter']['editIsoX'].setText("{:.2f}".format(x))
+		self.widget['isocenter']['editIsoY'].setText("{:.2f}".format(y))
+		self.widget['isocenter']['editIsoZ'].setText("{:.2f}".format(z))
+		self.blockSignals(False)
 
 	def _updateIsocenter(self):
 		""" Send a signal with updated x,y coordinates. """
