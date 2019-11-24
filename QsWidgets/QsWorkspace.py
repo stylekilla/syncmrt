@@ -53,7 +53,6 @@ class QPlotEnvironment(QtWidgets.QSplitter):
 			view.verticalHeader().setDefaultSectionSize(20)
 			view.verticalHeader().hide()
 			view.horizontalHeader().setStretchLastSection(True)
-
 		# Signals.
 		self.plot.newMarker.connect(self.addMarker)
 		self.plot.clearMarkers.connect(self.clearMarkers)
@@ -73,16 +72,6 @@ class QPlotEnvironment(QtWidgets.QSplitter):
 		# Set default sizes.
 		self.setSizes([300,100])
 
-		# # Add widget to plotenvironment.
-		# # self.layout.addWidget(subplotWidget)
-		# self.addWidget(subplotWidget)
-		# # Create a histogram widget for the plot.
-		# self.histogram.append(QsMpl.QHistogramWindow())
-		# self.histogram[-1].setEnabled(False)
-		# # When histogram changed then update plot.
-		# self.histogram[-1].windowUpdated.connect(partial(self.plot[-1].applyWindow))
-		# # Send a signal to say a subplot was added.
-		# self.set('maxMarkers',self._maxMarkers)
 
 	def addMarker(self,idx,x,y):
 		""" Marker has been added to the plot. """
@@ -112,14 +101,13 @@ class QPlotEnvironment(QtWidgets.QSplitter):
 		# Basic data santisation.
 		if len(images) > 2:
 			raise Exception("Number of input images must be 1 or 2, instead {} images were received.".format(len(images)))
+		# Clear the markers.
+		self.clearMarkers()
 		# Load the images into the QPlot.
 		self.plot.loadImages(images)
 		# Iterate over input data.
 		for i, image in enumerate(images):
 			self.tableModel[i].setLabels(image.view)
-		# self.histogram[i].setTitle('View: '+image[i].view['title'])
-		# self.histogram[i].setData(image[i].pixelArray)
-		# self.histogram[i].setEnabled(True)
 
 	def clearPlot(self):
 		"""
@@ -132,8 +120,15 @@ class QPlotEnvironment(QtWidgets.QSplitter):
 		self.plot.pickIsocenter()
 
 	def getPlotHistogram(self):
-		# return self.histogram
-		pass
+		""" 
+		Get the plot histograms. 
+
+		Returns
+		-------
+			histograms : list
+				A list of all the histograms.
+		"""
+		return self.plot.getHistograms()
 
 	def reset(self):
 		"""

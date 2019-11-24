@@ -335,6 +335,10 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		# What is this?
 		self.sbImaging.enableAcquisition()
 		self.sbImaging.resetImageSetList()
+		# Add histograms widgets.
+		histogram = self.envXray.getPlotHistogram()
+		self.sidebar.widget['xrayImageProperties'].addPlotHistogramWindow(histogram)
+
 
 	def loadXrayImage(self,_set):
 		"""
@@ -356,7 +360,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		self.envXray.loadImages(images)
 		# Toggle the ovelrays on and off to refresh them.
 		self.sidebar.widget['xrayImageProperties'].refreshOverlays()
-		# Populate new histograms.
+		# # Populate new histograms.
 		# histogram = self.envXray.getPlotHistogram()
 		# self.sidebar.widget['xrayImageProperties'].addPlotHistogramWindow(histogram)
 
