@@ -138,8 +138,7 @@ class QPlotEnvironment(QtWidgets.QSplitter):
 
 	def setMaskSize(self,size):
 		""" Set each plot's mask size. """
-		for plot in self.plot:
-			plot.setMaskSize(size)
+		self.plot.setMaskSize(size)
 
 	def set(self,setting,value):
 		if setting == 'maxMarkers':

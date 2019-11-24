@@ -291,9 +291,10 @@ class QPlot(QtWidgets.QWidget):
 	def toggleOverlay(self,overlayType,state=False):
 		'''
 		Single overlay function with various types.
-			- 0: Centroid overaly
-			- 1: Machine Isocenter overlay
-			- 2: Patient Isocenter overlay
+			0: Centroid overlay
+			1: Machine Isocenter overlay
+			2: Patient Isocenter overlay
+			3: Beam area overlay
 		'''
 		if overlayType == 0:
 			# Centroid overlay.
@@ -355,22 +356,26 @@ class QPlot(QtWidgets.QWidget):
 			else:
 				pass
 		elif overlayType == 3:
+			# Overlay of the beam field.
 			# Remove it first if it already exists.
-			# if 'beamArea' in self.overlay:
-			# 	for obj in reversed(self.overlay['beamArea']):
-			# 		obj.remove()
-			# 	del(self.overlay['beamArea'])
-			# # Beam area overlay.
-			# if state is True:
-			# 	self.overlay['beamArea'] = []
-			# 	# Create new patches.
-			# 	_beam = Rectangle((-self.maskSize/2,-self.maskSize/2), self.maskSize, self.maskSize,fc='r',ec='none')
-			# 	_ptv = Rectangle((self.patientIsocenter[0]-self.maskSize/2,self.patientIsocenter[1]-self.maskSize/2), self.maskSize, self.maskSize,fc='y',ec='none')
-			# 	pc = PatchCollection([_beam,_ptv],alpha=0.2,match_original=True)
-			# 	for ax in self.ax:
-			# 		self.overlay['beamArea'].append(ax.add_collection(pc))
-			# else:
-				# pass
+			if 'beamArea' in self.overlay:
+				for obj in reversed(self.overlay['beamArea']):
+					obj.remove()
+				del(self.overlay['beamArea'])
+			if state is True:
+				self.overlay['beamArea'] = []
+				# Create new patches.
+				_beam = Rectangle((-self.maskSize/2,-self.maskSize/2), self.maskSize, self.maskSize,fc='r',ec='none',alpha=0.2)
+				_ptv1 = Rectangle((self.patientIsocenter[0]-self.maskSize/2,self.patientIsocenter[1]-self.maskSize/2), self.maskSize, self.maskSize,fc='none',ec='y',ls='--',alpha=1.0)
+				_ptv2 = Rectangle((self.patientIsocenter[2]-self.maskSize/2,self.patientIsocenter[1]-self.maskSize/2), self.maskSize, self.maskSize,fc='none',ec='y',ls='--',alpha=1.0)
+				# Different patch collection for each plot.
+				pc1 = PatchCollection([_beam,_ptv1],match_original=True)
+				pc2 = PatchCollection([_beam,_ptv2],match_original=True)
+				# Add the collections to the axes.
+				self.overlay['beamArea'].append(self.ax[0].add_collection(pc1))
+				self.overlay['beamArea'].append(self.ax[1].add_collection(pc2))
+			else:
+				pass
 			pass
 		# Update the canvas.
 		self.canvas.draw()
