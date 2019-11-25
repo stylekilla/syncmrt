@@ -229,16 +229,17 @@ class QPlot(QtWidgets.QWidget):
 			self.toggleOverlay(0,False)
 			self.toggleOverlay(0,True)
 
-	def markerUpdate(self,markers):
-		'''Redraw all the markers to their updated positions.'''
-		# markers = table.getPoints()
-		for ax in self.ax:
-			for pos, marker in enumerate(self.markers[ax]):
-				# marker[0].remove()
-				# marker[1].remove()
-				x,y = markers[pos]
-				marker[0] = ax.scatter(x,y,c='r',marker='+',s=50)
-				marker[1] = ax.text(x+1,y,pos+1,color='r')
+	def markerUpdate(self,axesIndex,markerLocations):
+		""" Update all the markers. """
+		# Get the desired axes.
+		ax = self.ax[axesIndex]
+		# Clear the markers and add the new ones.
+		for pos, marker in enumerate(self.markers[ax]):
+			marker[0].remove()
+			marker[1].remove()
+			x,y = markerLocations[pos]
+			marker[0] = ax.scatter(x,y,c='r',marker='+',s=50)
+			marker[1] = ax.text(x+1,y,pos+1,color='r')
 		# Refresh the canvas.
 		self.canvas.draw()
 		# If it's currently an overlay, then toggle it off and on.
@@ -248,7 +249,14 @@ class QPlot(QtWidgets.QWidget):
 			self.toggleOverlay(0,True)
 
 	def removeMarkers(self):
-		""" Clear the specified marker. Else clear all markers. """
+		""" 
+		Clear the specified marker. Else clear all markers.
+
+		Parameters
+		----------
+		plot : int
+			Can take values of -1 (both plots) or plot 1 or 2.
+		"""
 		# Remove stuff from plots.
 		for ax in self.ax:
 			for pos, marker in enumerate(self.markers[ax]):

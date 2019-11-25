@@ -32,19 +32,17 @@ class QPlotEnvironment(QtWidgets.QSplitter):
 		# Create the tables first.
 		self.tableView = (QtWidgets.QTableView(),QtWidgets.QTableView())
 		self.tableModel = (QPlotTableModel(),QPlotTableModel())
-		# Set the models.
+		# Set the models (Assume model[0] == QPlot.axis[0]).
 		self.tableView[0].setModel(self.tableModel[0])
 		self.tableView[1].setModel(self.tableModel[1])
-		# Create the plot after, requires reference to 
 		# Create a marker tracker for each plot.
 		self.markerTracker = [markerTracker(),markerTracker()]
-		# self.plot = QsMpl.QPlot(self.tableModel)
 		self.plot = QsMpl.QPlot()
 		# Internal vars.
 		self._maxMarkers = 0
 		# Signals.
 		for i, model in enumerate(self.tableModel):
-			model.itemChanged.connect(partial(self.plot.markerUpdate,model))
+			model.itemChanged.connect(partial(self.updateMarkersFromModel,i))
 		# Configure table views.
 		for i, view in enumerate(self.tableView):
 			view.setAlternatingRowColors(True)
@@ -72,7 +70,6 @@ class QPlotEnvironment(QtWidgets.QSplitter):
 		# Set default sizes.
 		self.setSizes([300,100])
 
-
 	def addMarker(self,idx,x,y):
 		""" Marker has been added to the plot. """
 		# Add it to the marker tracker.
@@ -81,6 +78,11 @@ class QPlotEnvironment(QtWidgets.QSplitter):
 		self.plot.setCentroid(idx,ctd)
 		# When it's added to the tracker it should be added to the table.
 		self.tableModel[idx].addPoint(n,x,y)
+
+	def updateMarkersFromModel(self,modelIndex):
+		""" Takes the table model and updates the markers in the plot accordingly. """
+		markers = self.tableModel[modelIndex].getMarkers()
+		self.plot.markerUpdate(modelIndex,markers)
 
 	def clearMarkers(self):
 		""" Remove all the markers. """
@@ -285,14 +287,17 @@ class QPlotTableModel(QtGui.QStandardItemModel):
 	def countPoints(self):
 		return len(self.points)
 
-	def getPoints(self):
+	def getMarkers(self):
 		""" Return the points held by the table. """
 		pointsList = []
 		self.rowCount()
 		for i in range(self.rowCount()):
-			x = float(self.item(i,1).text())
-			y = float(self.item(i,2).text())
-			pointsList.append([x,y])
+			try:
+				x = float(self.item(i,1).text())
+				y = float(self.item(i,2).text())
+				pointsList.append([x,y])
+			except:
+				pass
 		return pointsList
 
 	def removePoint(self,index):
