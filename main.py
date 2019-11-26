@@ -2,7 +2,6 @@
 from resources import config, ui
 import systems
 import QsWidgets
-from systems.imageGuidance import nonOrthogonalImaging
 # Core imports.
 import os
 import sys
@@ -505,6 +504,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 
 	def toggleOptimise(self,state):
 		"""State(bool) tells you whether you should clear the optimisation plots or not."""
+		logging.critical("This does not work anymore. Must be re-implemented.")
 		if state == True:
 			pass
 		elif state == False:
@@ -534,12 +534,17 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		Index 	0: CT with a preset 0,0,0 DICOM iso or a defined one.
 				1+: Beam's Eye View Number (BEV#)
 				-1: Local x-ray isocenter, no other paired imaging/data
+		Left points : DICOM coordinate system
+		Right points : Local coordinate system
 		"""
 		# Treatment index will tell the method where the call was made from.
 		logging.info('Calulating patient alignment with condition '+str(index))
 
 		if index == -1:
-			pass
+			# First check we have an x-ray environment.
+			if self._isXrayOpen:
+				# Now get the isocenter (defaults to 0,0,0).
+				isocenter = self.envXray.getIsocenter()
 		elif index == 0:
 			# Align to a CT.
 			if (self._isXrayOpen|self._isCTOpen) is False:
@@ -557,112 +562,27 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 				return
 			# Do stuff.
 
-		# In any case, the amount of x-ray images open will determine whether we do a 2D or 3D alignment.
-		_3D = False
-		if len(self.envXray.plot) == 2: _3D = True
-
-		# Initialise points (l:Dicom, r:Xray).
+		# Get the number of points that each plot environment should have.
 		numberOfPoints = self.sbAlignment.widget['maxMarkers'].value()
-		l = np.zeros((numberOfPoints,3))
-		r = np.zeros((numberOfPoints,3))
 
-		# Get the x-ray (right) points. These are always in terms of the fixed synchrotron axes.
-		if _3D:
-			if index == -1:
-				# Align to x-ray isocenter.
-				iso,theta = self.envXray.getIsocenter()
-				# Make the isocenter in the frame of reference of the synchrotron axes.
-				p1, p2 = iso
-				# Theta needs to be inverted to account for the fact that we are rotating the patient with a fixed view, not rotating a view around a patient.
-				t1, t2 = -np.array(theta)
-				# Calculate the 3D points.
-				isocenter = nonOrthogonalImaging.calculate(p1,p2,t1,t2)
-
-			elif (len(self.envXray.plot[1].pointsX) != numberOfPoints):
-				error = QtWidgets.QMessageBox()
-				error.setText("{} out of {} markers were specified. Please select the rest of the markers.".format(len(self.envXray.plot[1].pointsX),numberOfPoints))
-				error.exec()
-				return
-			else:
-				p1 = self.envXray.plot[0].markers()
-				p2 = self.envXray.plot[1].markers()
-				# Now we need to go through the new routine for non-orthogonal imaging.
-				t1 = -self.envXray.plot[0]._imagingAngle
-				t2 = -self.envXray.plot[1]._imagingAngle
-				# Calculate the 3D points.
-				r = nonOrthogonalImaging.calculate(p1,p2,t1,t2)
-		else:
-			if index == -1:
-				# Align to x-ray isocenter.
-				iso,theta = self.envXray.getIsocenter()
-				p1 = iso
-				p2 = [0,iso[1]]
-				t1 = -theta
-				t2 = -(theta-90)
-				# Calculate the 3D points.
-				isocenter = nonOrthogonalImaging.calculate(p1,p2,t1,t2)
-			else:
-				r[:,1] = self.envXray.plot[0].pointsX
-				r[:,2] = self.envXray.plot[0].pointsY
-
-		# Now we need to make sure they are in a cartesian Right-Hand XYZ format.
-		# I think they are at this point. The output of nonOrthogonalImaging.calculate() should do this.
+		# error = QtWidgets.QErrorMessage()
+		# error.showMessage("Please ensure {} markers are selected in the CT images.".format(numberOfPoints))
+		# return
 
 		if index == 0:
 			# Align to a CT.
-			# Get the CT DICOM? isocenter.
-			isocenter = self.envCt.getIsocenter()
-			# Get the relevant points.
-			if _3D:
-				if (len(self.envCt.plot[0].pointsX) != numberOfPoints):
-					error = QtWidgets.QErrorMessage()
-					error.showMessage("Please ensure {} markers are selected in the CT images.".format(numberOfPoints))
-					return
-				else:
-					# Take the depth down the BEV as SYNCH X.
-					l[:,0] = self.envCt.plot[1].pointsX
-					# Take the BEV lateral view as SYNCH Y.
-					l[:,1] = self.envCt.plot[0].pointsX
-					# Take the vertical of the BEV as Z.
-					l[:,2] = (np.array(self.envCt.plot[0].pointsY)+np.array(self.envCt.plot[1].pointsY))/2
-			else:
-				if (len(self.envCt.plot[0].pointsX) != numberOfPoints)|(len(self.envCt.plot[1].pointsX) != numberOfPoints):
-					error = QtWidgets.QErrorMessage()
-					error.showMessage("Please ensure {} markers are selected in the CT images.".format(numberOfPoints))
-					return
-				else:
-					# Take the BEV lateral view as SYNCH Y.
-					l[:,1] = self.envCt.plot[0].pointsX
-					# Take the vertical of the BEV as Z.
-					l[:,2] = self.envCt.plot[0].pointsY
+			# Get the x-ray (right) points. These are always in terms of the fixed synchrotron axes.
+			r = self.envXray.getMarkers()
+			l = self.envCt.getMarkers(raw=True)
+			# Get the CT isocenter.
+			isocenter = self.envCt.getIsocenter(raw=True)
 		elif index > 0:
 			# Align to a BEV.
+			# Get the x-ray (right) points. These are always in terms of the fixed synchrotron axes.
+			r = self.envXray.getMarkers()
+			l = self.envRtplan[index-1].getMarkers(raw=True)
+			# Get the RTPLAN isocenter.
 			isocenter = self.patient.rtplan.beam[index-1].isocenter
-			if _3D:
-				if (len(self.envRtplan[index-1].plot[0].pointsX) != numberOfPoints):
-					error = QtWidgets.QErrorMessage()
-					error.showMessage("Please ensure {} markers are selected in the BEV{} images.".format(numberOfPoints,index))
-					return
-				else:
-					# Take the depth down the BEV as SYNCH X.
-					l[:,0] = self.envRtplan[index-1].plot[1].pointsX
-					# Take the BEV lateral view as SYNCH Y.
-					l[:,1] = self.envRtplan[index-1].plot[0].pointsX
-					# Take the vertical of the BEV as Z.
-					l[:,2] = (np.array(self.envRtplan[index-1].plot[0].pointsY)+np.array(self.envRtplan[index-1].plot[1].pointsY))/2
-			else:
-				if (len(self.envRtplan[index-1].plot[0].pointsX) != numberOfPoints)|(len(self.envRtplan[index-1].plot[1].pointsX) != numberOfPoints):
-					error = QtWidgets.QErrorMessage()
-					error.showMessage("Please ensure {} markers are selected in the BEV{} images.".format(numberOfPoints,index))
-					return
-				else:
-					# Take the BEV lateral view as SYNCH Y.
-					l[:,1] = self.envRtplan[index-1].plot[0].pointsX
-					# Take the vertical of the BEV as Z.
-					l[:,2] = self.envRtplan[index-1].plot[0].pointsY
-
-		# Now we need to make sure they are also in a cartesian Right-Hand XYZ format.
-		# Unsure if this is the case.
 
 		# Finally, we can send the points off for calculation to `theBrain`!
 		self.system.solver.setInputs(
@@ -673,8 +593,6 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 
 		# We have some points. Calculate the global result.
 		alignment6d = self.system.solver.solve()
-		# Get synchrotron axes alignment.
-		# synchrotron6d = [-alignment6d[2],alignment6d[1],-alignment6d[0],-alignment6d[5],alignment6d[4],-alignment6d[3]]
 
 		# If table already exists, update information...
 		self.property.updateVariable('Alignment',['Rotation','X','Y','Z'],[float(alignment6d[3]),float(alignment6d[4]),float(alignment6d[5])])

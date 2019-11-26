@@ -296,6 +296,10 @@ class QPlot(QtWidgets.QWidget):
 			self.toggleOverlay(3,False)
 			self.toggleOverlay(3,True)
 
+	def getIsocenter(self):
+		""" Return the patient isocenter. """
+		return self.patientIsocenter
+
 	def toggleOverlay(self,overlayType,state=False):
 		'''
 		Single overlay function with various types.

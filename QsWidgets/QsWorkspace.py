@@ -1,6 +1,7 @@
-165# Qt widgets.
+# Qt widgets.
 from PyQt5 import QtWidgets, QtGui, QtCore
 from QsWidgets import QsMpl
+from systems.imageGuidance import nonOrthogonalImaging
 import numpy as np
 import logging
 from functools import partial
@@ -40,6 +41,7 @@ class QPlotEnvironment(QtWidgets.QSplitter):
 		self.plot = QsMpl.QPlot()
 		# Internal vars.
 		self._maxMarkers = 0
+		self.plotView = [None,None]
 		# Signals.
 		for i, model in enumerate(self.tableModel):
 			model.itemChanged.connect(partial(self.updateMarkersFromModel,i))
@@ -91,6 +93,84 @@ class QPlotEnvironment(QtWidgets.QSplitter):
 		self.tableModel[0].clearPoints()
 		self.tableModel[1].clearPoints()
 
+	def getMarkers(self,raw=False):
+		""" Get the marker values from each plot, adjusted for the view of each plot. """
+		points = np.zeros((self._maxMarkers,3))
+		# Get the raw data and the angles of the image frames.
+		markers0 = np.array(self.tableModel[0].getMarkers())
+		markers1 = np.array(self.tableModel[1].getMarkers())
+		if raw:
+			# If we want just the raw points, take them.
+			points[:,0] = markers0[:,0]
+			# See if we have two sets of points.
+			allZeroes = not markers1.any()
+			if allZeroes:
+				# Only one dataset, take that only.
+				points[:,1] = markers0[:,1]
+			else:
+				# Reconcile both datasets.
+				points[:,1] = (markers0[:,1] + markers1[:,1])/2
+				points[:,2] = markers1[:,2]
+		else:
+			# Else, adjust the points for the views.
+			theta0 = self.plotView[0]
+			theta1 = self.plotView[1]
+			# Check to see if there are any markers in the second dataset.
+			# allZeroes = not markers1.any()
+			allZeroes = (theta1 == None) | (not markers1.any())
+			if allZeroes:
+				# Only one dataset, take that only.
+				points[:,:2] = markers0
+			else: 
+				# Two datasets, mix them.
+				points = nonOrthogonalImaging.calculate(markers0,markers1,theta0,theta1)
+
+		return points
+
+	def updateIsocenter(self,x,y,z):
+		"""
+		Update the patient isocenter in the plot environment.
+
+		Parameters
+		----------
+		x : float
+			The X value of the isocenter.
+		y : float
+			The Y value of the isocenter.
+		z : float
+			The Z value of the isocenter.
+		"""
+		# Send to plot.
+		self.plot.updatePatientIsocenter(x,y,z)
+
+	def getIsocenter(self,raw=False):
+		""" 
+		Get the isocenter value from each plot, adjusted for the view of each plot. 
+
+		Parameters
+		----------
+		raw : bool
+			If True, grabs the raw points. If False (default), it adjusts the points according to the views of the datasets.
+
+		Returns
+		-------
+		isocenter : [x,y,z]
+			A list of three points representing the cartesian XYZ isocenter.
+		"""
+		# Get the raw data and the angles of the image frames.
+		iso = self.plot.getIsocenter()
+		if raw:
+			return iso
+		else:
+			iso0 = [iso[0],iso[1]]
+			iso1 = [iso[2],iso[1]]
+			theta0 = self.plotView[0]
+			theta1 = self.plotView[1]
+			# Reconcile the two datasets.
+			isocenter = nonOrthogonalImaging.calculate(iso0,iso1,theta0,theta1)
+
+		return isocenter
+
 	def loadImages(self,images):
 		"""
 		Load up to two images in plot.
@@ -110,6 +190,7 @@ class QPlotEnvironment(QtWidgets.QSplitter):
 		# Iterate over input data.
 		for i, image in enumerate(images):
 			self.tableModel[i].setLabels(image.view)
+			self.plotView[i] = image.imagingAngle
 
 	def clearPlot(self):
 		"""
@@ -165,22 +246,6 @@ class QPlotEnvironment(QtWidgets.QSplitter):
 	def toggleImageSettings(self):
 		self.toggleSettings.emit()
 
-	def getIsocenter(self):
-		""" Get the isocenter value from each plot. """
-		p = []
-		t = []
-		for plot in self.plot:
-			p.append(plot.patientIsocenter)
-			t.append(plot._imagingAngle)
-		return p,t
-
-	def updateIsocenter(self,x,y,z):
-		""" Update the isocenter in each plot. xyz are in the frame of reference of the two images. """
-		self.isocenter = [x,y,z]
-		for i in range(len(self.plot)):
-			if i == 0: self.plot[i].updatePatientIsocenter(x,y)
-			elif i == 1: self.plot[i].updatePatientIsocenter(z,y)
-
 class markerTracker:
 	""" A simple point tracker class. """
 	def __init__(self):
@@ -234,18 +299,9 @@ class QPlotTableModel(QtGui.QStandardItemModel):
 			labels.get('xLabel','Horizontal'),
 			labels.get('yLabel','Vertical')
 		])
-		# Associated axes with model.
-		self.ax = None
 		# Math stuff. Tracking points.
 		self.points = []
 		self.ctd = None
-
-	def setAxes(self,axes):
-		""" Set the axes associated with the table. """
-		self.ax = axes
-
-	def getAxes(self):
-		return self.ax
 
 	def count(self):
 		"""
@@ -284,9 +340,6 @@ class QPlotTableModel(QtGui.QStandardItemModel):
 		self.blockSignals(False)
 		self.layoutChanged.emit()
 
-	def countPoints(self):
-		return len(self.points)
-
 	def getMarkers(self):
 		""" Return the points held by the table. """
 		pointsList = []
@@ -300,12 +353,8 @@ class QPlotTableModel(QtGui.QStandardItemModel):
 				pass
 		return pointsList
 
-	def removePoint(self,index):
-		'''Remove a specific point in the list.'''
-		pass
-
 	def setMarkerRows(self,rows):
-		'''Defines the maximum number of rows according to the maximum number of markers.'''
+		""" Defines the maximum number of rows according to the maximum number of markers. """
 		current = self.rowCount()
 		difference = abs(current-rows)
 
@@ -319,11 +368,6 @@ class QPlotTableModel(QtGui.QStandardItemModel):
 
 	def setLabels(self,labels):
 		# Set the column header labels.
-		# self.setHorizontalHeaderLabels([
-		# 	'View: '+labels.get('title','Undefined'),
-		# 	labels.get('xLabel','Horizontal'),
-		# 	labels.get('yLabel','Vertical')
-		# ])
 		self.setHorizontalHeaderLabels([
 			'View: '+labels.get('title','Undefined'),
 			'Horizontal',
@@ -331,7 +375,7 @@ class QPlotTableModel(QtGui.QStandardItemModel):
 		])
 
 	def clearPoints(self):
-		'''Clear the model of all it's rows and re-add empty rows in their place.'''
+		""" Clear the model of all it's rows and re-add empty rows in their place. """
 		currentRows = self.rowCount()
 		self.removeRows(0,currentRows)
 		self.setMarkerRows(currentRows)
