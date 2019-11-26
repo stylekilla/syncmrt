@@ -1,0 +1,5 @@
+PatientSupport,Axis,Order,PV Root,Description
+DynMRT,0,3,SR08ID01SST25:SAMPLEH1,X Translation (H1)
+DynMRT,1,2,SR08ID01SST25:SAMPLEH2,Y Translation (H2)
+DynMRT,2,0,SR08ID01SST25:SAMPLEV,Z Translation (SAMPLE V)
+DynMRT,5,1,SR08ID01SST25:ROTATION,Z Rotation
