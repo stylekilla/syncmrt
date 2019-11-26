@@ -154,7 +154,17 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		self.testing()
 
 	def testing(self):
-		self.openXray('../scratch/test.hdf5')
+		# self.openXray('../scratch/test.hdf5')
+
+		folder = '../scratch/DICOM/SMRT_CT_ONLY/'
+		dataset = []
+		modality = 'CT'
+		for root, subdir, fp in os.walk(folder):
+			for fn in fp:
+				if (fn.endswith(tuple('.dcm'))) & (fn[:len(modality)] == modality):
+					dataset.append(os.path.join(root,fn))
+		if len(dataset) > 0:
+			self.openCT(dataset)
 
 	@QtCore.pyqtSlot(int)
 	def calculateAlignment(self,index):
@@ -412,6 +422,12 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		# Signals and slots.
 		widget.toggleOverlay.connect(partial(self.envCt.toggleOverlay))
 		widget.isocenterUpdated.connect(self.envCt.updateIsocenter)
+		widget.pickIsocenter.connect(self.envCt.pickIsocenter)
+		widget.align.connect(self.patientCalculateAlignment)
+		self.envCt.newIsocenter.connect(widget.setIsocenter)
+		# Add histograms widgets.
+		histogram = self.envCt.getPlotHistogram()
+		self.sidebar.widget['ctImageProperties'].addPlotHistogramWindow(histogram)
 
 	def openRTP(self,files):
 		"""Open CT modality files."""
