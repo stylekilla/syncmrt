@@ -582,7 +582,8 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 			r = self.envXray.getMarkers()
 			l = self.envRtplan[index-1].getMarkers(raw=True)
 			# Get the RTPLAN isocenter.
-			isocenter = self.patient.rtplan.beam[index-1].isocenter
+			# isocenter = self.patient.rtplan.beam[index-1].isocenter
+			isocenter = self.envRtplan[index-1].getIsocenter(raw=True)
 
 		# Finally, we can send the points off for calculation to `theBrain`!
 		self.system.solver.setInputs(
