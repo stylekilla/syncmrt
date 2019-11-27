@@ -116,7 +116,7 @@ class motor:
 		if self._connected is False: return None
 		else: 
 			if attribute == 'TWV':
-					self.pv[attribute].put(value)
+				self.pv[attribute].put(value)
 			else:
 				while self.pv['DMOV'] == 0:
 					pass
