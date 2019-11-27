@@ -174,7 +174,7 @@ class motor:
 		if (float(value)+float(self.pv['RBV']))>=float(self.pv['LLM']) \
 			and (float(value)+float(self.pv['RBV']))<=float(self.pv['HLM']) :
 				stillInLimitBool=True
-		return True
+		return stillInLimitBool
 
 class detector:
 	def __init__(self,pv):
