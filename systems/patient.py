@@ -1,6 +1,6 @@
 from file import importer
 from file import hdf5
-#from tools.opencl import gpu
+from tools.opencl import gpu
 from PyQt5 import QtCore
 import logging
 
@@ -34,9 +34,9 @@ class Patient(QtCore.QObject):
 			
 		elif modality == 'CT': 
 			# Create a GPU context for the ct array.
-			#self._gpuContext = gpu()
-			#self.ct = importer.ct(dataset,self._gpuContext)
-			print("No PyOpenCL so no CT importing")
+			self._gpuContext = gpu()
+			self.ct = importer.ct(dataset,self._gpuContext)
+			
 
 		elif modality == 'RTPLAN': 
 			if self.ct != None: 
