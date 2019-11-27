@@ -3,7 +3,7 @@ import pydicom as dicom
 import numpy as np
 from file.image import Image2d
 from file import hdf5
-from tools.opencl import gpu as gpuInterface
+#from tools.opencl import gpu as gpuInterface
 from tools.math import wcs2wcs
 from natsort import natsorted
 from PyQt5 import QtCore, QtWidgets
