@@ -4,6 +4,8 @@ from resources import config
 import QsWidgets
 import logging
 
+__all__ = ['QAlignment','QImaging','QTreatment','QSettings','QXrayProperties','QCtProperties','QRtplanProperties']
+
 class QAlignment(QtWidgets.QWidget):
 	markersChanged = QtCore.pyqtSignal(int)
 	calculateAlignment = QtCore.pyqtSignal(int)
@@ -692,15 +694,13 @@ class QXrayProperties(QtWidgets.QWidget):
 			self.widget[item].toggle()
 			self.widget[item].toggle()
 
-
 class QCtProperties(QtWidgets.QWidget):
 	# Qt signals.
+	align = QtCore.pyqtSignal(int)
+	pickIsocenter = QtCore.pyqtSignal()
 	isocenterUpdated = QtCore.pyqtSignal(float,float,float)
 	toggleOverlay = QtCore.pyqtSignal(int,bool)
 	updateCtView = QtCore.pyqtSignal(str,tuple,str)
-	isocenterUpdated = QtCore.pyqtSignal(float,float,float)
-	pickIsocenter = QtCore.pyqtSignal()
-	align = QtCore.pyqtSignal(int)
 
 	"""
 	The structure of information held in this class is as follows:
@@ -800,12 +800,12 @@ class QCtProperties(QtWidgets.QWidget):
 		self.widget['view']['select'].addItem("Coronal (AP)")
 		self.widget['view']['select'].addItem("Coronal (PA)")
 		# Range slider.
-		self.widget['view']['xrange'] = QsWidgets.QRangeList('X:')
-		self.widget['view']['yrange'] = QsWidgets.QRangeList('Y:')
-		self.widget['view']['zrange'] = QsWidgets.QRangeList('Z:')
-		self.widget['view']['xrange'].newRange.connect(self._emitUpdateCtView)
-		self.widget['view']['yrange'].newRange.connect(self._emitUpdateCtView)
-		self.widget['view']['zrange'].newRange.connect(self._emitUpdateCtView)
+		self.widget['view']['xrange'] = QsWidgets.QRangeList('Horizontal 1:')
+		self.widget['view']['yrange'] = QsWidgets.QRangeList('Vertical:')
+		self.widget['view']['zrange'] = QsWidgets.QRangeList('Horizontal 2:')
+		# self.widget['view']['xrange'].newRange.connect(self._emitUpdateCtView)
+		# self.widget['view']['yrange'].newRange.connect(self._emitUpdateCtView)
+		# self.widget['view']['zrange'].newRange.connect(self._emitUpdateCtView)
 		# Flattening options.
 		self.widget['view']['sum'] = QtWidgets.QRadioButton('Sum')
 		self.widget['view']['max'] = QtWidgets.QRadioButton('Max')
@@ -815,8 +815,10 @@ class QCtProperties(QtWidgets.QWidget):
 		flatteningOptionsLayout.addWidget(self.widget['view']['max'])
 		flatteningOptions.setLayout(flatteningOptionsLayout)
 		self.widget['view']['sum'].setChecked(True)
-		self.widget['view']['sum'].toggled.connect(self._emitUpdateCtView)
-		self.widget['view']['max'].toggled.connect(self._emitUpdateCtView)
+		# self.widget['view']['sum'].toggled.connect(self._emitUpdateCtView)
+		# self.widget['view']['max'].toggled.connect(self._emitUpdateCtView)
+		self.widget['view']['apply'] = QtWidgets.QPushButton('Apply')
+		self.widget['view']['apply'].clicked.connect(self._emitUpdateCtView)
 		# Layout
 		viewGroupLayout = QtWidgets.QVBoxLayout()
 		viewGroupLayout.addWidget(view)
@@ -826,11 +828,12 @@ class QCtProperties(QtWidgets.QWidget):
 		viewGroupLayout.addWidget(self.widget['view']['yrange'])
 		viewGroupLayout.addWidget(self.widget['view']['zrange'])
 		viewGroupLayout.addWidget(flatteningOptions)
+		viewGroupLayout.addWidget(self.widget['view']['apply'])
 		# Defaults
 		self.group['view'].setEnabled(False)
 		self.widget['view']['select'].setCurrentIndex(0)
 		# Signals and Slots
-		self.widget['view']['select'].currentIndexChanged.connect(self._emitUpdateCtView)
+		# self.widget['view']['select'].currentIndexChanged.connect(self._emitUpdateCtView)
 		# Group inclusion to page
 		self.group['view'].setLayout(viewGroupLayout)
 		self.layout.addWidget(self.group['view'])
