@@ -135,7 +135,6 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		More GUI linking from System and Patient.
 		"""
 		# Create controls work environment.
-		self.sbSettings.modeChanged.connect(self.setControlsComplexity)
 		self.sbSettings.stageChanged.connect(self.system.setStage)
 		self.sbSettings.refreshConnections.connect(self.system.patientSupport.reconnect)
 		self.sbSettings.refreshConnections.connect(self.system.imager.reconnect)
@@ -394,8 +393,6 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		self.patient.ct.newCtView.connect(self.updateCTEnv)
 		# Load the CT images and get the histograms.
 		self.updateCTEnv()
-		# Send the CT ROI range sliders the extent of the array.
-		self.sidebar.widget['ctImageProperties'].setCtRoi(self.patient.ct.extent)
 		# Force marker update for table.
 		self.envCt.set('maxMarkers',config.markers.quantity)
 		# Finalise import. Set open status to true and open the workspace.
@@ -406,6 +403,9 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 	def updateCTEnv(self):
 		# Send ct dataset to plot.
 		self.envCt.loadImages(self.patient.ct.image)
+		# Update the extent.
+		logging.critical(self.patient.ct.viewExtent)
+		self.sidebar.widget['ctImageProperties'].setCtRoi(self.patient.ct.viewExtent)
 		# Get the plot histogram widgets and give them to the sidebar widget.
 		histogram = self.envCt.getPlotHistogram()
 		self.sidebar.widget['ctImageProperties'].addPlotHistogramWindow(histogram)
@@ -420,11 +420,11 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		# Sidebar page for ct image properties.
 		widget = self.sidebar.addPage('ctImageProperties',QsWidgets.QCtProperties(),addList=False)
 		# Signals and slots.
-		widget.toggleOverlay.connect(partial(self.envCt.toggleOverlay))
+		widget.align.connect(self.patientCalculateAlignment)
 		widget.isocenterUpdated.connect(self.envCt.updateIsocenter)
 		widget.pickIsocenter.connect(self.envCt.pickIsocenter)
-		widget.align.connect(self.patientCalculateAlignment)
 		self.envCt.newIsocenter.connect(widget.setIsocenter)
+		widget.toggleOverlay.connect(partial(self.envCt.toggleOverlay))
 		# Add histograms widgets.
 		histogram = self.envCt.getPlotHistogram()
 		self.sidebar.widget['ctImageProperties'].addPlotHistogramWindow(histogram)
