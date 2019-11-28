@@ -161,6 +161,8 @@ class QPlot(QtWidgets.QWidget):
 			self.histograms[self.ax[i]].setData(image.pixelArray)
 			self.histograms[self.ax[i]].setTitle('View: '+image.view['title'])
 
+		self.canvas.draw()
+
 	def pickIsocenter(self):
 		""" Trigger the pick isocenter tool. """
 		self.toolbarManager.trigger_tool('pickIso')
