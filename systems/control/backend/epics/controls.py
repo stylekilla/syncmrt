@@ -136,12 +136,17 @@ class motor:
 		# Straight up telling the motor where to go.
 		elif mode=='absolute':
 			if self.pv['VAL']: 
+				oldPosition = self.read()
+				predictedPosition = float(value)
 				if self.checkAbsLimit(value):
 					self.pv['VAL'].put(float(value))
 				else:
 					logging.error("Cannot move {} to {} - motorlimit will be reached.\nH.Lim:{}\tL.Lim:{}".format(self.pv['DESC'],value,self.pv['HLM'],self.pv['LLM']))
+					return
 		elif mode=='relative':
 			if self.pv['TWV']:
+				oldPosition = self.read()
+				predictedPosition = oldPosition + float(value)
 				if self.checkRelLimit(value):
 					# Place tweak value.
 					self.pv['TWV'].put(float(np.absolute(value)))
@@ -155,12 +160,28 @@ class motor:
 						pass
 				else: 
 					logging.error("Cannot move {} by {} - motorlimit will be reached.\nH.Lim:{}\tL.Lim:{}".format(self.pv['DESC'],value,self.pv['HLM'],self.pv['LLM']))
+					return
 		# Give epics 100ms to get the command to the motor.
-		time.sleep(0.1)
+		time.sleep(0.2)
 		# Stay here while the motor is moving.
 		while self.pv['DMOV'].get() == 0:
 			pass
 		# Finished.
+		#checking that the move occurred
+		newPosition = self.read()
+		retryCounter = 0
+		maxRetrties = 3
+		BDST=self.pv['BDST'].get()
+		while (abs(newPosition-predictedPosition)<BDST) and (retryCounter<maxRetrties): 
+			logging.error("Motor {} did not move to {}. Retry #{} of {}.".format(self.pv['DESC'],predictedPosition,retryCounter+1,maxRetrties))
+			self.pv['VAL'].put(predictedPosition)
+			time.sleep(0.2)
+			while self.pv['DMOV'].get() == 0:
+				pass
+			retryCounter+=1
+			newPosition=self.read()
+		if (newPosition != predictedPosition) and (retryCounter==maxRetrties):
+			logging.error("Couldn't complete the movement.")
 		return
 
 	def checkAbsLimit(self,value):
