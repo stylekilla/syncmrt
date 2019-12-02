@@ -37,7 +37,6 @@ class Patient(QtCore.QObject):
 			self._gpuContext = gpu()
 			self.ct = importer.ct(dataset,self._gpuContext)
 			
-
 		elif modality == 'RTPLAN': 
 			if self.ct != None: 
 				self.rtplan = importer.rtplan(

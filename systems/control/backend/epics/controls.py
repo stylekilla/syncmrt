@@ -116,7 +116,7 @@ class motor:
 		if self._connected is False: return None
 		else: 
 			if attribute == 'TWV':
-					self.pv[attribute].put(value)
+				self.pv[attribute].put(value)
 			else:
 				while self.pv['DMOV'] == 0:
 					pass
@@ -195,7 +195,7 @@ class motor:
 		if (float(value)+float(self.pv['RBV']))>=float(self.pv['LLM']) \
 			and (float(value)+float(self.pv['RBV']))<=float(self.pv['HLM']) :
 				stillInLimitBool=True
-		return True
+		return stillInLimitBool
 
 class detector:
 	def __init__(self,pv):
