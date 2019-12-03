@@ -101,16 +101,17 @@ class QPlotEnvironment(QtWidgets.QSplitter):
 		markers1 = np.array(self.tableModel[1].getMarkers())
 		if raw:
 			# If we want just the raw points, take them.
-			points[:,0] = markers0[:,0]
+			# We assume that points is [x,y,z] and marker0 is [y,z] and marker1 is [x,z].
+			points[:,1] = markers0[:,0]
 			# See if we have two sets of points.
 			allZeroes = not markers1.any()
 			if allZeroes:
 				# Only one dataset, take that only.
-				points[:,1] = markers0[:,1]
+				points[:,2] = markers0[:,1]
 			else:
 				# Reconcile both datasets.
-				points[:,1] = (markers0[:,1] + markers1[:,1])/2
-				points[:,2] = markers1[:,2]
+				points[:,2] = (markers0[:,1] + markers1[:,1])/2
+				points[:,0] = markers1[:,0]
 		else:
 			# Else, adjust the points for the views.
 			theta0 = self.plotView[0]

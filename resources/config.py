@@ -1,6 +1,6 @@
 class markers:
 	""" Marker settings for fiducials. """
-	quantity = 4
+	quantity = 3
 	size = 2.00
  
 class files:

@@ -9,6 +9,7 @@ __all__ = ['QAlignment','QImaging','QTreatment','QSettings','QXrayProperties','Q
 class QAlignment(QtWidgets.QWidget):
 	markersChanged = QtCore.pyqtSignal(int)
 	calculateAlignment = QtCore.pyqtSignal(int)
+	doAlignment = QtCore.pyqtSignal()
 
 	def __init__(self):
 		super().__init__()
@@ -78,6 +79,8 @@ class QAlignment(QtWidgets.QWidget):
 		# Defaults
 		# self.widget['doAlignment'].setEnabled(False)
 		# Signals and Slots
+		self.widget['calcAlignment'].clicked.connect(partial(self.calculateAlignment.emit,0))
+		self.widget['doAlignment'].clicked.connect(self.doAlignment.emit)
 
 		# Finish page.
 		self.layout.addStretch(1)
@@ -752,7 +755,6 @@ class QCtProperties(QtWidgets.QWidget):
 		label4 = QtWidgets.QLabel('Horizontal 2: ')
 		self.widget['isocenter']['editIsoZ'] = QtWidgets.QLineEdit()
 		self.widget['isocenter']['pick'] = QtWidgets.QPushButton("Pick")
-		self.widget['isocenter']['align'] = QtWidgets.QPushButton("Align")
 		# Signals.
 		self.widget['isocenter']['pick'].clicked.connect(self.pickIsocenter.emit)
 		# Layout
@@ -775,17 +777,13 @@ class QCtProperties(QtWidgets.QWidget):
 		# Defaults
 		self.widget['isocenter']['editIso'].setEnabled(False)
 		self.widget['isocenter']['editIso'].setVisible(False)
-		self.widget['isocenter']['align'].setEnabled(False)
-		self.widget['isocenter']['align'].setVisible(False)
 		# Signals and Slots
 		self.widget['isocenter']['editIsoX'].editingFinished.connect(self._updateIsocenter)
 		self.widget['isocenter']['editIsoY'].editingFinished.connect(self._updateIsocenter)
 		self.widget['isocenter']['editIsoZ'].editingFinished.connect(self._updateIsocenter)
-		self.widget['isocenter']['align'].clicked.connect(partial(self.align.emit,0))
 		# Set the layout of group.
 		lytIsocenter.addWidget(self.widget['isocenter']['cbCustomIsoc'])
 		lytIsocenter.addWidget(self.widget['isocenter']['editIso'])
-		lytIsocenter.addWidget(self.widget['isocenter']['align'])
 		self.group['isocenter'].setLayout(lytIsocenter)
 		# Add group to sidebar layout.
 		self.layout.addWidget(self.group['isocenter'])
@@ -803,9 +801,6 @@ class QCtProperties(QtWidgets.QWidget):
 		self.widget['view']['xrange'] = QsWidgets.QRangeList('Horizontal 1:')
 		self.widget['view']['yrange'] = QsWidgets.QRangeList('Vertical:')
 		self.widget['view']['zrange'] = QsWidgets.QRangeList('Horizontal 2:')
-		# self.widget['view']['xrange'].newRange.connect(self._emitUpdateCtView)
-		# self.widget['view']['yrange'].newRange.connect(self._emitUpdateCtView)
-		# self.widget['view']['zrange'].newRange.connect(self._emitUpdateCtView)
 		# Flattening options.
 		self.widget['view']['sum'] = QtWidgets.QRadioButton('Sum')
 		self.widget['view']['max'] = QtWidgets.QRadioButton('Max')
@@ -815,8 +810,6 @@ class QCtProperties(QtWidgets.QWidget):
 		flatteningOptionsLayout.addWidget(self.widget['view']['max'])
 		flatteningOptions.setLayout(flatteningOptionsLayout)
 		self.widget['view']['sum'].setChecked(True)
-		# self.widget['view']['sum'].toggled.connect(self._emitUpdateCtView)
-		# self.widget['view']['max'].toggled.connect(self._emitUpdateCtView)
 		self.widget['view']['apply'] = QtWidgets.QPushButton('Apply')
 		self.widget['view']['apply'].clicked.connect(self._emitUpdateCtView)
 		# Layout
@@ -857,8 +850,6 @@ class QCtProperties(QtWidgets.QWidget):
 		""" Toggles the manual setting of the isocenter on and off. """
 		self.widget['isocenter']['editIso'].setEnabled(bool(state))
 		self.widget['isocenter']['editIso'].setVisible(bool(state))
-		self.widget['isocenter']['align'].setEnabled(bool(state))
-		self.widget['isocenter']['align'].setVisible(bool(state))
 
 	def setIsocenter(self,x,y,z):
 		""" Set the isocenter from an external source. """

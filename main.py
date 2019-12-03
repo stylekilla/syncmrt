@@ -73,9 +73,9 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		# Sidebar: Alignment.
 		self.sbAlignment = self.sidebar.addPage('Alignment',QsWidgets.QAlignment(),after='Imaging')
 		self.sbAlignment.widget['maxMarkers'].valueChanged.connect(partial(self.updateSettings,'global',self.sbAlignment.widget['maxMarkers']))
-		self.sbAlignment.widget['calcAlignment'].clicked.connect(partial(self.patientCalculateAlignment,index=-1))
-		self.sbAlignment.widget['doAlignment'].clicked.connect(partial(self.patientApplyAlignment,index=-1))
 		self.sbAlignment.widget['optimise'].toggled.connect(partial(self.toggleOptimise))
+		self.sbAlignment.calculateAlignment.connect(self.patientCalculateAlignment)
+		self.sbAlignment.doAlignment.connect(self.patientApplyAlignment)
 		# Add treatment section to sidebar.
 		self.sidebar.addPage('Treatment',QsWidgets.QTreatment(),after='Alignment')
 		self.sbTreatment = self.sidebar.getPage('Treatment')
@@ -153,7 +153,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		self.testing()
 
 	def testing(self):
-		# self.openXray('../scratch/test.hdf5')
+		self.openXray('../scratch/test.hdf5')
 
 		folder = '../scratch/DICOM/SMRT_CT_ONLY/'
 		dataset = []
@@ -165,31 +165,18 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		if len(dataset) > 0:
 			self.openCT(dataset)
 
-	@QtCore.pyqtSlot(int)
-	def calculateAlignment(self,index):
-		print('TADA MAIN.py L:188')
-
-	@QtCore.pyqtSlot(float,float,float)
-	def ctUpdateIsocenter(self,x,y,z):
-		# Update the ct isocenter.
-		try:
-			self.patient.ct.isocenter = np.array([x,y,z])
-			self.patient.ct.plot.updatePatientIsocenter(self.patient.ct.isocenter)
-			logging.debug('Updated patient CT isocenter with vals: {} {} {}'.format(x,y,z))
-		except:
-			logging.warning('Unable to update CT isocenter.')
-
-	@QtCore.pyqtSlot(str)
-	def setControlsComplexity(self,level):
-		self.controls.setLevel(level)
-
-	@QtCore.pyqtSlot(bool)
-	def enableDoAlignment(self,state=False):
-		# self.pps._isStageConnected
-		self.sbAlignment.widget['doAlignment'].setEnabled(state)
-
-	def setControlsReadOnly(self,state):
-		self.controls.setReadOnly(bool(not state))
+		self.envXray.addMarker(0,0,0)
+		self.envXray.addMarker(0,50,25)
+		self.envXray.addMarker(0,-50,-25)
+		self.envXray.addMarker(1,0,0)
+		self.envXray.addMarker(1,50,25)
+		self.envXray.addMarker(1,-50,-25)
+		self.envCt.addMarker(0,0,0)
+		self.envCt.addMarker(0,50,25)
+		self.envCt.addMarker(0,-50,-25)
+		self.envCt.addMarker(1,0,0)
+		self.envCt.addMarker(1,50,25)
+		self.envCt.addMarker(1,-50,-25)
 
 	def newFile(self,modality):
 		if modality == 'xray':
@@ -584,7 +571,6 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		# error = QtWidgets.QErrorMessage()
 		# error.showMessage("Please ensure {} markers are selected in the CT images.".format(numberOfPoints))
 		# return
-
 		if index == 0:
 			# Align to a CT.
 			# Get the x-ray (right) points. These are always in terms of the fixed synchrotron axes.
