@@ -334,7 +334,6 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		histogram = self.envXray.getPlotHistogram()
 		self.sidebar.widget['xrayImageProperties'].addPlotHistogramWindow(histogram)
 
-
 	def loadXrayImage(self,_set):
 		"""
 		Load an x-ray image from the HDF5 dataset into the plot environment.
@@ -355,9 +354,6 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		self.envXray.loadImages(images)
 		# Toggle the ovelrays on and off to refresh them.
 		self.sidebar.widget['xrayImageProperties'].refreshOverlays()
-		# # Populate new histograms.
-		# histogram = self.envXray.getPlotHistogram()
-		# self.sidebar.widget['xrayImageProperties'].addPlotHistogramWindow(histogram)
 
 	def openSyncPlan(self,file):
 		""" Open Synchrotron Treatment Plan. """
@@ -608,9 +604,10 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 	def patientApplyAlignment(self,index):
 		"""Calculate alignment first."""
 		self.patientCalculateAlignment(index=index)
-
 		# Calculate alignment for stage.
 		self.system.calculateAlignment()
+		# Do the alignment.
+		self.system.applyAlignment()
 
 if __name__ == "__main__":
 	# QApp 

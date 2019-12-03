@@ -50,18 +50,12 @@ class Brain(QtCore.QObject):
 
 	def calculateAlignment(self):
 		""" This is where the calculation magic happens. """
-		# Update variables.
-		# self.solver.setVariable()
-		# Solve for alignment solution.
-		# self.solver.solve()
-		# Decompose.
+		# Decomposition routine.
 		self.patientSupport.calculateMotion(self.solver.transform,self.solver.solution)
-		# Apply solution.
-		self.patientSupport.applyMotion()
 
 	def applyAlignment(self):
-		# Tell the patientSupport to apply the calculated/prepared motion.
-		self.patientSupport.applyMotion(None)
+		""" Tell the patientSupport to apply the calculated/prepared motion. """
+		self.patientSupport.applyMotion()
 
 	def movePatient(self,amount):
 		self.patientSupport.shiftPosition(amount)
