@@ -58,7 +58,7 @@ class QPlot(QtWidgets.QWidget):
 		self.histograms = {}
 
 		# Create 2 axes.
-		self.ax = self.fig.subplots(1,2,gridspec_kw={'hspace':0,'wspace':0})
+		self.ax = self.fig.subplots(1,2,gridspec_kw={'hspace':0,'wspace':0,'left':0,'right':1,'bottom':0,'top':1},sharey=False)
 		for idx, ax in enumerate(self.ax):
 			# Set up tracking for markers in the axes.
 			self.markers[ax] = []
@@ -160,6 +160,17 @@ class QPlot(QtWidgets.QWidget):
 			# Setup the histogram data.
 			self.histograms[self.ax[i]].setData(image.pixelArray)
 			self.histograms[self.ax[i]].setTitle('View: '+image.view['title'])
+
+		if i == 0:
+			# Only one image.
+			self.ax[0].set_position([0,0,1,1])
+			self.ax[1].set_position([0.9999,0.9999,0.0001,0.0001])
+			self.ax[1].set_visible(False)
+		else:
+			# Show two images.
+			self.ax[0].set_position([0,0,0.5,1])
+			self.ax[1].set_position([0.5,0,0.5,1])
+			self.ax[1].set_visible(True)
 
 		self.canvas.draw()
 

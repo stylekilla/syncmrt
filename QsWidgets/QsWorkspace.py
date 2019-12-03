@@ -192,6 +192,13 @@ class QPlotEnvironment(QtWidgets.QSplitter):
 			self.tableModel[i].setLabels(image.view)
 			self.plotView[i] = image.imagingAngle
 
+		if i == 0:
+			# One plot, hide the table.
+			self.tableView[1].setVisible(False)
+		else:
+			# Two plots, show both.
+			self.tableView[1].setVisible(True)
+
 	def clearPlot(self):
 		"""
 		Clears the plot environment of all data.
