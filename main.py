@@ -150,33 +150,33 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		# When the image mode changes tell the system.
 		self.sbImaging.imageModeChanged.connect(self.system.setImagingMode)
 
-		self.testing()
+		# self.testing()
 
-	def testing(self):
-		self.openXray('../scratch/test.hdf5')
+	# def testing(self):
+	# 	self.openXray('../scratch/test.hdf5')
 
-		folder = '../scratch/DICOM/SMRT_CT_ONLY/'
-		dataset = []
-		modality = 'CT'
-		for root, subdir, fp in os.walk(folder):
-			for fn in fp:
-				if (fn.endswith(tuple('.dcm'))) & (fn[:len(modality)] == modality):
-					dataset.append(os.path.join(root,fn))
-		if len(dataset) > 0:
-			self.openCT(dataset)
+	# 	folder = '../scratch/DICOM/SMRT_CT_ONLY/'
+	# 	dataset = []
+	# 	modality = 'CT'
+	# 	for root, subdir, fp in os.walk(folder):
+	# 		for fn in fp:
+	# 			if (fn.endswith(tuple('.dcm'))) & (fn[:len(modality)] == modality):
+	# 				dataset.append(os.path.join(root,fn))
+	# 	if len(dataset) > 0:
+	# 		self.openCT(dataset)
 
-		self.envXray.addMarker(0,0,0)
-		self.envXray.addMarker(0,50,25)
-		self.envXray.addMarker(0,-50,-25)
-		self.envXray.addMarker(1,0,0)
-		self.envXray.addMarker(1,50,25)
-		self.envXray.addMarker(1,-50,-25)
-		self.envCt.addMarker(0,0,0)
-		self.envCt.addMarker(0,50,25)
-		self.envCt.addMarker(0,-50,-25)
-		self.envCt.addMarker(1,0,0)
-		self.envCt.addMarker(1,50,25)
-		self.envCt.addMarker(1,-50,-25)
+	# 	self.envXray.addMarker(0,0,0)
+	# 	self.envXray.addMarker(0,50,25)
+	# 	self.envXray.addMarker(0,-50,-25)
+	# 	self.envXray.addMarker(1,0,0)
+	# 	self.envXray.addMarker(1,50,25)
+	# 	self.envXray.addMarker(1,-50,-25)
+	# 	self.envCt.addMarker(0,0,0)
+	# 	self.envCt.addMarker(0,50,25)
+	# 	self.envCt.addMarker(0,-50,-25)
+	# 	self.envCt.addMarker(1,0,0)
+	# 	self.envCt.addMarker(1,50,25)
+	# 	self.envCt.addMarker(1,-50,-25)
 
 	def newFile(self,modality):
 		if modality == 'xray':
