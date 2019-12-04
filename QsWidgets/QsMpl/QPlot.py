@@ -300,6 +300,8 @@ class QPlot(QtWidgets.QWidget):
 			self.histograms[ax].clear()
 		# Remove all references to ax.imshows.
 		self.images.clear()
+		# Refresh the canvas.
+		self.canvas.draw()
 
 	def updatePatientIsocenter(self,x,y,z):
 		""" Update the patient isocenter in 3D. """

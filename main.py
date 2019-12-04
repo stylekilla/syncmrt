@@ -188,7 +188,11 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 				file += '.hdf5'
 			self.patient.new(file,'DX')
 			# Create an xray workspace.
-			if not self._isXrayOpen:
+			if self._isXrayOpen:
+				# We have one. Reset it.
+				self.envXray.reset()
+			else:
+				# We need an x-ray environment. Create it.
 				self.createWorkEnvironmentXray()
 			# Get list of existing x-rays in file.
 			_list = self.patient.dx.getImageList()

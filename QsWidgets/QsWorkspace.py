@@ -225,7 +225,8 @@ class QPlotEnvironment(QtWidgets.QSplitter):
 		"""
 		Reset the plot environment (remove images, markers etc.)
 		"""
-		pass
+		self.clearPlot()
+		self.clearMarkers()
 
 	def setMaskSize(self,size):
 		""" Set each plot's mask size. """
