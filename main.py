@@ -2,9 +2,9 @@
 import os
 import sys
 from functools import partial
-SIMULATE=True
+SIMULATE=False
 if SIMULATE:
-	sys.path.insert(1,"C:\\Users\\Mathew\\Desktop\\mattpystuff") #gives path to fake epics so it loads before real epics
+	sys.path.insert(1,"external") #gives path to fake epics so it loads before real epics
 # Internal imports.
 from resources import config, ui
 import systems
