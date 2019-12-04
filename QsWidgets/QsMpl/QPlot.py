@@ -246,6 +246,8 @@ class QPlot(QtWidgets.QWidget):
 		""" Update all the markers. """
 		# Get the desired axes.
 		ax = self.ax[axesIndex]
+		# Create a new centroid.
+		centroid = np.array([0,0]).astype(float)
 		# Clear the markers and add the new ones.
 		for pos, marker in enumerate(self.markers[ax]):
 			marker[0].remove()
@@ -253,17 +255,17 @@ class QPlot(QtWidgets.QWidget):
 			x,y = markerLocations[pos]
 			marker[0] = ax.scatter(x,y,c='r',marker='+',s=50)
 			marker[1] = ax.text(x+1,y,pos+1,color='r')
+			centroid += np.array([x,y]).astype(float)
+		# Calculate new centroid.
+		centroid = centroid/len(centroid)
+		# Set the centroid.
+		self.setCentroid(axesIndex,centroid)
 		# Refresh the canvas.
 		self.canvas.draw()
-		# If it's currently an overlay, then toggle it off and on.
-		if 'ctd' in self.overlay:
-			# Refresh it's position on the screen.
-			self.toggleOverlay(0,False)
-			self.toggleOverlay(0,True)
 
 	def removeMarkers(self):
 		""" 
-		Clear the specified marker. Else clear all markers.
+		Clear all markers in all axes.
 
 		Parameters
 		----------
@@ -332,11 +334,11 @@ class QPlot(QtWidgets.QWidget):
 			if state is True:
 				self.overlay['ctd'] = []
 				# Plot overlay scatter points.
-				if self.ctd[0] != None: 
+				if type(self.ctd[0]) != type(None):
 					x,y = self.ctd[0]
 					self.overlay['ctd'].append(self.ax[0].scatter(x,y,c='b',marker='+',s=50))
 					self.overlay['ctd'].append(self.ax[0].text(x+1,y-3,'ctd',color='b'))
-				if self.ctd[1] != None: 
+				if type(self.ctd[1]) != type(None):
 					x,y = self.ctd[1]
 					self.overlay['ctd'].append(self.ax[1].scatter(x,y,c='b',marker='+',s=50))
 					self.overlay['ctd'].append(self.ax[1].text(x+1,y-3,'ctd',color='b'))
