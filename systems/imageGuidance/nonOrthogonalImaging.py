@@ -25,7 +25,9 @@ def calculate(p1,p2,t1,t2):
 		p
 			The calculated location of the object with respect to the fixed synchrotron XYZ axes.
 	"""
-	if isinstance(p1,float):
+	test = np.array(p1)
+
+	if len(test.shape) == 1:
 		# If a single number is passed then turn it into a numpy array.
 		p1 = np.array([p1])
 		p2 = np.array([p2])
@@ -36,7 +38,8 @@ def calculate(p1,p2,t1,t2):
 	result = np.zeros((len(p1),3))
 
 	if t1 > t2:
-		QtWidgets.QMessageBox.warning("The calculation will fail since the first image angle is greater than the second. The first image angle must always be less than the second, i.e. t1 = -45 and t2 = +45.")
+		logging.critical("The calculation will fail since the first image angle is greater than the second. The first image angle must always be less than the second, i.e. t1 = -45 and t2 = +45.")
+		# QtWidgets.QMessageBox.warning("The calculation will fail since the first image angle is greater than the second. The first image angle must always be less than the second, i.e. t1 = -45 and t2 = +45.")
 		return
 
 	for i in range(len(p1)):

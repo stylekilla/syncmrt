@@ -298,9 +298,6 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		# Add them to the combo box.
 		self.sbImaging.resetImageSetList()
 		self.sbImaging.addImageSet(_list)
-		# Get the plot histogram widgets and give them to the sidebar widget.
-		# histogram = self.envXray.getPlotHistogram()
-		# self.sidebar.widget['xrayImageProperties'].addPlotHistogramWindow(histogram)
 		# Connect the settings mask size to the plot.
 		self.sbSettings.maskSizeChanged.connect(self.envXray.setMaskSize)
 		# Force marker update for table.
@@ -325,7 +322,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		widget.toggleOverlay.connect(partial(self.envXray.toggleOverlay))
 		widget.isocenterUpdated.connect(self.envXray.updateIsocenter)
 		widget.pickIsocenter.connect(self.envXray.pickIsocenter)
-		widget.align.connect(self.patientCalculateAlignment)
+		widget.align.connect(self.patientApplyAlignment)
 		self.envXray.newIsocenter.connect(widget.setIsocenter)
 		# What is this?
 		self.sbImaging.enableAcquisition()
@@ -544,6 +541,8 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 			if self._isXrayOpen:
 				# Now get the isocenter (defaults to 0,0,0).
 				isocenter = self.envXray.getIsocenter()
+				r = np.zeros((3,3))
+				l = np.zeros((3,3))
 		elif index == 0:
 			# Align to a CT.
 			if (self._isXrayOpen|self._isCTOpen) is False:
