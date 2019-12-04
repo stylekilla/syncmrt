@@ -186,14 +186,14 @@ class motor:
 
 	def checkAbsLimit(self,value):
 		stillInLimitBool=False
-		if float(value)<=float(self.pv['HLM']) and float(value)>=float(self.pv['LLM']):
+		if float(value)<=float(self.pv['HLM'].get()) and float(value)>=float(self.pv['LLM'].get()):
 			stillInLimitBool=True
 		return stillInLimitBool
 
 	def checkRelLimit(self,value):
 		stillInLimitBool=False
-		if (float(value)+float(self.pv['RBV']))>=float(self.pv['LLM']) \
-			and (float(value)+float(self.pv['RBV']))<=float(self.pv['HLM']) :
+		if (float(value)+float(self.pv['RBV'].get()))>=float(self.pv['LLM'].get()) \
+			and (float(value)+float(self.pv['RBV'].get()))<=float(self.pv['HLM'].get()) :
 				stillInLimitBool=True
 		return stillInLimitBool
 
