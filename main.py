@@ -1,12 +1,15 @@
+# Core imports.
+import os
+import sys
+from functools import partial
+SIMULATE=False
+if SIMULATE:
+	sys.path.insert(1,"external") #gives path to fake epics so it loads before real epics
 # Internal imports.
 from resources import config, ui
 import systems
 import QsWidgets
 from systems.imageGuidance import nonOrthogonalImaging
-# Core imports.
-import os
-import sys
-from functools import partial
 # Sitepackages imports.
 import numpy as np
 from PyQt5.QtCore import pyqtSlot as Slot
@@ -32,7 +35,6 @@ coloredlogs.install(
 	datefmt='%H:%M:%S',
 	level=logging.INFO
 	)
-
 """
 MAIN CLASS: Application starts here.
 """

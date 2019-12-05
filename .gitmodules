@@ -1,0 +1,3 @@
+[submodule "external/epics"]
+	path = external/epics
+	url = https://github.com/MatthewJCameron/epics
