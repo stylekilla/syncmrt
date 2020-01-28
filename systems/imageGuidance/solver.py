@@ -37,6 +37,9 @@ class solver:
 		'''Points should come in as xyz cols and n-points rows: np.array((n,xyz))'''
 		n = np.shape(self._leftPoints)[0]
 
+		logging.critical(self._leftPoints)
+		logging.critical(self._rightPoints)
+
 		# Find the centroids of the LEFT and RIGHT WCS.
 		self._leftCentroid = centroid(self._leftPoints)
 		self._rightCentroid = centroid(self._rightPoints)

@@ -16,12 +16,18 @@ class motor:
 		self._pv = pv
 		# PV vars.
 		self.pv = {}
-		self.pv['RBV'] = False
-		self.pv['VAL'] = False
-		self.pv['TWV'] = False
-		self.pv['TWR'] = False
-		self.pv['TWF'] = False
-		self.pv['DMOV'] = False
+		self.pv['RBV'] = False #read back value (position)
+		self.pv['VAL'] = False #position at value (absolute)
+		self.pv['TWV'] = False #tweak value (relative )
+		self.pv['TWR'] = False #tweak value reverse (relative backwards)
+		self.pv['TWF'] = False #tweak value forward
+		self.pv['DMOV'] = False #detector moving (1 is 'finished move')
+		self.pv['HLM'] = False #High motor limit
+		self.pv['LLM'] = False #Low motor limit
+		self.pv['BDST'] = False #Backlash distance
+		self.pv['BVEL'] = False #Backlash velocity
+		self.pv['BACC'] = False #Backlash acceleration
+		self.pv['DESC'] = False #Description of the motor (i.e. name)
 		# Set to False to start.
 		self._connected = False
 		# Connect the PV's
@@ -59,6 +65,36 @@ class motor:
 			self.pv['TWF'] = epics.PV(self._pv+'.TWF')
 		except:
 			pass
+		try:
+			#High limit of motor range
+			self.pv['HLM'] = epics.PV(self._pv+'.HLM')
+		except:
+			pass
+		try:
+			#Low limit of motor range
+			self.pv['LLM'] = epics.PV(self._pv+'.LLM')
+		except:
+			pass
+		try:
+			#Backlash distance
+			self.pv['BDST'] = epics.PV(self._pv+'.BDST')
+		except:
+			pass
+		try:
+			#Backlash velocity
+			self.pv['BVEL'] = epics.PV(self._pv+'.BVEL')
+		except:
+			pass
+		try:
+			#Backlash acceleration
+			self.pv['BACC'] = epics.PV(self._pv+'.BACC')
+		except:
+			pass
+		try:
+			#Name of the pv
+			self.pv['DESC'] = epics.PV(self._pv+'.DESC')
+		except:
+			pass
 		# Iterate over all PV's and see if any are disconnected. If any are disconnected, set the state to False.
 		# If everything passes, set the state to True.
 		state = True
@@ -82,7 +118,7 @@ class motor:
 			if attribute == 'TWV':
 				self.pv[attribute].put(value)
 			else:
-				while self.pv['DMOV'] == 0:
+				while self.pv['DMOV'].get() == 0:
 					pass
 				self.pv[attribute].put(value)
 
@@ -99,26 +135,69 @@ class motor:
 		if self._connected is False: return
 		# Straight up telling the motor where to go.
 		elif mode=='absolute':
-			if self.pv['VAL']: self.pv['VAL'].put(float(value))
+			if self.pv['VAL']: 
+				oldPosition = self.read()
+				predictedPosition = float(value)
+				if self.checkAbsLimit(value):
+					self.pv['VAL'].put(float(value))
+				else:
+					logging.error("Cannot move {} to {} - motorlimit will be reached.\nH.Lim:{}\tL.Lim:{}".format(self.pv['DESC'].get(),value,self.pv['HLM'].get(),self.pv['LLM'].get()))
+					return
 		elif mode=='relative':
 			if self.pv['TWV']:
-				# Place tweak value.
-				self.pv['TWV'].put(float(np.absolute(value)))
-				if value < 0:
-					# Negative direction
-					self.pv['TWR'].put(1)
-				elif value > 0:
-					self.pv['TWF'].put(1)
-				else:
-					# Do nothing.
-					pass
+				oldPosition = self.read()
+				predictedPosition = oldPosition + float(value)
+				if self.checkRelLimit(value):
+					# Place tweak value.
+					self.pv['TWV'].put(float(np.absolute(value)))
+					if value < 0:
+						# Negative direction
+						self.pv['TWR'].put(1)
+					elif value > 0:
+						self.pv['TWF'].put(1)
+					else:
+						# Do nothing.
+						pass
+				else: 
+					logging.error("Cannot move {} by {} - motorlimit will be reached.\nH.Lim:{}\tL.Lim:{}".format(self.pv['DESC'].get(),value,self.pv['HLM'].get(),self.pv['LLM'].get()))
+					return
 		# Give epics 100ms to get the command to the motor.
-		time.sleep(0.1)
+		time.sleep(0.2)
 		# Stay here while the motor is moving.
 		while self.pv['DMOV'].get() == 0:
 			pass
 		# Finished.
+
+		# Checking that the move occurred.
+		newPosition = self.read()
+		retryCounter = 0
+		maxRetrties = 3
+		BDST=self.pv['BDST'].get()
+		
+		while (abs(newPosition-predictedPosition) > BDST) and (retryCounter < maxRetrties): 
+			logging.error("Motor {} did not move to {}. Retry #{} of {}.".format(self.pv['DESC'].get(), predictedPosition,retryCounter + 1, maxRetrties))
+			self.pv['VAL'].put(predictedPosition)
+			time.sleep(0.2)
+			while self.pv['DMOV'].get() == 0:
+				pass
+			retryCounter+=1
+			newPosition=self.read()
+		if (newPosition != predictedPosition) and (retryCounter == maxRetrties):
+			logging.error("Was unable to complete the movement after {} tries.".format(maxRetrties))
 		return
+
+	def checkAbsLimit(self,value):
+		stillInLimitBool = False
+		if float(value) <= float(self.pv['HLM'].get()) and float(value) >= float(self.pv['LLM'].get()):
+			stillInLimitBool = True
+		return stillInLimitBool
+
+	def checkRelLimit(self,value):
+		stillInLimitBool = False
+		if (float(value) + float(self.pv['RBV'].get())) >= float(self.pv['LLM'].get()) \
+			and (float(value) + float(self.pv['RBV'].get())) <= float(self.pv['HLM'].get()):
+				stillInLimitBool=True
+		return stillInLimitBool
 
 class detector:
 	def __init__(self,pv):
