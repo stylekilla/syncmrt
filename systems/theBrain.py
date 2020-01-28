@@ -72,8 +72,7 @@ class Brain(QtCore.QObject):
 		self._routine.counterLimit = len(theta)
 		logging.info('Acquiring {} images at {}.'.format(len(theta),theta))
 		# Get delta z.
-		# self._routine.tz = trans
-		self._routine.tz = [0,0]
+		self._routine.tz = trans
 		self._routine.theta = theta
 		self._routine.theta_relative = np.hstack([np.array([theta[0]]),np.diff(theta)])
 		# self._routine.dz = np.absolute(trans[1]-trans[0])
@@ -99,8 +98,8 @@ class Brain(QtCore.QObject):
 		# Move to first position.
 		self.patientSupport.finishedMove.connect(partial(self._continueScan,'imaging'))
 		self.imager.imageAcquired.connect(partial(self._continueScan,'moving'))
-		logging.info("Adding -32.7deg offset.")
-		self.patientSupport.shiftPosition([tx,ty,self._routine.tz[0],rx,ry,self._routine.theta_relative[0]-32.7])
+		logging.info("Adding {}deg offset.".format(self.imager.offset))
+		self.patientSupport.shiftPosition([tx,ty,self._routine.tz[0],rx,ry,self._routine.theta_relative[0]-self.imager.offset])
 
 	def _continueScan(self,operation):
 		logging.info("In continue scan method conducting: {}.".format(operation))

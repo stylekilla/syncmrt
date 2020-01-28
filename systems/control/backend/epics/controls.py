@@ -194,24 +194,25 @@ class motor:
 
 	def checkRelLimit(self,value):
 		stillInLimitBool = False
-		if (float(value) + float(self.pv['RBV'].get())) >= float(self.pv['LLM'].get()) \
-			and (float(value) + float(self.pv['RBV'].get())) <= float(self.pv['HLM'].get()):
+		if (float(value) + float(self.pv['RBV'].get())) >= float(self.pv['LLM'].get()) and (float(value) + float(self.pv['RBV'].get())) <= float(self.pv['HLM'].get()):
 				stillInLimitBool=True
 		return stillInLimitBool
 
 class detector:
-	def __init__(self,pv):
+	def __init__(self,metadata):
 		# Initialise the thread.
 		super().__init__()
 		# Internal vars.
-		self._pv = pv
+		self.basePV = metadata[0]
+		self.offset = metadata[1]
+		self.flip = metadata[2]
 		# PV vars.
 		self.pv = {}
 		self.pv['CAM:Acquire'] = None
 		self.pv['CAM:DataType_RBV'] = None
 		self.pv['IMAGE:ArrayData'] = None
-		# self.pv['IMAGE:ArraySize0_RBV'] = None
-		# self.pv['IMAGE:ArraySize0_RBV'] = None
+		self.pv['IMAGE:ArraySize0_RBV'] = None
+		self.pv['IMAGE:ArraySize1_RBV'] = None
 		# Set to False to start.
 		self._connected = False
 		# Connect the PV's
@@ -219,11 +220,11 @@ class detector:
 
 	def _connectPVs(self):
 		# Record PV root information and connect to motors.
-		self.pv['CAM:Acquire'] = epics.PV(self._pv+':CAM:Acquire',connection_timeout=1)
-		self.pv['CAM:DataType_RBV'] = epics.PV(self._pv+':CAM:DataType_RBV',connection_timeout=1)
-		self.pv['IMAGE:ArrayData'] = epics.PV(self._pv+':IMAGE:ArrayData',connection_timeout=1)
-		# self.pv['IMAGE:ArraySize0_RBV'] = epics.PV(self._pv+':IMAGE:ArraySize0_RBV',connection_timeout=1)
-		# self.pv['IMAGE:ArraySize1_RBV'] = epics.PV(self._pv+':IMAGE:ArraySize1_RBV',connection_timeout=1)
+		self.pv['CAM:Acquire'] = epics.PV(self.basePV+':CAM:Acquire',connection_timeout=1)
+		self.pv['CAM:DataType_RBV'] = epics.PV(self.basePV+':CAM:DataType_RBV',connection_timeout=1)
+		self.pv['IMAGE:ArrayData'] = epics.PV(self.basePV+':IMAGE:ArrayData',connection_timeout=1)
+		self.pv['IMAGE:ArraySize0_RBV'] = epics.PV(self.basePV+':IMAGE:ArraySize0_RBV',connection_timeout=1)
+		self.pv['IMAGE:ArraySize1_RBV'] = epics.PV(self.basePV+':IMAGE:ArraySize1_RBV',connection_timeout=1)
 		# Connections.
 		state = []
 		for key in self.pv.keys():
@@ -253,13 +254,15 @@ class detector:
 			# 	image = np.array(im,dtype='uint16')
 			image = None
 			while image is None:
-				logging.critical("epics wait=True for hamapapa times out...")
+				# logging.critical("epics wait=True for hamapapa times out...")
 				self.pv['CAM:Acquire'].put(1,wait=False)
 				time.sleep(1)
 				image = self.pv['IMAGE:ArrayData'].get()
-
-			# x = self.pv['IMAGE:ArraySize1_RBV'].get()
-			# y = self.pv['IMAGE:ArraySize0_RBV'].get()
-			# logging.info("Flipping RUBY images because it is retarded.")
-			# return np.fliplr(np.flipud(image.reshape(x,y)))
-			return image.reshape(616,1216)
+			# Finally got the image. Reshape it accordingly.
+			x = self.pv['IMAGE:ArraySize1_RBV'].get()
+			y = self.pv['IMAGE:ArraySize0_RBV'].get()
+			image = image.reshape(x,y)
+			if self.flip:	
+				return np.fliplr(np.flipud(image))
+			else:
+				return image

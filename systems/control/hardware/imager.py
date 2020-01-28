@@ -5,6 +5,10 @@ import numpy as np
 import csv, os
 import logging
 
+def str2bool(string):
+	# Returns whether bool string is "True" or "true", everything else will return false.
+	return str(string).lower() in ['true']
+
 class Imager(QtCore.QObject):
 	"""
 	A QObject class containing information about imager hardware (detector + source).
@@ -58,19 +62,20 @@ class Imager(QtCore.QObject):
 		# System properties.
 		self.sid = self.config.sid
 		self.sad = self.config.sad
+		self.offset = 0
 		# Get list of motors.
 		# Open CSV file
 		f = open(database)
-		r = csv.DictReader(f)
+		reader = csv.DictReader(f)
 		# Devices is the total list of all devices in the database.
 		self.detectors = {}
 		self.deviceList = set()
-		for row in r:
+		for row in reader:
 			# Check for commented out lines first.
 			if row['Detector'].startswith('--'): 
 				continue
 			else:
-				self.detectors[row['Detector']] = row['PV Root']
+				self.detectors[row['Detector']] = [row['PV Root'],float(row['Offset']),str2bool(row['Flip'])]
 				self.deviceList.add(row['Detector'])
 
 	def load(self,name):
@@ -87,7 +92,10 @@ class Imager(QtCore.QObject):
 			self.detector = detector(name,self.detectors[name])
 			self.name = name
 			self.detector.imageIsocenter = self.config.isocenter
+			# Idea is to include FOV so if translation-Z for image ROI is within then we can determine no movement.
+			# self.offset = self.config.fov
 			self.detector.pixelSize = self.config.pixelSize
+			self.offset = self.detector.offset
 
 	def reconnect(self):
 		""" Reconnect the detector controller to Epics. Use this if the connection dropped out. """

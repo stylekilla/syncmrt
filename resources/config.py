@@ -15,6 +15,7 @@ class imager:
 	# Pixel size is SAX/SID which is 1.2m / 1.5m.
 	pixelSize = [0.16,0.16]
 	sad = 1.2
-	sid = 1.5 
+	sid = 1.5
+	fov = [2560,2180] # hor, vert
 	# magnification = sad/sid
 	# pixelSize = [0.2,0.2]*magnification

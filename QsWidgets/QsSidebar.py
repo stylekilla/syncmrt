@@ -183,7 +183,7 @@ class QImaging(QtWidgets.QWidget):
 		self.widget['theta_range'] = QtWidgets.QLabel("Imaging Angles:")
 		imagingSequence_layout.addRow(self.widget['theta_range'])
 		# Theta 1
-		self.widget['theta1_label'] = QtWidgets.QLabel("\u03B8<sub>1</sub>\u00B0 [0,90]")
+		self.widget['theta1_label'] = QtWidgets.QLabel("\u03B8<sub>1</sub>\u00B0 [90,0]")
 		self.widget['theta1'] = QtWidgets.QDoubleSpinBox()
 		self.widget['theta1'].setMinimumSize(55,20)
 		self.widget['theta1'].setDecimals(1)
@@ -193,7 +193,7 @@ class QImaging(QtWidgets.QWidget):
 		self.widget['theta1'].setToolTip("Choose the first imaging angle, must be between 0 and 90.")
 		imagingSequence_layout.addRow(self.widget['theta1_label'],self.widget['theta1'])
 		# Theta 2
-		self.widget['theta2_label'] = QtWidgets.QLabel("\u03B8<sub>2</sub>\u00B0 [-90,0]")
+		self.widget['theta2_label'] = QtWidgets.QLabel("\u03B8<sub>2</sub>\u00B0 [0,-90]")
 		self.widget['theta2'] = QtWidgets.QDoubleSpinBox()
 		self.widget['theta2'].setMinimumSize(55,20)
 		self.widget['theta2'].setDecimals(1)
