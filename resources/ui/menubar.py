@@ -18,6 +18,10 @@ def populate(mb):
 	file_load.addSeparator()
 	items['load_folder'] = file_load.addAction("Folder")
 	items['load_folder'].setShortcut('Ctrl+L')
+	# EXPORT
+	file_new = file.addMenu("Export")
+	items['export_xray'] = file_new.addAction("X-Ray Images")
+	items['export_xray'].setShortcut('Ctrl+E')
 
 	"""
 	TOOLS

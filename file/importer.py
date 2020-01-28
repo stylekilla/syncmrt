@@ -34,7 +34,11 @@ class sync_dx:
 			
 	def getImageList(self):
 		""" Reads the image names in the HDF5 file. Return as list. """
-		return list(self.file['Image'].keys())
+		try:
+			return list(self.file['Image'].keys())
+		except:
+			logging.critical("No images found.")
+			return None
 
 	def getImageSet(self,idx):
 		logging.debug("Reading image set {}.".format(idx))

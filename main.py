@@ -2,6 +2,7 @@
 from resources import config, ui
 import systems
 import QsWidgets
+from file import exporter
 # Core imports.
 import os
 import sys
@@ -115,6 +116,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		self._menuBar['load_ct'].triggered.connect(partial(self.openFiles,'ct'))
 		self._menuBar['load_rtplan'].triggered.connect(partial(self.openFiles,'rtp'))
 		self._menuBar['load_folder'].triggered.connect(partial(self.openFiles,'folder'))
+		self._menuBar['export_xray'].triggered.connect(partial(self.exportFiles,'xray'))
 
 		# Switches.
 		self._isXrayOpen = False
@@ -150,10 +152,10 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		# When the image mode changes tell the system.
 		self.sbImaging.imageModeChanged.connect(self.system.setImagingMode)
 
-		# self.testing()
+		self.testing()
 
-	# def testing(self):
-	# 	self.openXray('../scratch/test.hdf5')
+	def testing(self):
+		self.openXray('../scratch/3D_Dataset.hdf5')
 
 	# 	folder = '../scratch/DICOM/SMRT_CT_ONLY/'
 	# 	dataset = []
@@ -208,6 +210,12 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 			self._isXrayOpen = True
 			self.environment.button['X-RAY'].clicked.emit()
 			self.sidebar.linkPages('ImageProperties','xrayImageProperties')
+
+	def exportFiles(self,modality):
+		if modality == 'xray':
+			if self._isXrayOpen:
+				# If an xray file is open, export the images.
+				exporter.xrayImages(self.patient.dx)
 
 	def openFiles(self,modality):
 		# We don't do any importing of pixel data in here; that is left up to the plotter by sending the filepath.

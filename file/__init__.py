@@ -3,4 +3,4 @@
 # Submodules
 from . import image
 from . import importer
-# from . import dicom
+from . import exporter
