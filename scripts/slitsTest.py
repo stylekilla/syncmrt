@@ -15,12 +15,25 @@ contour = np.array([(np.cos(2*np.pi/n*x)*r,np.sin(2*np.pi/n*x)*r) for x in range
 
 # I need to give a list of points in X/Y and the tangent condition required by each point.
 gradientConditions = []
+gradientPositions = []
 
 # So if I take my contour, and resample it without loss:
-granularity = 1
-for i,j in (range(0,len(contour)-granularity,granularity),range(granularity,len(contour),granularity)):
-	gradientConditions.append(contour[:,j] - contour[:,i])
+granularity = 20
 
-print(gradientConditions)
+iterate = list(range(0,len(contour),granularity))
+for i in range(len(iterate)-1):
+	a = iterate[i]
+	b = iterate[i+1]
+	gradientConditions.append(contour[b,:] - contour[a,:])
+	gradientPositions.append(contour[int((a+b)/2),:])
 
-# np.atan(theta)
+print((gradientConditions))
+print((gradientPositions))
+
+
+success = slitOptimister(speed,positions,gradientConditions)
+# success = True if it all passed.
+# success = {'speed': True, 'acceleration': False}
+# If acceleration is too much then we need to know in which direction.
+# To reduce the acceleration we need to blur it out a little bit, so give a little bit on the positions.
+
