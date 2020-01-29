@@ -1,8 +1,8 @@
 from PyQt5 import QtWidgets, QtGui, QtCore
 from functools import partial
-from resources import config
 import QsWidgets
 import logging
+import sys, os
 
 __all__ = ['QAlignment','QImaging','QTreatment','QSettings','QXrayProperties','QCtProperties','QRtplanProperties']
 
@@ -11,10 +11,12 @@ class QAlignment(QtWidgets.QWidget):
 	calculateAlignment = QtCore.pyqtSignal(int)
 	doAlignment = QtCore.pyqtSignal()
 
-	def __init__(self):
+	def __init__(self,config):
 		super().__init__()
 		self.widget = {}
 		self.layout = QtWidgets.QVBoxLayout()
+		# Remember the config file.
+		self.config = config
 
 		# Group 1: Markers
 		markerGroup = QtWidgets.QGroupBox()
@@ -54,7 +56,7 @@ class QAlignment(QtWidgets.QWidget):
 		self.widget['markerSize'].setSingleStep(0.25)
 		self.widget['markerSize'].setValue(2.00)
 		self.widget['maxMarkers'].setMinimum(1)
-		self.widget['maxMarkers'].setValue(config.markers.quantity)
+		self.widget['maxMarkers'].setValue(config['markers']['quantity'])
 		self.widget['threshold'].setEnabled(False)
 		self.widget['threshold'].setRange(0,50)
 		self.widget['threshold'].setValue(3)
