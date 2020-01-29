@@ -17,7 +17,7 @@ class Brain(QtCore.QObject):
 		self.solver = imageGuidance.solver()
 		# self.source = control.hardware.source()
 		self.patientSupport = control.hardware.patientSupport(patientSupports)
-		self.imager = control.hardware.Imager(detectors,config.imager)
+		self.imager = control.hardware.Imager(detectors,config['imager'])
 		self.patient = None
 		# Counter
 		self._routine = None

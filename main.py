@@ -1,5 +1,5 @@
 # Internal imports.
-from resources import config, ui
+from resources import ui
 import systems
 import QsWidgets
 from file import exporter
@@ -31,6 +31,12 @@ resourceFilepath = application_path+'/resources/'
 qtCreatorFile = resourceFilepath+"/ui/main.ui"
 qtStyleSheet = open(resourceFilepath+"/ui/stylesheet.css")
 Ui_MainWindow, QtBaseClass = uic.loadUiType(qtCreatorFile)
+
+# Config files.
+import yaml
+from yaml import Loader, Dumper
+stream = open(resourceFilepath+'config.yaml','r+')
+config = yaml.load(stream.read(),Loader=Loader)
 
 # Colored logs.
 import logging, coloredlogs
@@ -128,7 +134,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		SyncMRT Setup
 		"""
 		# Create a new system, this has a solver, detector and stage.
-		self.system = systems.theBrain.Brain(resourceFilepath+config.files.patientSupports,resourceFilepath+config.files.detectors,config)
+		self.system = systems.theBrain.Brain(resourceFilepath+config['files']['patientSupports'],resourceFilepath+config['files']['detectors'],config)
 		self.patient = systems.patient.Patient()
 		# Link the system with the patient data.
 		self.system.loadPatient(self.patient)
@@ -205,7 +211,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 			histogram = self.envXray.getPlotHistogram()
 			self.sidebar.widget['xrayImageProperties'].addPlotHistogramWindow(histogram)
 			# Force marker update for table.
-			self.envXray.set('maxMarkers',config.markers.quantity)
+			self.envXray.set('maxMarkers',config['markers']['quantity'])
 			# Finalise import. Set open status to true and open the workspace.
 			self._isXrayOpen = True
 			self.environment.button['X-RAY'].clicked.emit()
@@ -300,7 +306,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 			# Connect the settings mask size to the plot.
 			self.sbSettings.maskSizeChanged.connect(self.envXray.setMaskSize)
 			# Force marker update for table.
-			self.envXray.set('maxMarkers',config.markers.quantity)
+			self.envXray.set('maxMarkers',config['markers']['quantity'])
 		else:
 			self.createWorkEnvironmentXray()
 		# Open the x-ray file.
@@ -313,7 +319,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		# Connect the settings mask size to the plot.
 		self.sbSettings.maskSizeChanged.connect(self.envXray.setMaskSize)
 		# Force marker update for table.
-		self.envXray.set('maxMarkers',config.markers.quantity)
+		self.envXray.set('maxMarkers',config['markers']['quantity'])
 		# Finalise import. Set open status to true and open the workspace.
 		self._isXrayOpen = True
 		# self.sbImaging.enableAcquisition()
@@ -353,7 +359,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 			# Connect the settings mask size to the plot.
 			self.sbSettings.maskSizeChanged.connect(self.envXray.setMaskSize)
 			# Force marker update for table.
-			self.envXray.set('maxMarkers',config.markers.quantity)
+			self.envXray.set('maxMarkers',config['markers']['quantity'])
 			return
 		# When the current image set is changed, get images and plot them.
 		images = self.patient.dx.getImageSet(_set)
@@ -386,7 +392,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		# Load the CT images and get the histograms.
 		self.updateCTEnv()
 		# Force marker update for table.
-		self.envCt.set('maxMarkers',config.markers.quantity)
+		self.envCt.set('maxMarkers',config['markers']['quantity'])
 		# Finalise import. Set open status to true and open the workspace.
 		self._isCTOpen = True
 		self.environment.button['CT'].clicked.emit()
@@ -405,7 +411,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 	def createWorkEnvironmentCT(self):
 		# Make a widget for plot stuff.
 		self.envCt = self.environment.addPage('CT',QsWidgets.QPlotEnvironment())
-		self.envCt.set('maxMarkers',config.markers.quantity)
+		self.envCt.set('maxMarkers',config['markers']['quantity'])
 		self.envCt.toggleSettings.connect(partial(self.sidebar.showStack,'ImageProperties'))
 		# Connect max markers spin box.
 		self.sbAlignment.markersChanged.connect(partial(self.envCt.set,'maxMarkers'))
@@ -441,7 +447,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 			self.sbTreatment.widget['quantity'].setText(str(i+1))
 			# Make a widget for plot stuff.
 			self.envRtplan[i] = self.environment.addPage('BEV%i'%(i+1),QsWidgets.QPlotEnvironment())
-			self.envRtplan[i].set('maxMarkers',config.markers.quantity)
+			self.envRtplan[i].set('maxMarkers',config['markers']['quantity'])
 			self.envRtplan[i].toggleSettings.connect(partial(self.sidebar.showStack,'ImageProperties'))
 			# Connect max markers spin box.
 			self.sbAlignment.markersChanged.connect(partial(self.envRtplan[i].set,'maxMarkers'))

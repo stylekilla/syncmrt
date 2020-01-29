@@ -17,8 +17,8 @@ class Imager(QtCore.QObject):
 	----------
 	database : str
 		A link to a *.csv file containing information about the hardware.
-	config : str
-		Pass the configuration file section relating to the imager.
+	config : dict
+		Pass the yaml dictionary section relating to the imager.
 	ui : QtWidget
 		Unused. Should allow for imager controls to be set up and placed within the gui by using the ui to set a layout and imager child widgets.
 
@@ -60,8 +60,8 @@ class Imager(QtCore.QObject):
 		self._stitchBuffer = []
 		self.metadata = []
 		# System properties.
-		self.sid = self.config.sid
-		self.sad = self.config.sad
+		self.sid = self.config['sid']
+		self.sad = self.config['sad']
 		self.offset = 0
 		# Get list of motors.
 		# Open CSV file
@@ -91,10 +91,10 @@ class Imager(QtCore.QObject):
 		if name in self.deviceList:
 			self.detector = detector(name,self.detectors[name])
 			self.name = name
-			self.detector.imageIsocenter = self.config.isocenter
+			self.detector.imageIsocenter = self.config['isocenter']
 			# Idea is to include FOV so if translation-Z for image ROI is within then we can determine no movement.
-			# self.offset = self.config.fov
-			self.detector.pixelSize = self.config.pixelSize
+			# self.offset = self.config['fov']
+			self.detector.pixelSize = self.config['pixelSize']
 			self.offset = self.detector.offset
 
 	def reconnect(self):
