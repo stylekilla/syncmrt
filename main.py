@@ -1,5 +1,5 @@
 # Internal imports.
-from resources import ui, Config
+from resources import ui, Config, setupWizard
 import systems
 import QsWidgets
 from file import exporter
@@ -76,7 +76,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		self.sidebar.addPage('Imaging',QsWidgets.QImaging(),before='all')
 		self.sbImaging = self.sidebar.getPage('Imaging')
 		# Sidebar: Alignment.
-		self.sbAlignment = self.sidebar.addPage('Alignment',QsWidgets.QAlignment(),after='Imaging')
+		self.sbAlignment = self.sidebar.addPage('Alignment',QsWidgets.QAlignment(config.data),after='Imaging')
 		self.sbAlignment.widget['maxMarkers'].valueChanged.connect(partial(self.updateSettings,'global',self.sbAlignment.widget['maxMarkers']))
 		self.sbAlignment.widget['optimise'].toggled.connect(partial(self.toggleOptimise))
 		self.sbAlignment.calculateAlignment.connect(self.patientCalculateAlignment)
@@ -121,6 +121,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		self._menuBar['load_rtplan'].triggered.connect(partial(self.openFiles,'rtp'))
 		self._menuBar['load_folder'].triggered.connect(partial(self.openFiles,'folder'))
 		self._menuBar['export_xray'].triggered.connect(partial(self.exportFiles,'xray'))
+		self._menuBar['tools_wizard'].triggered.connect(self.startSetupWizard)
 
 		# Switches.
 		self._isXrayOpen = False
@@ -159,30 +160,30 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		self.testing()
 
 	def testing(self):
-		self.openXray('../scratch/3D_Dataset.hdf5')
+		self._menuBar['tools_wizard'].trigger()
+		# self.openXray('../scratch/3D_Dataset.hdf5')
 
-	# 	folder = '../scratch/DICOM/SMRT_CT_ONLY/'
-	# 	dataset = []
-	# 	modality = 'CT'
-	# 	for root, subdir, fp in os.walk(folder):
-	# 		for fn in fp:
-	# 			if (fn.endswith(tuple('.dcm'))) & (fn[:len(modality)] == modality):
-	# 				dataset.append(os.path.join(root,fn))
-	# 	if len(dataset) > 0:
-	# 		self.openCT(dataset)
+		# folder = '../scratch/DICOM/SMRT_CT_ONLY/'
+		# dataset = []
+		# modality = 'CT'
+		# for root, subdir, fp in os.walk(folder):
+		# 	for fn in fp:
+		# 		if (fn.endswith(tuple('.dcm'))) & (fn[:len(modality)] == modality):
+		# 			dataset.append(os.path.join(root,fn))
+		# if len(dataset) > 0:
+		# 	self.openCT(dataset)
 
-	# 	self.envXray.addMarker(0,0,0)
-	# 	self.envXray.addMarker(0,50,25)
-	# 	self.envXray.addMarker(0,-50,-25)
-	# 	self.envXray.addMarker(1,0,0)
-	# 	self.envXray.addMarker(1,50,25)
-	# 	self.envXray.addMarker(1,-50,-25)
-	# 	self.envCt.addMarker(0,0,0)
-	# 	self.envCt.addMarker(0,50,25)
-	# 	self.envCt.addMarker(0,-50,-25)
-	# 	self.envCt.addMarker(1,0,0)
-	# 	self.envCt.addMarker(1,50,25)
-	# 	self.envCt.addMarker(1,-50,-25)
+
+	def startSetupWizard(self):
+		# Create it.
+		self.wizard = setupWizard.Wizard(config,parent=self)
+		self.wizard.open()
+		self.wizard.raise_()
+		self.wizard.activateWindow()
+
+	def finishSetupWizard(self):
+		# Destroy it.
+		self.wizard = None
 
 	def newFile(self,modality):
 		if modality == 'xray':

@@ -27,6 +27,8 @@ def populate(mb):
 	TOOLS
 	"""
 	tools = mb.addMenu("Tools")
+	# WIZARDS
+	items['tools_wizard'] = tools.addAction("Run Setup")
 	# SCRIPTS
 	tools_scripts = tools.addMenu("Scripts")
 	# Get all the custom scripts in the scripts folder.
@@ -40,6 +42,8 @@ def populate(mb):
 			script = tools_scripts.addAction(scriptName)
 			# When clicked then run the file in a separate python instance.
 			script.triggered.connect(partial(run,item))
+
+	# Finished
 	return items
 
 def run(script):
