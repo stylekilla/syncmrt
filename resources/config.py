@@ -13,10 +13,11 @@ class Config:
 	def save(self):
 		# Dump the config contents into a string.
 		string = yaml.dump(self.data,Dumper=Dumper)
-		with open(self.file,'w') as file:
-			file.write(string)
+		stream = open(self.file,'w')
+		stream.write(string)
 		# Close the file.
-		file.close()
+		stream.close()
+		pass
 
 	def __del__(self):
 		# Save the file on object destruction.
