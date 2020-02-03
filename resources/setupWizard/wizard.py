@@ -5,6 +5,7 @@ from .detector import Detector
 from .resources import Resources
 from .finish import Finish
 from collections import OrderedDict
+from functools import partial
 import logging
 
 class Wizard(QtWidgets.QWizard):
@@ -21,12 +22,16 @@ class Wizard(QtWidgets.QWizard):
 		self.pages['Detector'] = Detector(self.config.data['imager'])
 		self.pages['Resources'] = Resources(self.config.data['files'])
 		self.pages['Finish'] = Finish()
-		# self.pages['Finish'].finished.connect(self.updateConfig)
 
 		for key in self.pages:
+			self.pages[key].settingsUpdated.connect(partial(self.updateConfig,key))
 			self.addPage(self.pages[key])
 
 		self.pages['Start'].setCheckBoxes(self.pages)
 
-	# def all_field_names(self):
-		# return {s for page_id in self.pageIds() for s in self.page(page_id).field_names}
+	def updateConfig(self,page):
+		data = self.pages[page].getData()
+		for key, value in data.items():
+			self.config.data[self.pages[page].configSection][key] = value
+		logging.critical("Updating config.")
+		self.config.save()

@@ -17,7 +17,6 @@ class Config:
 		stream.write(string)
 		# Close the file.
 		stream.close()
-		pass
 
 	def __del__(self):
 		# Save the file on object destruction.

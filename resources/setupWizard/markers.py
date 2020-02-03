@@ -5,12 +5,14 @@ class Markers(QtWidgets.QWizardPage):
 	The first wizard page the user sees.
 	As pages are created, checkboxes should be added.
 	"""
+	settingsUpdated = QtCore.pyqtSignal()
 
 	def __init__(self,defaults):
 		super().__init__()
 		self.setTitle("Set marker properties.")
 		# Description for wizard start checkboxes.
 		self.name = "Markers"
+		self.configSection = "markers"
 		self.description = "Marker settings"
 		self.enabled = True
 		self._nextId = 0
@@ -25,6 +27,7 @@ class Markers(QtWidgets.QWizardPage):
 		self.data['quantity'].setMinimum(3)
 		self.data['quantity'].setMaximum(10)
 		self.data['quantity'].setValue(int(defaults['quantity']))
+		self.data['quantity'].valueChanged.connect(self.settingsUpdated.emit)
 		widgets.append(self.data['quantity'])
 		# Marker size.
 		labels.append(QtWidgets.QLabel("Marker Size"))
@@ -32,6 +35,7 @@ class Markers(QtWidgets.QWizardPage):
 		self.data['size'].setMinimum(1.0)
 		self.data['size'].setMaximum(5.0)
 		self.data['size'].setValue(float(defaults['size']))
+		self.data['size'].valueChanged.connect(self.settingsUpdated.emit)
 		widgets.append(self.data['size'])
 
 		# Create a layout.
@@ -41,6 +45,12 @@ class Markers(QtWidgets.QWizardPage):
 			layout.addRow(label,widget)
 		# Set the layout.
 		self.setLayout(layout)
+
+	def getData(self):
+		data = {}
+		data['quantity'] = int(self.data['quantity'].value())
+		data['size'] = float(self.data['size'].value())
+		return data
 
 	def setNextId(self,idx):
 		self._nextId = idx

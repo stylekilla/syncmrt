@@ -1,10 +1,12 @@
-from PyQt5 import QtWidgets
+from PyQt5 import QtWidgets, QtCore
 
 class Finish(QtWidgets.QWizardPage):
 	"""
 	The first wizard page the user sees.
 	As pages are created, checkboxes should be added.
 	"""
+	settingsUpdated = QtCore.pyqtSignal()
+
 	def __init__(self):
 		super().__init__()
 		self.setTitle("Complete.")

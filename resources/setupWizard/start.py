@@ -8,6 +8,8 @@ class Start(QtWidgets.QWizardPage):
 	As pages are created, checkboxes should be added.
 	"""
 	addPage = QtCore.pyqtSignal(str,bool)
+	settingsUpdated = QtCore.pyqtSignal()
+
 	def __init__(self):
 		super().__init__()
 		self.setTitle("Select the wizards to run through.")
