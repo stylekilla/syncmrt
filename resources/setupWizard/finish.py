@@ -5,7 +5,7 @@ class Finish(QtWidgets.QWizardPage):
 	The first wizard page the user sees.
 	As pages are created, checkboxes should be added.
 	"""
-	def __init__(self,config):
+	def __init__(self):
 		super().__init__()
 		self.setTitle("Complete.")
 		self.name = "Finish"
@@ -13,8 +13,6 @@ class Finish(QtWidgets.QWizardPage):
 		self.enabled = True
 		self._nextId = -1
 		self.data = {}
-		# Save the config file.
-		config.save()
 		# Create a widget.
 		widget = QtWidgets.QLabel("The configuration wizard is now complete.")
 		# Create a layout.

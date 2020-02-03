@@ -40,11 +40,12 @@ class Start(QtWidgets.QWizardPage):
 		self.setLayout(layout)
 		# Save that we have populated it.
 		self.isPopulated = True
+		# Update the flow.
+		self.updateFlow()
 
 	def setState(self,name,state):
 		""" Emit whether we add the page to the wizard or not. """
 		# Every time a checkbox is clicked on or off, change the state in a dict accordingly.
-		logging.critical("Setting state of {} to {}".format(name,bool(state)))
 		self.wizardPages[name].enabled = bool(state)
 
 		# Always update the flow or do it when the next button is clicked?
@@ -52,9 +53,7 @@ class Start(QtWidgets.QWizardPage):
 
 	def updateFlow(self):
 		# Iterate over all the pages and set the nextId to the next True page.
-		logging.critical("Updating flow for wizard.")
 		pages = list(self.wizardPages.values())
-		logging.critical("Pages: \n {}".format(pages))
 		# Iterate over each page in the page list.
 		for page in pages:
 			# If the page is enabled, find the one that comes after it.
@@ -63,7 +62,6 @@ class Start(QtWidgets.QWizardPage):
 				# Check each page after the current page index for the one that is next enabled.
 				for i in range(current_idx+1,len(pages)):
 					if pages[i].enabled:
-						logging.critical("Setting {} nextId to {}".format(page,i))
 						page.setNextId(i)
 						# No need to search any further.
 						break

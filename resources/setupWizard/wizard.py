@@ -1,6 +1,8 @@
 from PyQt5 import QtWidgets
 from .start import Start
+from .markers import Markers
 from .detector import Detector
+from .resources import Resources
 from .finish import Finish
 from collections import OrderedDict
 import logging
@@ -15,8 +17,11 @@ class Wizard(QtWidgets.QWizard):
 
 		# Begin the wizard with the start page.
 		self.pages['Start'] = Start()
-		self.pages['Detector'] = Detector()
-		self.pages['Finish'] = Finish(self.config)
+		self.pages['Markers'] = Markers(self.config.data['markers'])
+		self.pages['Detector'] = Detector(self.config.data['imager'])
+		self.pages['Resources'] = Resources(self.config.data['files'])
+		self.pages['Finish'] = Finish()
+		# self.pages['Finish'].finished.connect(self.updateConfig)
 
 		for key in self.pages:
 			self.addPage(self.pages[key])

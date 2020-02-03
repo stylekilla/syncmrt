@@ -1,20 +1,18 @@
-markers:
-    quantity: 3
-    size: 2.00
-
 files:
-    patientSupports: '/database/patientSupports.csv'
-    detectors: '/database/detectors.csv'
-
+  detectors: /database/detectors.csv
+  patientSupports: /database/patientSupports.csv
 imager:
-    isocenter:
-        - 234.75
-        - 572.219
-    pixelSize:
-        - 0.16
-        - 0.16
-    sad: 1.2
-    sid: 1.5
-    fov:
-        - 2560 
-        - 2180
+  fov:
+  - 2560
+  - 2180
+  isocenter:
+  - 234.75
+  - 572.219
+  pixelSize:
+  - 0.16
+  - 0.16
+  sad: 1.2
+  sid: 1.5
+markers:
+  quantity: 3
+  size: 2.0
