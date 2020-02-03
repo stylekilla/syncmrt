@@ -1,5 +1,9 @@
 import numpy as np
 
+"""
+Converting discrete to continuous functions?
+	- https://docs.scipy.org/doc/numpy/reference/generated/numpy.piecewise.html
+"""
 
 # Create a contour.
 n = 180
