@@ -16,18 +16,18 @@ class motor:
 		self._pv = pv
 		# PV vars.
 		self.pv = {}
-		self.pv['RBV'] = False #read back value (position)
-		self.pv['VAL'] = False #position at value (absolute)
-		self.pv['TWV'] = False #tweak value (relative )
-		self.pv['TWR'] = False #tweak value reverse (relative backwards)
-		self.pv['TWF'] = False #tweak value forward
-		self.pv['DMOV'] = False #detector moving (1 is 'finished move')
-		self.pv['HLM'] = False #High motor limit
-		self.pv['LLM'] = False #Low motor limit
-		self.pv['BDST'] = False #Backlash distance
-		self.pv['BVEL'] = False #Backlash velocity
-		self.pv['BACC'] = False #Backlash acceleration
-		self.pv['DESC'] = False #Description of the motor (i.e. name)
+		self.pv['RBV']	= False		# Read back value (position)
+		self.pv['VAL']	= False		# Position at value (absolute)
+		self.pv['TWV']	= False		# Tweak value (relative )
+		self.pv['TWR']	= False		# Tweak value reverse (relative backwards)
+		self.pv['TWF']	= False		# Tweak value forward
+		self.pv['DMOV']	= False		# Detector moving (1 is 'finished move')
+		self.pv['HLM']	= False		# High motor limit
+		self.pv['LLM']	= False		# Low motor limit
+		self.pv['BDST']	= False		# Backlash distance
+		self.pv['BVEL']	= False		# Backlash velocity
+		self.pv['BACC']	= False		# Backlash acceleration
+		self.pv['DESC']	= False		# Description of the motor (i.e. name)
 		# Set to False to start.
 		self._connected = False
 		# Connect the PV's

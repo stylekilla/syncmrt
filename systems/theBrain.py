@@ -2,6 +2,7 @@ from systems import control, imageGuidance
 import logging
 import numpy as np
 from functools import partial
+import threading
 from PyQt5 import QtCore
 
 class Brain(QtCore.QObject):
@@ -55,12 +56,22 @@ class Brain(QtCore.QObject):
 
 	def applyAlignment(self):
 		""" Tell the patientSupport to apply the calculated/prepared motion. """
-		self.patientSupport.applyMotion()
+		# self.patientSupport.applyMotion()
+		_thread = threading.Thread(target=self.patientSupport.applyMotion,name='patientSupport_applyAlignment')
+		_thread.start()
 
 	def movePatient(self,amount):
-		self.patientSupport.shiftPosition(amount)
+		""" Shift the patient position by amount. """
+		# self.patientSupport.shiftPosition(amount)
+		_thread = threading.Thread(target=self.patientSupport.shiftPosition,name='patientSupport_shiftPosition',args=(amount))
+		_thread.start()
 
 	def acquireXray(self,theta,trans,comment=''):
+		""" Starts acquire x-ray routine on a thread. """
+		_thread = threading.Thread(target=self._acquireXray,name='theBrain_acquireXray',args=(theta,trans),kwargs={"comment":comment})
+		_thread.start()
+
+	def _acquireXray(self,theta,trans,comment=''):
 		if self.imager.file is None:
 			logging.critical("Cannot save images to dataset, no HDF5 file loaded.")
 			return
@@ -84,12 +95,6 @@ class Brain(QtCore.QObject):
 		# self.patientSupport.finishedMove.connect(partial(self._acquireXray,dz))
 		# self.detector.imageAcquired.connect()
 		self._startScan()
-
-		# 	# Calculate a relative change for the next imaging angle.
-		# 	try: 
-		# 		theta[i+1] = -(theta[i]-theta[i+1])
-		# 	except:
-		# 		pass
 
 	def _startScan(self):
 		logging.info("Starting scan.")
