@@ -42,6 +42,7 @@ def calculate(p1,p2,t1,t2):
 		# QtWidgets.QMessageBox.warning("The calculation will fail since the first image angle is greater than the second. The first image angle must always be less than the second, i.e. t1 = -45 and t2 = +45.")
 		return
 
+	print(p1,p2,t1,t2)
 	for i in range(len(p1)):
 		# Convert angles to radians, calculate them from +/- 45 deg virtual axes.
 		alpha = np.deg2rad(t1+45)
@@ -70,4 +71,5 @@ def calculate(p1,p2,t1,t2):
 		# Add the new points to the result.
 		result[i,:] = [x,y,z]
 
+	print(result)
 	return result

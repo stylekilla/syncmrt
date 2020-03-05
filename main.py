@@ -577,6 +577,9 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 			l = self.envCt.getMarkers(raw=True)
 			# Get the CT isocenter.
 			isocenter = self.envCt.getIsocenter(raw=True)
+			logging.critical("Gathering data for alignment!!")
+			logging.info("X-ray Markers (R) = {}".format(r))
+			logging.info("CT Markers (L) = {}".format(l))
 		elif index > 0:
 			# Align to a BEV.
 			# Get the x-ray (right) points. These are always in terms of the fixed synchrotron axes.

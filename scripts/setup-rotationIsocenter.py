@@ -20,19 +20,23 @@ Assumes:
 # RUBY is in beam.
 
 SAVE = False
+PLOT = True
 
 # This is the left bottom top right of the field in RUBY in pixels.
 l = 0
 r = 2560
-b = 1181
-t = 944
+b = 1975
+t = 1725
+
+# _RUBY_BASEPV = 'SR08ID01DET01'
+_RUBY_BASEPV = 'SR08ID01DET02'
 
 def getImage(save=False,fname=''):
 	logging.info("Acquiring an image.")
-	epics.caput('SR08ID01DET01:CAM:Acquire.VAL',1,wait=True)
-	arr = epics.caget('SR08ID01DET01:IMAGE:ArrayData')
-	_x = epics.caget('SR08ID01DET01:IMAGE:ArraySize1_RBV')
-	_y = epics.caget('SR08ID01DET01:IMAGE:ArraySize0_RBV')
+	epics.caput(_RUBY_BASEPV+':CAM:Acquire.VAL',1,wait=True)
+	arr = epics.caget(_RUBY_BASEPV+':IMAGE:ArrayData')
+	_x = epics.caget(_RUBY_BASEPV+':IMAGE:ArraySize1_RBV')
+	_y = epics.caget(_RUBY_BASEPV+':IMAGE:ArraySize0_RBV')
 	time.sleep(0.1)
 	arr = np.flipud(np.array(arr,dtype=np.uint16).reshape(_x,_y))[t:b,l:r]
 	# Remove any weird values.
@@ -63,12 +67,12 @@ epics.caput('SR08ID01SST25:ROTATION.VAL',0,wait=True)
 ########################
 exposureTime = 0.1
 logging.info("Setting up RUBY acquisition parameters.")
-epics.caput('SR08ID01DET01:CAM:Acquire.VAL',0,wait=True)
-epics.caput('SR08ID01DET01:CAM:AcquireTime.VAL',exposureTime)
-epics.caput('SR08ID01DET01:CAM:AcquirePeriod.VAL',0.00)
-epics.caput('SR08ID01DET01:CAM:ImageMode.VAL','Single',wait=True)
-epics.caput('SR08ID01DET01:TIFF:AutoSave.VAL','No',wait=True)
-epics.caput('SR08ID01DET01:CAM:Acquire.VAL',1,wait=True)
+epics.caput(_RUBY_BASEPV+':CAM:Acquire.VAL',0,wait=True)
+epics.caput(_RUBY_BASEPV+':CAM:AcquireTime.VAL',exposureTime)
+epics.caput(_RUBY_BASEPV+':CAM:AcquirePeriod.VAL',0.00)
+epics.caput(_RUBY_BASEPV+':CAM:ImageMode.VAL','Single',wait=True)
+epics.caput(_RUBY_BASEPV+':TIFF:AutoSave.VAL','No',wait=True)
+epics.caput(_RUBY_BASEPV+':CAM:Acquire.VAL',1,wait=True)
 
 
 ######################
@@ -76,7 +80,7 @@ epics.caput('SR08ID01DET01:CAM:Acquire.VAL',1,wait=True)
 ######################
 
 # Distance to travel in mm.
-_distance = 10
+_distance = 10.0
 # Ball bearing sizes.
 _bb = 2.0
 
@@ -119,13 +123,14 @@ for i in range(len(line)):
 	peak = np.argmax(line[i])
 	peaks.append(peak)
 
-# fig,ax = plt.subplots(2,2)
-# ax = ax.flatten()
-# ax[0].plot(np.linspace(0,len(line[0]),len(line[0])),line[0])
-# ax[1].plot(np.linspace(0,len(line[0]),len(line[0])),line[1])
-# ax[2].imshow(image[0],cmap='gray')
-# ax[3].imshow(image[1],cmap='gray')
-# plt.show()
+if PLOT:
+	fig,ax = plt.subplots(2,2)
+	ax = ax.flatten()
+	ax[0].plot(np.linspace(0,len(line[0]),len(line[0])),line[0])
+	ax[1].plot(np.linspace(0,len(line[0]),len(line[0])),line[1])
+	ax[2].imshow(image[0],cmap='gray')
+	ax[3].imshow(image[1],cmap='gray')
+	plt.show()
 
 pixelSize = _distance/np.absolute(peaks[1]-peaks[0])
 logging.critical("Pixel Size: {} mm".format(pixelSize))
@@ -169,21 +174,22 @@ for i in range(len(line)):
 d_h1 = np.absolute(peaks[1]-peaks[3])*pixelSize/2
 d_h2 = np.absolute(peaks[0]-peaks[2])*pixelSize/2
 
-# fig,ax = plt.subplots(2,4)
-# ax = ax.flatten()
-# ax[0].plot(line[0])
-# # ax[0].scatter(line[0][peaks[0]],marker='+',color='r')
-# ax[1].plot(line[1])
-# # ax[1].scatter(line[1][peaks[1]],marker='+',color='r')
-# ax[2].plot(line[2])
-# # ax[2].scatter(line[2][peaks[2]],marker='+',color='r')
-# ax[3].plot(line[3])
-# # ax[3].scatter(line[3][peaks[3]],marker='+',color='r')
-# ax[4].imshow(image[0],cmap='gray')
-# ax[5].imshow(image[1],cmap='gray')
-# ax[6].imshow(image[2],cmap='gray')
-# ax[7].imshow(image[3],cmap='gray')
-# plt.show()
+if PLOT:
+	fig,ax = plt.subplots(2,4)
+	ax = ax.flatten()
+	ax[0].plot(line[0])
+	# ax[0].scatter(line[0][peaks[0]],marker='+',color='r')
+	ax[1].plot(line[1])
+	# ax[1].scatter(line[1][peaks[1]],marker='+',color='r')
+	ax[2].plot(line[2])
+	# ax[2].scatter(line[2][peaks[2]],marker='+',color='r')
+	ax[3].plot(line[3])
+	# ax[3].scatter(line[3][peaks[3]],marker='+',color='r')
+	ax[4].imshow(image[0],cmap='gray')
+	ax[5].imshow(image[1],cmap='gray')
+	ax[6].imshow(image[2],cmap='gray')
+	ax[7].imshow(image[3],cmap='gray')
+	plt.show()
 
 # Move H1.
 logging.info("Moving the ball-bearing to the centre of rotation.")

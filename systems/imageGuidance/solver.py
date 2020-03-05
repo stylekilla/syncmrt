@@ -9,6 +9,7 @@ ASSUMPTIONS:
 	3. User origin is in relation to Dicom origin.
 	4. All points are relative to the user origin.
 	5. Both CT and Synchrotron orthogonal images are the same CW or CCW direction of the image.
+	6. IMBL always looks down AP of the target and the other image is RL (DynMRT).
 '''
 
 class solver:
@@ -37,12 +38,15 @@ class solver:
 		'''Points should come in as xyz cols and n-points rows: np.array((n,xyz))'''
 		n = np.shape(self._leftPoints)[0]
 
-		logging.critical(self._leftPoints)
-		logging.critical(self._rightPoints)
+		logging.critical("Left (CT) Points: \n {}".format(self._leftPoints))
+		logging.critical("Right (XR) Points: \n {}".format(self._rightPoints))
 
 		# Find the centroids of the LEFT and RIGHT WCS.
 		self._leftCentroid = centroid(self._leftPoints)
 		self._rightCentroid = centroid(self._rightPoints)
+
+		logging.critical("Left (CT) Centroid: \n {}".format(self._leftCentroid))
+		logging.critical("Right (XR) Centroid: \n {}".format(self._rightCentroid))
 
 		# If no patient isocenter is set, align to the centroid.
 		if self._patientIsocenter is None:
@@ -89,9 +93,9 @@ class solver:
 		translation = -(translation1 + translation2)
 
 		logging.critical("self._patientIsocenter: {}".format(self._patientIsocenter))
-		logging.critical("translation1: {}".format(translation1))
-		logging.critical("translation2: {}".format(translation2))
-		logging.critical("translation: {}".format(translation))
+		logging.critical("translation1 (PatIso to Ctd): {}".format(translation1))
+		logging.critical("translation2 (Ctd to MachIso): {}".format(translation2))
+		logging.critical("translation (Final): {}".format(translation))
 
 		self.transform[:3,3] = translation.transpose().ravel()
 

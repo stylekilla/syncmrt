@@ -100,22 +100,31 @@ class QPlotEnvironment(QtWidgets.QSplitter):
 		markers0 = np.array(self.tableModel[0].getMarkers())
 		markers1 = np.array(self.tableModel[1].getMarkers())
 		if raw:
-			# If we want just the raw points, take them.
-			# We assume that points is [x,y,z] and marker0 is [y,z] and marker1 is [x,z].
-			points[:,1] = markers0[:,0]
-			# See if we have two sets of points.
-			allZeroes = not markers1.any()
-			if allZeroes:
-				# Only one dataset, take that only.
-				points[:,2] = markers0[:,1]
-			else:
-				# Reconcile both datasets.
-				points[:,2] = (markers0[:,1] + markers1[:,1])/2
-				points[:,0] = markers1[:,0]
+			# Hijack for experiment... CT data loaded in AP view does not match correctly with IMBL axes.
+			# We are using two images so always 3D points.
+
+			# IMBL X = CT-AP h2
+			points[:,0] = markers1[:,0]
+			# IMBL Y = CT-AP -h1
+			points[:,1] = -markers0[:,0]
+			# IMBL Z = CT-AP v
+			points[:,2] = (markers0[:,1] + markers1[:,1])/2
+			# # If we want just the raw points, take them.
+			# # We assume that points is [x,y,z] and marker0 is [y,z] and marker1 is [x,z].
+			# points[:,1] = markers0[:,0]
+			# # See if we have two sets of points.
+			# allZeroes = not markers1.any()
+			# if allZeroes:
+			# 	# Only one dataset, take that only.
+			# 	points[:,2] = markers0[:,1]
+			# else:
+			# 	# Reconcile both datasets.
+			# 	points[:,2] = (markers0[:,1] + markers1[:,1])/2
+			# 	points[:,0] = markers1[:,0]
 		else:
 			# Else, adjust the points for the views.
-			theta0 = self.plotView[0]
-			theta1 = self.plotView[1]
+			theta0 = -self.plotView[0]
+			theta1 = -self.plotView[1]
 			# Check to see if there are any markers in the second dataset.
 			# allZeroes = not markers1.any()
 			allZeroes = (theta1 == None) | (not markers1.any())
@@ -161,10 +170,20 @@ class QPlotEnvironment(QtWidgets.QSplitter):
 		# Get the raw data and the angles of the image frames.
 		iso = self.plot.getIsocenter()
 		if raw:
-			return iso
+			# Hijack for experiment... CT data loaded in AP view does not match correctly with IMBL axes.
+			# We are using two images so always 3D points.
+			isocenter = np.array(iso)
+			# IMBL X = CT-AP h2
+			isocenter[0] = iso[2]
+			# IMBL Y = CT-AP -h1
+			isocenter[1] = -iso[0]
+			# IMBL Z = CT-AP v
+			isocenter[2] = iso[1]
+
 		else:
 			iso0 = [iso[0],iso[1]]
 			iso1 = [iso[2],iso[1]]
+			# Take the negative value to adjust the view of the patient according to the rotation of the stage.
 			theta0 = -self.plotView[0]
 			theta1 = -self.plotView[1]
 			# Reconcile the two datasets.

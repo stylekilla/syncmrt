@@ -10,8 +10,8 @@ class files:
 
 class imager:
 	""" Settings for the imager configuration. """
-	# Pixel size and isocenter specified as (row,col).
-	isocenter = [234.75,572.219]
+	# Pixel size and isocenter specified as (row,col) / ImageJ(Y,X).
+	isocenter = [235.25,572]
 	# Pixel size is SAX/SID which is 1.2m / 1.5m.
 	pixelSize = [0.16,0.16]
 	sad = 1.2

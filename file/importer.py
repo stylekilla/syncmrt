@@ -228,6 +228,7 @@ class ct(QtCore.QObject):
 
 		# Set the default.
 		self.calculateView('AP')
+		# self.calculateView('IS')
 
 	def calculateView(self,view,roi=None,flatteningMethod='sum'):
 		""" Rotate the CT array for a new view of the dataset. """
