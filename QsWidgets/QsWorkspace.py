@@ -131,6 +131,7 @@ class QPlotEnvironment(QtWidgets.QSplitter):
 			if allZeroes:
 				# Only one dataset, take that only.
 				points[:,:2] = markers0
+				theta1 = theta0-90
 			else: 
 				# Two datasets, mix them.
 				points = nonOrthogonalImaging.calculate(markers0,markers1,theta0,theta1)
