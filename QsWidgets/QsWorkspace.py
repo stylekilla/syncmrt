@@ -185,7 +185,10 @@ class QPlotEnvironment(QtWidgets.QSplitter):
 			iso1 = [iso[2],iso[1]]
 			# Take the negative value to adjust the view of the patient according to the rotation of the stage.
 			theta0 = -self.plotView[0]
-			theta1 = -self.plotView[1]
+			theta1 = self.plotView[1]
+			if theta1 == None:
+				theta1 = -90
+			theta1 = -theta1
 			# Reconcile the two datasets.
 			isocenter = nonOrthogonalImaging.calculate(iso0,iso1,theta0,theta1)
 

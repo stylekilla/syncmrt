@@ -207,6 +207,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 			# Finalise import. Set open status to true and open the workspace.
 			self._isXrayOpen = True
 			self.environment.button['X-RAY'].clicked.emit()
+			self.sbSettings.maskSizeChanged.connect(self.envXray.setMaskSize) #need this of msak size won't change for new files -matt 5-3-2020
 			self.sidebar.linkPages('ImageProperties','xrayImageProperties')
 
 	def openFiles(self,modality):
