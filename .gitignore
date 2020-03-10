@@ -4,6 +4,7 @@
 *.pyo
 env/
 synctools
+cache/
 
 # QT Creator #
 ##############
