@@ -10,4 +10,6 @@ Requirements:
 
 Notes: 
 - The master branch is the most out-of-date branch, but I expect this to change once I have finished updating some features.
-- If you would like more detailed descriptions, hassle me for them! I'll do them eventually - I promise :)
+- If you would like more detailed descriptions, hassle me for them! I'll do them eventually - I promise :) 
+- Most of the helpful notes exist as comments in the python files themselves.
+- Read the Docs is something I've investigated but haven't had the time to implement properly just yet.
