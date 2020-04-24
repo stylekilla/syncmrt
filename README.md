@@ -1,5 +1,7 @@
 # SynchrotronMRT
-Application for Synchrotron MRT (Python3.5 + Qt5.9)
+A python/qt application for Synchrotron Radiotherapy (Python3.5 + Qt5.9).
+This was born out of a need for image guidance protocols on the Imaging and Medical Beamline (IMBL) at the Australian Synchrotron.
+However it is slowly turning into a fully equipped IGRT program that covers dosimetry, treatment planning (basic functionality in the program or import a clinical treatment plan), image guidance and treatment delivery.
 
 Requirements:
 - Python 3.5+
