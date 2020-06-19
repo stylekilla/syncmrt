@@ -4,9 +4,12 @@ from resources import config
 import QsWidgets
 import logging
 
+__all__ = ['QAlignment','QImaging','QTreatment','QSettings','QXrayProperties','QCtProperties','QRtplanProperties']
+
 class QAlignment(QtWidgets.QWidget):
 	markersChanged = QtCore.pyqtSignal(int)
 	calculateAlignment = QtCore.pyqtSignal(int)
+	doAlignment = QtCore.pyqtSignal()
 
 	def __init__(self):
 		super().__init__()
@@ -76,6 +79,8 @@ class QAlignment(QtWidgets.QWidget):
 		# Defaults
 		# self.widget['doAlignment'].setEnabled(False)
 		# Signals and Slots
+		self.widget['calcAlignment'].clicked.connect(partial(self.calculateAlignment.emit,0))
+		self.widget['doAlignment'].clicked.connect(self.doAlignment.emit)
 
 		# Finish page.
 		self.layout.addStretch(1)
@@ -145,7 +150,7 @@ class QImaging(QtWidgets.QWidget):
 		imagingSequence_layout = QtWidgets.QFormLayout()
 		# imagingSequence_layout.setLabelAlignment(QtCore.Qt.AlignLeft)
 		# Num images.
-		lblImages = QtWidgets.QLabel("Select Existing Image:")
+		lblImages = QtWidgets.QLabel("Select Image:")
 		self.widget['imageList'] = QtWidgets.QComboBox()
 		self.widget['imageList'].setMinimumSize(65,20)
 		self.widget['imageList'].setToolTip("Select an existing image.")
@@ -534,6 +539,7 @@ class QSettings(QtWidgets.QWidget):
 class QXrayProperties(QtWidgets.QWidget):
 	toggleOverlay = QtCore.pyqtSignal(int,bool)
 	isocenterUpdated = QtCore.pyqtSignal(float,float,float)
+	pickIsocenter = QtCore.pyqtSignal()
 	align = QtCore.pyqtSignal(int)
 
 	def __init__(self,parent=None):
@@ -582,17 +588,20 @@ class QXrayProperties(QtWidgets.QWidget):
 		# Create an isocenter widget with XYZ toggles in it.
 		self.widget['isocenter']['editIso'] = QtWidgets.QWidget()
 		label1 = QtWidgets.QLabel('Isocenter (mm)')
-		label2 = QtWidgets.QLabel('H1: ')
+		label2 = QtWidgets.QLabel('Horizontal 1: ')
 		self.widget['isocenter']['editIsoX'] = QtWidgets.QLineEdit()
-		label3 = QtWidgets.QLabel('V: ')
+		label3 = QtWidgets.QLabel('Vertical: ')
 		self.widget['isocenter']['editIsoY'] = QtWidgets.QLineEdit()
-		label4 = QtWidgets.QLabel('H2: ')
+		label4 = QtWidgets.QLabel('Horizontal 2: ')
 		self.widget['isocenter']['editIsoZ'] = QtWidgets.QLineEdit()
+		self.widget['isocenter']['pick'] = QtWidgets.QPushButton("Pick")
 		self.widget['isocenter']['align'] = QtWidgets.QPushButton("Align")
+		# Signals.
+		self.widget['isocenter']['pick'].clicked.connect(self.pickIsocenter.emit)
 		# Layout
 		lytEditIsocenter = QtWidgets.QFormLayout()
 		lytEditIsocenter.setContentsMargins(0,0,0,0)
-		lytEditIsocenter.addRow(label1)
+		lytEditIsocenter.addRow(label1,self.widget['isocenter']['pick'])
 		lytEditIsocenter.addRow(label2,self.widget['isocenter']['editIsoX'])
 		lytEditIsocenter.addRow(label3,self.widget['isocenter']['editIsoY'])
 		lytEditIsocenter.addRow(label4,self.widget['isocenter']['editIsoZ'])
@@ -646,6 +655,14 @@ class QXrayProperties(QtWidgets.QWidget):
 		self.widget['isocenter']['align'].setEnabled(bool(state))
 		self.widget['isocenter']['align'].setVisible(bool(state))
 
+	def setIsocenter(self,x,y,z):
+		""" Set the isocenter from an external source. """
+		self.blockSignals(True)
+		self.widget['isocenter']['editIsoX'].setText("{:.2f}".format(x))
+		self.widget['isocenter']['editIsoY'].setText("{:.2f}".format(y))
+		self.widget['isocenter']['editIsoZ'].setText("{:.2f}".format(z))
+		self.blockSignals(False)
+
 	def _updateIsocenter(self):
 		""" Send a signal with updated x,y coordinates. """
 		_x = float(self.widget['isocenter']['editIsoX'].text())
@@ -680,9 +697,10 @@ class QXrayProperties(QtWidgets.QWidget):
 			self.widget[item].toggle()
 			self.widget[item].toggle()
 
-
 class QCtProperties(QtWidgets.QWidget):
 	# Qt signals.
+	align = QtCore.pyqtSignal(int)
+	pickIsocenter = QtCore.pyqtSignal()
 	isocenterUpdated = QtCore.pyqtSignal(float,float,float)
 	toggleOverlay = QtCore.pyqtSignal(int,bool)
 	updateCtView = QtCore.pyqtSignal(str,tuple,str)
@@ -730,16 +748,19 @@ class QCtProperties(QtWidgets.QWidget):
 		# Create an isocenter widget with XYZ toggles in it.
 		self.widget['isocenter']['editIso'] = QtWidgets.QWidget()
 		label1 = QtWidgets.QLabel('Isocenter (mm)')
-		label2 = QtWidgets.QLabel('x: ')
+		label2 = QtWidgets.QLabel('Horizontal 1: ')
 		self.widget['isocenter']['editIsoX'] = QtWidgets.QLineEdit()
-		label3 = QtWidgets.QLabel('y: ')
+		label3 = QtWidgets.QLabel('Vertical: ')
 		self.widget['isocenter']['editIsoY'] = QtWidgets.QLineEdit()
-		label4 = QtWidgets.QLabel('z: ')
+		label4 = QtWidgets.QLabel('Horizontal 2: ')
 		self.widget['isocenter']['editIsoZ'] = QtWidgets.QLineEdit()
+		self.widget['isocenter']['pick'] = QtWidgets.QPushButton("Pick")
+		# Signals.
+		self.widget['isocenter']['pick'].clicked.connect(self.pickIsocenter.emit)
 		# Layout
 		lytEditIsocenter = QtWidgets.QFormLayout()
 		lytEditIsocenter.setContentsMargins(0,0,0,0)
-		lytEditIsocenter.addRow(label1)
+		lytEditIsocenter.addRow(label1,self.widget['isocenter']['pick'])
 		lytEditIsocenter.addRow(label2,self.widget['isocenter']['editIsoX'])
 		lytEditIsocenter.addRow(label3,self.widget['isocenter']['editIsoY'])
 		lytEditIsocenter.addRow(label4,self.widget['isocenter']['editIsoZ'])
@@ -777,12 +798,9 @@ class QCtProperties(QtWidgets.QWidget):
 		self.widget['view']['select'].addItem("Coronal (AP)")
 		self.widget['view']['select'].addItem("Coronal (PA)")
 		# Range slider.
-		self.widget['view']['xrange'] = QsWidgets.QRangeList('X:')
-		self.widget['view']['yrange'] = QsWidgets.QRangeList('Y:')
-		self.widget['view']['zrange'] = QsWidgets.QRangeList('Z:')
-		self.widget['view']['xrange'].newRange.connect(self._emitUpdateCtView)
-		self.widget['view']['yrange'].newRange.connect(self._emitUpdateCtView)
-		self.widget['view']['zrange'].newRange.connect(self._emitUpdateCtView)
+		self.widget['view']['xrange'] = QsWidgets.QRangeList('Horizontal 1:')
+		self.widget['view']['yrange'] = QsWidgets.QRangeList('Vertical:')
+		self.widget['view']['zrange'] = QsWidgets.QRangeList('Horizontal 2:')
 		# Flattening options.
 		self.widget['view']['sum'] = QtWidgets.QRadioButton('Sum')
 		self.widget['view']['max'] = QtWidgets.QRadioButton('Max')
@@ -792,8 +810,8 @@ class QCtProperties(QtWidgets.QWidget):
 		flatteningOptionsLayout.addWidget(self.widget['view']['max'])
 		flatteningOptions.setLayout(flatteningOptionsLayout)
 		self.widget['view']['sum'].setChecked(True)
-		self.widget['view']['sum'].toggled.connect(self._emitUpdateCtView)
-		self.widget['view']['max'].toggled.connect(self._emitUpdateCtView)
+		self.widget['view']['apply'] = QtWidgets.QPushButton('Apply')
+		self.widget['view']['apply'].clicked.connect(self._emitUpdateCtView)
 		# Layout
 		viewGroupLayout = QtWidgets.QVBoxLayout()
 		viewGroupLayout.addWidget(view)
@@ -803,11 +821,12 @@ class QCtProperties(QtWidgets.QWidget):
 		viewGroupLayout.addWidget(self.widget['view']['yrange'])
 		viewGroupLayout.addWidget(self.widget['view']['zrange'])
 		viewGroupLayout.addWidget(flatteningOptions)
+		viewGroupLayout.addWidget(self.widget['view']['apply'])
 		# Defaults
 		self.group['view'].setEnabled(False)
 		self.widget['view']['select'].setCurrentIndex(0)
 		# Signals and Slots
-		self.widget['view']['select'].currentIndexChanged.connect(self._emitUpdateCtView)
+		# self.widget['view']['select'].currentIndexChanged.connect(self._emitUpdateCtView)
 		# Group inclusion to page
 		self.group['view'].setLayout(viewGroupLayout)
 		self.layout.addWidget(self.group['view'])
@@ -831,6 +850,14 @@ class QCtProperties(QtWidgets.QWidget):
 		""" Toggles the manual setting of the isocenter on and off. """
 		self.widget['isocenter']['editIso'].setEnabled(bool(state))
 		self.widget['isocenter']['editIso'].setVisible(bool(state))
+
+	def setIsocenter(self,x,y,z):
+		""" Set the isocenter from an external source. """
+		self.blockSignals(True)
+		self.widget['isocenter']['editIsoX'].setText("{:.2f}".format(x))
+		self.widget['isocenter']['editIsoY'].setText("{:.2f}".format(y))
+		self.widget['isocenter']['editIsoZ'].setText("{:.2f}".format(z))
+		self.blockSignals(False)
 
 	def _updateIsocenter(self):
 		""" Send a signal with updated x,y coordinates. """

@@ -146,16 +146,6 @@ class ct(QtCore.QObject):
 
 	def __init__(self,dataset,gpu):
 		super().__init__()
-		# # Create a progress dialog.
-		# progress = QtWidgets.QProgressDialog()
-		# progress.setMaximum(len(dataset))
-		# progress.setMinimum(0)
-		# progress.setAutoClose(True)
-		# progress.setBar(QtWidgets.QProgressBar())
-		# progress.setLabel(QtWidgets.QLabel("Loading DICOM Files"))
-		# progress.setCancelButton(None)
-		# progress.open()
-
 		# Hold a reference to the gpu instance.
 		self.gpu = gpu
 
@@ -177,12 +167,6 @@ class ct(QtCore.QObject):
 		for index,fn in enumerate(dataset):
 			ctSlice = dicom.dcmread(fn)
 			self.pixelArray[:,:,dataset.index(fn)] = ctSlice.pixel_array
-			# Emit the load percentage.
-			# progress.setValue(index+1)
-
-		# # Restart the progress bar.
-		# progress.setValue(0)
-		# progress.setMaximum(4)
 
 		# Rescale the Hounsfield Units.
 		self.pixelArray = (self.pixelArray*ref.RescaleSlope) + ref.RescaleIntercept
@@ -214,26 +198,25 @@ class ct(QtCore.QObject):
 		self.M[:3,3] = self.TLF
 		self.M[3,3] = 1
 
-		# progress.setValue(1)
-
 		# Get the top left front and bottom right back indices for caclualting extent.
 		voxelIndex1 = np.array([0,0,0,1]).reshape((4,1))
 		voxelIndex2 = np.array([shape[0],shape[1],shape[2],1]).reshape((4,1))
 		# Compute the voxel indices in mm.
 		voxelPosition1 = self.M@voxelIndex1
 		voxelPosition2 = self.M@voxelIndex2
-		# Store the bottom right back position.
-		self.BRB = voxelPosition2[:3]
 		# Extent is [Left,Right,Bottom,Top,Front,Back]
 		_x = [voxelPosition1[0],voxelPosition2[0]]
-		_y = [voxelPosition1[1],voxelPosition2[1]]
+		_y = [voxelPosition2[1],voxelPosition1[1]]
 		_z = [voxelPosition1[2],voxelPosition2[2]]
 		self.extent = np.array(_x+_y+_z).reshape((6,))
-		# Calculate the base extent.
-		self.baseExtent = np.array(sorted(_x)+sorted(_y)+sorted(_z)).reshape((6,))
 
-		# progress.setValue(2)
-		logging.critical("M \n{}".format(self.M))
+		# Placeholder for a view extent.
+		self.viewExtent = np.zeros(self.extent.shape)
+
+		# Calculate the base extent.
+		# self.baseExtent = np.array(sorted(_x)+sorted(_y)+sorted(_z)).reshape((6,))
+		# Find the (0,0,0) mm as an 'index' (float).
+		# self.zeroIndex = np.linalg.inv(self.M)@np.array([0,0,0,1])
 
 		# Load array onto GPU for future reference.
 		self.gpu.loadData(self.pixelArray)
@@ -243,56 +226,11 @@ class ct(QtCore.QObject):
 		# Create an isocenter for treatment if desired. This must be in DICOM XYZ.
 		self.isocenter = None
 
-		# progress.setValue(3)
-
 		# Set the default.
 		self.calculateView('AP')
 
-		# progress.setValue(4)
-		# progress.reset()
-
-	def calculateExtent(self,RCS,roi=None):
-		""" Calculate the extent of the CT for a given view. """
-		# The RCS is the reference coordinate system for the desired ct view. X, Y and Z axis are numbered 1-3.
-		RCS = np.linalg.inv(RCS)@(np.identity(3)*[1,2,3])
-		# Start an empty extent list. This is [Left, Right, Top, Bottom, Front, Back]; note the difference from matplotlib's extent!
-		extent = []
-		# Iterate through each axis and take the correct extent values in the correct order.
-		for ax in RCS:
-			ax = ax[np.nonzero(ax)][0]
-			a = int(2*(np.abs(ax)-1))
-			b = int(a+2)
-			c = int(np.sign(ax))
-			if type(roi) is type(None):
-				extent += list(self.baseExtent[a:b][::c])
-			else:
-				extent += list(roi[a:b][::c])
-
-		logging.info("Calculating extent: \n(RCS) {} \n(ROI){} \n(Extent){}\n(Base Extent){}".format(RCS,roi,extent,self.baseExtent))
-		return extent
-
-	def calculateIndices(self,extent):
-		""" Calculate the indices of the CT array for a given ROI. """
-		voxelPosition1 = np.ones((4,),dtype=float)
-		voxelPosition2 = np.ones((4,),dtype=float)
-		# Take the extent and turn it into two voxel locations (Top-Front-Left and Bottom-Right-Back).
-		voxelPosition1[:3] = extent[0::2]
-		voxelPosition2[:3] = extent[1::2]
-		# Calculate the inverse transform of M.
-		Mi = np.linalg.inv(self.M)
-		# Compute the voxel positions in indices.
-		voxelIndex1 = Mi@voxelPosition1
-		voxelIndex2 = Mi@voxelPosition2
-		# Mix the two lists together again.
-		indices = [x for z in zip(voxelIndex1[:3], voxelIndex2[:3]) for x in z]
-		# Round the indicies to integers and put back into a list.
-		indices = list(np.rint(indices).astype(int))
-
-		return indices
-
 	def calculateView(self,view,roi=None,flatteningMethod='sum'):
 		""" Rotate the CT array for a new view of the dataset. """
-		logging.info("Calculating CT view {}".format(view))
 		# Make the RCS for each view. 
 		default = np.array([[1,0,0],[0,1,0],[0,0,1]])
 		si = np.array([[-1,0,0],[0,1,0],[0,0,-1]])
@@ -328,47 +266,105 @@ class ct(QtCore.QObject):
 
 		# Calculate a transform, W, that takes us from the original CT RCS to the new RCS.
 		W = wcs2wcs(self.RCS,RCS)
-
 		# Rotate the CT if required.
 		if np.array_equal(W,np.identity(3)):
 			pixelArray = self.pixelArray
 		else:
 			pixelArray = self.gpu.rotate(W)
+		# Calculate the new extent.
+		# Find Origin
+		origin = (np.linalg.inv(self.M)@np.array([0,0,0,1]))[:3]
+		# Rotate the Origin
+		origin_rot = W@origin
+		# Rotate the pixel size.
+		pixelSize_rot = np.absolute(W@self.pixelSize)
+		# Find bounding box of output array.
+		basicBox = np.array([
+			[0,0,0],
+			[1,0,0],
+			[0,1,0],
+			[1,1,0],
+			[0,0,1],
+			[1,0,1],
+			[0,1,1],
+			[1,1,1]
+		])
+		inputShape = basicBox * self.pixelArray.shape
+		outputShape = np.zeros(basicBox.shape)
+		for index in range(8):
+			outputShape[index,:] = W@inputShape[index,:]
+		mins = np.absolute(np.amin(outputShape,axis=0))
+		outputShape += mins
+		# Calculate new origin situated in output array.
+		origin_new = origin_rot + mins
+		# Calculate new extent.
+		extent = np.zeros(self.extent.shape)
+		TLF = -origin_new * np.sum(RCS,axis=0) * pixelSize_rot
+		extent[::2] = TLF
+		extent[1::2] = TLF + np.amax(outputShape,axis=0) * np.sum(RCS,axis=0) * pixelSize_rot
+		# Extent is calculated as: [left, right, BOTTOM, TOP, front, back]. Swap top/bot values.
+		extent[2], extent[3] = extent[3], extent[2]
+		self.viewExtent = extent
+		# Calculate the view matrix.
+		self.viewM = np.zeros((4,4))
+		self.viewM[0,:3] = pixelSize_rot[0] * (np.sign(np.sum(RCS[:,0]))*np.array([1,0,0]))
+		self.viewM[1,:3] = pixelSize_rot[1] * (np.sign(np.sum(RCS[:,1]))*np.array([0,1,0]))
+		self.viewM[2,:3] = pixelSize_rot[2] * (np.sign(np.sum(RCS[:,2]))*np.array([0,0,1]))
+		self.viewM[:3,3] = TLF
+		self.viewM[3,3] = 1
 
-		if type(roi) is type(None):
-			# Calculate the new extent using the existing extent.
-			extent = self.calculateExtent(RCS)
-		else:
-			# If an ROI is defined, we must take it from the standard DICOM XYZ CS and convert it into the desired RCS.
-			extent = self.calculateExtent(RCS,roi)
+		if np.array_equal(roi,self.viewExtent):
+			# This does not work...
+			temporary_extent = self.viewExtent
+		elif type(roi) is not type(None):
+			# Set the view extent to the ROI.
+			temporary_extent = roi
 			# Get the array indices that match the roi.
-			_extent = self.calculateExtent(self.RCS,roi)
-			indices = self.calculateIndices(_extent)
-			logging.critical(indices)
+			indices = self.calculateIndices(temporary_extent)
+
 			x1,x2,y1,y2,z1,z2 = indices
+			# Calculate new extent based of approximate indices of input ROI.
+			p1 = self.viewM@np.array([x1,y1,z1,1])
+			p2 = self.viewM@np.array([x2,y2,z2,1])
+			temporary_extent = np.zeros(extent.shape)
+			temporary_extent[::2] = p1[:3]
+			temporary_extent[1::2] = p2[:3]
 			# Order the indices
 			x1,x2 = sorted([x1,x2])
 			y1,y2 = sorted([y1,y2])
 			z1,z2 = sorted([z1,z2])
 			# Slice the array.
 			pixelArray = pixelArray[y1:y2,x1:x2,z1:z2]
+		else:
+			temporary_extent = self.viewExtent
 
 		# Split up into x, y and z extents for 2D image.
-		x,y,z = [extent[i:i+2] for i in range(0,len(extent),2)]
-		logging.critical(extent)
+		x,y,z = [temporary_extent[i:i+2] for i in range(0,len(temporary_extent),2)]
 		# Get the first flattened image.
 		if flatteningMethod == 'sum': self.image[0].pixelArray = np.sum(pixelArray,axis=2)
 		elif flatteningMethod == 'max': self.image[0].pixelArray = np.amax(pixelArray,axis=2)
-		self.image[0].extent = np.array(list(x)+list(y[::-1]))
+		self.image[0].extent = np.array(list(x)+list(y))
 		self.image[0].view = { 'title':t1 }
 		# Get the second flattened image.
 		if flatteningMethod == 'sum': self.image[1].pixelArray = np.sum(pixelArray,axis=1)
 		elif flatteningMethod == 'max': self.image[1].pixelArray = np.amax(pixelArray,axis=1)
-		self.image[1].extent = np.array(list(z)+list(y[::-1]))
+		self.image[1].extent = np.array(list(z)+list(y))
 		self.image[1].view = { 'title':t2 }
 
 		# Emit a signal to say a new view has been loaded.
 		self.newCtView.emit()
+
+	def calculateIndices(self,extent):
+		""" Calculate the indices of the CT array for a given ROI. """
+		p1 = np.insert(extent[::2],3,1)
+		p2 = np.insert(extent[1::2],3,1)
+		i1 = (np.linalg.inv(self.viewM)@p1)[:3]
+		i2 = (np.linalg.inv(self.viewM)@p2)[:3]
+		indices = np.zeros(np.array(self.extent.shape))
+		indices[::2] = i1
+		indices[1::2] = i2
+		indices = list(map(int,indices))
+		return indices
 
 class beamClass:
 	def __init__(self):

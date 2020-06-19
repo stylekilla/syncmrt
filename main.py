@@ -2,7 +2,6 @@
 from resources import config, ui
 import systems
 import QsWidgets
-from systems.imageGuidance import nonOrthogonalImaging
 # Core imports.
 import os
 import sys
@@ -11,6 +10,13 @@ from functools import partial
 import numpy as np
 from PyQt5.QtCore import pyqtSlot as Slot
 from PyQt5 import QtCore, QtGui, QtWidgets, uic
+
+# Forcing a fix for MPL?
+import matplotlib as mpl
+mpl.use('Qt5Agg')
+mpl.rcParams['toolbar'] = 'toolmanager'
+
+# Some icons are used under the licence: https://fontawesome.com/license
 
 # For PyInstaller:
 if getattr(sys, 'frozen', False):
@@ -67,9 +73,9 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		# Sidebar: Alignment.
 		self.sbAlignment = self.sidebar.addPage('Alignment',QsWidgets.QAlignment(),after='Imaging')
 		self.sbAlignment.widget['maxMarkers'].valueChanged.connect(partial(self.updateSettings,'global',self.sbAlignment.widget['maxMarkers']))
-		self.sbAlignment.widget['calcAlignment'].clicked.connect(partial(self.patientCalculateAlignment,index=-1))
-		self.sbAlignment.widget['doAlignment'].clicked.connect(partial(self.patientApplyAlignment,index=-1))
 		self.sbAlignment.widget['optimise'].toggled.connect(partial(self.toggleOptimise))
+		self.sbAlignment.calculateAlignment.connect(self.patientCalculateAlignment)
+		self.sbAlignment.doAlignment.connect(self.patientApplyAlignment)
 		# Add treatment section to sidebar.
 		self.sidebar.addPage('Treatment',QsWidgets.QTreatment(),after='Alignment')
 		self.sbTreatment = self.sidebar.getPage('Treatment')
@@ -129,7 +135,6 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		More GUI linking from System and Patient.
 		"""
 		# Create controls work environment.
-		self.sbSettings.modeChanged.connect(self.setControlsComplexity)
 		self.sbSettings.stageChanged.connect(self.system.setStage)
 		self.sbSettings.refreshConnections.connect(self.system.patientSupport.reconnect)
 		self.sbSettings.refreshConnections.connect(self.system.imager.reconnect)
@@ -139,76 +144,39 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		# When an image set is added to the HDF5 file, add it to the sidebar:QImaging:QComboBox.
 		self.system.newImageSet.connect(self.sbImaging.addImageSet)
 		# When the current xray image setlist set is changed, plot it.
-		self.sbImaging.imageSetChanged.connect(self.loadXraySet)
+		self.sbImaging.imageSetChanged.connect(self.loadXrayImage)
 		# Tell the system to acquire an x-ray.
 		self.sbImaging.acquire.connect(self.system.acquireXray)
 		# When the image mode changes tell the system.
 		self.sbImaging.imageModeChanged.connect(self.system.setImagingMode)
 
-		self.testing()
+		# self.testing()
 
-	def testing(self):
-		pass
-		# self.openXray('../scratch/test.hdf5')
-		# dataset = []
-		# modality = 'CT'
-		# # for root, subdir, fp in os.walk('../scratch/head-phant/'):
-		# for root, subdir, fp in os.walk('../scratch/HeadneckCT/'):
-		# 	for fn in fp:
-		# 		# if (fn.endswith('.dcm')) & (fn[:len(modality)] == modality):
-		# 		if fn.endswith('.dcm'):
-		# 			dataset.append(os.path.join(root,fn))
-		# if len(dataset) > 0:
-		# 	self.openCT(dataset)
+	# def testing(self):
+	# 	self.openXray('../scratch/test.hdf5')
 
-		# 2D test case.
-		# self.envXray.plot[0].markerAdd(10.61,30)
-		# self.envXray.plot[0].markerAdd(-10.61,30)
-		# self.envXray.plot[0].markerAdd(-5.3,-10)
-		# self.envCt.plot[0].markerAdd(15,30)
-		# self.envCt.plot[0].markerAdd(-15,30)
-		# self.envCt.plot[0].markerAdd(-7.5,-10)
+	# 	folder = '../scratch/DICOM/SMRT_CT_ONLY/'
+	# 	dataset = []
+	# 	modality = 'CT'
+	# 	for root, subdir, fp in os.walk(folder):
+	# 		for fn in fp:
+	# 			if (fn.endswith(tuple('.dcm'))) & (fn[:len(modality)] == modality):
+	# 				dataset.append(os.path.join(root,fn))
+	# 	if len(dataset) > 0:
+	# 		self.openCT(dataset)
 
-		# self.envXray.plot[0].markerAdd(0.0,-25)
-		# self.envXray.plot[0].markerAdd(0.0,25)
-		# self.envXray.plot[0].markerAdd(-53.03,25)
-		# self.envXray.plot[1].markerAdd(-35.35,-25)
-		# self.envXray.plot[1].markerAdd(-35.35,25)
-		# self.envXray.plot[1].markerAdd(-17.67,25)
-		# self.envCt.plot[0].markerAdd(-25,25)
-		# self.envCt.plot[0].markerAdd(-25,-25)
-		# self.envCt.plot[0].markerAdd(25,-25)
-		# self.envCt.plot[1].markerAdd(25,25)
-		# self.envCt.plot[1].markerAdd(25,-25)
-		# self.envCt.plot[1].markerAdd(50,-25)
-
-		# self.patientCalculateAlignment()
-
-	@QtCore.pyqtSlot(int)
-	def calculateAlignment(self,index):
-		print('TADA MAIN.py L:188')
-
-	@QtCore.pyqtSlot(float,float,float)
-	def ctUpdateIsocenter(self,x,y,z):
-		# Update the ct isocenter.
-		try:
-			self.patient.ct.isocenter = np.array([x,y,z])
-			self.patient.ct.plot.updatePatientIsocenter(self.patient.ct.isocenter)
-			logging.debug('Updated patient CT isocenter with vals: {} {} {}'.format(x,y,z))
-		except:
-			logging.warning('Unable to update CT isocenter.')
-
-	@QtCore.pyqtSlot(str)
-	def setControlsComplexity(self,level):
-		self.controls.setLevel(level)
-
-	@QtCore.pyqtSlot(bool)
-	def enableDoAlignment(self,state=False):
-		# self.pps._isStageConnected
-		self.sbAlignment.widget['doAlignment'].setEnabled(state)
-
-	def setControlsReadOnly(self,state):
-		self.controls.setReadOnly(bool(not state))
+	# 	self.envXray.addMarker(0,0,0)
+	# 	self.envXray.addMarker(0,50,25)
+	# 	self.envXray.addMarker(0,-50,-25)
+	# 	self.envXray.addMarker(1,0,0)
+	# 	self.envXray.addMarker(1,50,25)
+	# 	self.envXray.addMarker(1,-50,-25)
+	# 	self.envCt.addMarker(0,0,0)
+	# 	self.envCt.addMarker(0,50,25)
+	# 	self.envCt.addMarker(0,-50,-25)
+	# 	self.envCt.addMarker(1,0,0)
+	# 	self.envCt.addMarker(1,50,25)
+	# 	self.envCt.addMarker(1,-50,-25)
 
 	def newFile(self,modality):
 		if modality == 'xray':
@@ -219,9 +187,12 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 			if file.endswith('.hdf5') is False:
 				file += '.hdf5'
 			self.patient.new(file,'DX')
-			# self.system.setLocalXrayFile(file)
 			# Create an xray workspace.
-			if not self._isXrayOpen:
+			if self._isXrayOpen:
+				# We have one. Reset it.
+				self.envXray.reset()
+			else:
+				# We need an x-ray environment. Create it.
 				self.createWorkEnvironmentXray()
 			# Get list of existing x-rays in file.
 			_list = self.patient.dx.getImageList()
@@ -231,14 +202,10 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 			# Get the plot histogram widgets and give them to the sidebar widget.
 			histogram = self.envXray.getPlotHistogram()
 			self.sidebar.widget['xrayImageProperties'].addPlotHistogramWindow(histogram)
-			# Get the plot isocenter widgets and give them to the sidebar widget.
-			# isocenter = self.envXray.getPlotIsocenter()
-			# self.sidebar.widget['xrayImageProperties'].addEditableIsocenter(isocenter)
 			# Force marker update for table.
 			self.envXray.set('maxMarkers',config.markers.quantity)
 			# Finalise import. Set open status to true and open the workspace.
 			self._isXrayOpen = True
-			# self.sbImaging.enableAcquisition()
 			self.environment.button['X-RAY'].clicked.emit()
 			self.sidebar.linkPages('ImageProperties','xrayImageProperties')
 
@@ -322,6 +289,10 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		if self._isXrayOpen:
 			# Re-initialise the environment.
 			self.envXray.reset()
+			# Connect the settings mask size to the plot.
+			self.sbSettings.maskSizeChanged.connect(self.envXray.setMaskSize)
+			# Force marker update for table.
+			self.envXray.set('maxMarkers',config.markers.quantity)
 		else:
 			self.createWorkEnvironmentXray()
 		# Open the x-ray file.
@@ -331,14 +302,8 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		# Add them to the combo box.
 		self.sbImaging.resetImageSetList()
 		self.sbImaging.addImageSet(_list)
-		# Get the plot histogram widgets and give them to the sidebar widget.
-		histogram = self.envXray.getPlotHistogram()
-		self.sidebar.widget['xrayImageProperties'].addPlotHistogramWindow(histogram)
 		# Connect the settings mask size to the plot.
 		self.sbSettings.maskSizeChanged.connect(self.envXray.setMaskSize)
-		# Get the plot isocenter widgets and give them to the sidebar widget.
-		# isocenter = self.envXray.getPlotIsocenter()
-		# self.sidebar.widget['xrayImageProperties'].addEditableIsocenter(isocenter)
 		# Force marker update for table.
 		self.envXray.set('maxMarkers',config.markers.quantity)
 		# Finalise import. Set open status to true and open the workspace.
@@ -352,29 +317,44 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		logging.debug('Creating X-RAY Work Environment')
 		# Make a widget for plot stuff.
 		self.envXray = self.environment.addPage('X-RAY',QsWidgets.QPlotEnvironment())
+		# Connect signal for number of markers.
+		self.sbAlignment.markersChanged.connect(partial(self.envXray.set,'maxMarkers'))
+		# Connect image properties page.
 		self.envXray.toggleSettings.connect(partial(self.sidebar.showStack,'ImageProperties'))
 		# Sidebar page for x-ray image properties.
 		widget = self.sidebar.addPage('xrayImageProperties',QsWidgets.QXrayProperties(),addList=False)
 		widget.toggleOverlay.connect(partial(self.envXray.toggleOverlay))
 		widget.isocenterUpdated.connect(self.envXray.updateIsocenter)
-		widget.align.connect(self.patientCalculateAlignment)
+		widget.pickIsocenter.connect(self.envXray.pickIsocenter)
+		widget.align.connect(self.patientApplyAlignment)
+		self.envXray.newIsocenter.connect(widget.setIsocenter)
 		# What is this?
 		self.sbImaging.enableAcquisition()
 		self.sbImaging.resetImageSetList()
+		# Add histograms widgets.
+		histogram = self.envXray.getPlotHistogram()
+		self.sidebar.widget['xrayImageProperties'].addPlotHistogramWindow(histogram)
 
-	def loadXraySet(self,_set):
-		logging.debug("Reading image set {}.".format(_set))
+	def loadXrayImage(self,_set):
+		"""
+		Load an x-ray image from the HDF5 dataset into the plot environment.
+		"""
+		if _set == "":
+			# No valid image is selected, assume the file is empty, so reset the plot environment and return.
+			self.envXray.reset()
+			# Connect the settings mask size to the plot.
+			self.sbSettings.maskSizeChanged.connect(self.envXray.setMaskSize)
+			# Force marker update for table.
+			self.envXray.set('maxMarkers',config.markers.quantity)
+			return
 		# When the current image set is changed, get images and plot them.
 		images = self.patient.dx.getImageSet(_set)
 		# Update the sidebar comment label.
 		self.sbImaging.updateCurrentImageDetails(images[0].comment)
 		# Set the amount of images required.
-		self.envXray.loadImages(images)	
+		self.envXray.loadImages(images)
 		# Toggle the ovelrays on and off to refresh them.
 		self.sidebar.widget['xrayImageProperties'].refreshOverlays()
-		# Populate new histograms.
-		histogram = self.envXray.getPlotHistogram()
-		self.sidebar.widget['xrayImageProperties'].addPlotHistogramWindow(histogram)
 
 	def openSyncPlan(self,file):
 		""" Open Synchrotron Treatment Plan. """
@@ -397,8 +377,6 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		self.patient.ct.newCtView.connect(self.updateCTEnv)
 		# Load the CT images and get the histograms.
 		self.updateCTEnv()
-		# Send the CT ROI range sliders the extent of the array.
-		self.sidebar.widget['ctImageProperties'].setCtRoi(self.patient.ct.extent)
 		# Force marker update for table.
 		self.envCt.set('maxMarkers',config.markers.quantity)
 		# Finalise import. Set open status to true and open the workspace.
@@ -409,6 +387,9 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 	def updateCTEnv(self):
 		# Send ct dataset to plot.
 		self.envCt.loadImages(self.patient.ct.image)
+		# Update the extent.
+		logging.critical(self.patient.ct.viewExtent)
+		self.sidebar.widget['ctImageProperties'].setCtRoi(self.patient.ct.viewExtent)
 		# Get the plot histogram widgets and give them to the sidebar widget.
 		histogram = self.envCt.getPlotHistogram()
 		self.sidebar.widget['ctImageProperties'].addPlotHistogramWindow(histogram)
@@ -423,8 +404,14 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		# Sidebar page for ct image properties.
 		widget = self.sidebar.addPage('ctImageProperties',QsWidgets.QCtProperties(),addList=False)
 		# Signals and slots.
-		widget.toggleOverlay.connect(partial(self.envCt.toggleOverlay))
+		widget.align.connect(self.patientCalculateAlignment)
 		widget.isocenterUpdated.connect(self.envCt.updateIsocenter)
+		widget.pickIsocenter.connect(self.envCt.pickIsocenter)
+		self.envCt.newIsocenter.connect(widget.setIsocenter)
+		widget.toggleOverlay.connect(partial(self.envCt.toggleOverlay))
+		# Add histograms widgets.
+		histogram = self.envCt.getPlotHistogram()
+		self.sidebar.widget['ctImageProperties'].addPlotHistogramWindow(histogram)
 
 	def openRTP(self,files):
 		"""Open CT modality files."""
@@ -517,6 +504,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 
 	def toggleOptimise(self,state):
 		"""State(bool) tells you whether you should clear the optimisation plots or not."""
+		logging.critical("This does not work anymore. Must be re-implemented.")
 		if state == True:
 			pass
 		elif state == False:
@@ -546,12 +534,19 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		Index 	0: CT with a preset 0,0,0 DICOM iso or a defined one.
 				1+: Beam's Eye View Number (BEV#)
 				-1: Local x-ray isocenter, no other paired imaging/data
+		Left points : DICOM coordinate system
+		Right points : Local coordinate system
 		"""
 		# Treatment index will tell the method where the call was made from.
 		logging.info('Calulating patient alignment with condition '+str(index))
 
 		if index == -1:
-			pass
+			# First check we have an x-ray environment.
+			if self._isXrayOpen:
+				# Now get the isocenter (defaults to 0,0,0).
+				isocenter = self.envXray.getIsocenter()
+				r = np.zeros((3,3))
+				l = np.zeros((3,3))
 		elif index == 0:
 			# Align to a CT.
 			if (self._isXrayOpen|self._isCTOpen) is False:
@@ -569,112 +564,27 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 				return
 			# Do stuff.
 
-		# In any case, the amount of x-ray images open will determine whether we do a 2D or 3D alignment.
-		_3D = False
-		if len(self.envXray.plot) == 2: _3D = True
-
-		# Initialise points (l:Dicom, r:Xray).
+		# Get the number of points that each plot environment should have.
 		numberOfPoints = self.sbAlignment.widget['maxMarkers'].value()
-		l = np.zeros((numberOfPoints,3))
-		r = np.zeros((numberOfPoints,3))
 
-		# Get the x-ray (right) points. These are always in terms of the fixed synchrotron axes.
-		if _3D:
-			if index == -1:
-				# Align to x-ray isocenter.
-				iso,theta = self.envXray.getIsocenter()
-				# Make the isocenter in the frame of reference of the synchrotron axes.
-				p1, p2 = iso
-				# Theta needs to be inverted to account for the fact that we are rotating the patient with a fixed view, not rotating a view around a patient.
-				t1, t2 = -np.array(theta)
-				# Calculate the 3D points.
-				isocenter = nonOrthogonalImaging.calculate(p1,p2,t1,t2)
-
-			elif (len(self.envXray.plot[1].pointsX) != numberOfPoints):
-				error = QtWidgets.QMessageBox()
-				error.setText("{} out of {} markers were specified. Please select the rest of the markers.".format(len(self.envXray.plot[1].pointsX),numberOfPoints))
-				error.exec()
-				return
-			else:
-				p1 = self.envXray.plot[0].markers()
-				p2 = self.envXray.plot[1].markers()
-				# Now we need to go through the new routine for non-orthogonal imaging.
-				t1 = -self.envXray.plot[0]._imagingAngle
-				t2 = -self.envXray.plot[1]._imagingAngle
-				# Calculate the 3D points.
-				r = nonOrthogonalImaging.calculate(p1,p2,t1,t2)
-		else:
-			if index == -1:
-				# Align to x-ray isocenter.
-				iso,theta = self.envXray.getIsocenter()
-				p1 = iso
-				p2 = [0,iso[1]]
-				t1 = -theta
-				t2 = -(theta-90)
-				# Calculate the 3D points.
-				isocenter = nonOrthogonalImaging.calculate(p1,p2,t1,t2)
-			else:
-				r[:,1] = self.envXray.plot[0].pointsX
-				r[:,2] = self.envXray.plot[0].pointsY
-
-		# Now we need to make sure they are in a cartesian Right-Hand XYZ format.
-		# I think they are at this point. The output of nonOrthogonalImaging.calculate() should do this.
-
+		# error = QtWidgets.QErrorMessage()
+		# error.showMessage("Please ensure {} markers are selected in the CT images.".format(numberOfPoints))
+		# return
 		if index == 0:
 			# Align to a CT.
-			# Get the CT DICOM? isocenter.
-			isocenter = self.envCt.getIsocenter()
-			# Get the relevant points.
-			if _3D:
-				if (len(self.envCt.plot[0].pointsX) != numberOfPoints):
-					error = QtWidgets.QErrorMessage()
-					error.showMessage("Please ensure {} markers are selected in the CT images.".format(numberOfPoints))
-					return
-				else:
-					# Take the depth down the BEV as SYNCH X.
-					l[:,0] = self.envCt.plot[1].pointsX
-					# Take the BEV lateral view as SYNCH Y.
-					l[:,1] = self.envCt.plot[0].pointsX
-					# Take the vertical of the BEV as Z.
-					l[:,2] = (np.array(self.envCt.plot[0].pointsY)+np.array(self.envCt.plot[1].pointsY))/2
-			else:
-				if (len(self.envCt.plot[0].pointsX) != numberOfPoints)|(len(self.envCt.plot[1].pointsX) != numberOfPoints):
-					error = QtWidgets.QErrorMessage()
-					error.showMessage("Please ensure {} markers are selected in the CT images.".format(numberOfPoints))
-					return
-				else:
-					# Take the BEV lateral view as SYNCH Y.
-					l[:,1] = self.envCt.plot[0].pointsX
-					# Take the vertical of the BEV as Z.
-					l[:,2] = self.envCt.plot[0].pointsY
+			# Get the x-ray (right) points. These are always in terms of the fixed synchrotron axes.
+			r = self.envXray.getMarkers()
+			l = self.envCt.getMarkers(raw=True)
+			# Get the CT isocenter.
+			isocenter = self.envCt.getIsocenter(raw=True)
 		elif index > 0:
 			# Align to a BEV.
-			isocenter = self.patient.rtplan.beam[index-1].isocenter
-			if _3D:
-				if (len(self.envRtplan[index-1].plot[0].pointsX) != numberOfPoints):
-					error = QtWidgets.QErrorMessage()
-					error.showMessage("Please ensure {} markers are selected in the BEV{} images.".format(numberOfPoints,index))
-					return
-				else:
-					# Take the depth down the BEV as SYNCH X.
-					l[:,0] = self.envRtplan[index-1].plot[1].pointsX
-					# Take the BEV lateral view as SYNCH Y.
-					l[:,1] = self.envRtplan[index-1].plot[0].pointsX
-					# Take the vertical of the BEV as Z.
-					l[:,2] = (np.array(self.envRtplan[index-1].plot[0].pointsY)+np.array(self.envRtplan[index-1].plot[1].pointsY))/2
-			else:
-				if (len(self.envRtplan[index-1].plot[0].pointsX) != numberOfPoints)|(len(self.envRtplan[index-1].plot[1].pointsX) != numberOfPoints):
-					error = QtWidgets.QErrorMessage()
-					error.showMessage("Please ensure {} markers are selected in the BEV{} images.".format(numberOfPoints,index))
-					return
-				else:
-					# Take the BEV lateral view as SYNCH Y.
-					l[:,1] = self.envRtplan[index-1].plot[0].pointsX
-					# Take the vertical of the BEV as Z.
-					l[:,2] = self.envRtplan[index-1].plot[0].pointsY
-
-		# Now we need to make sure they are also in a cartesian Right-Hand XYZ format.
-		# Unsure if this is the case.
+			# Get the x-ray (right) points. These are always in terms of the fixed synchrotron axes.
+			r = self.envXray.getMarkers()
+			l = self.envRtplan[index-1].getMarkers(raw=True)
+			# Get the RTPLAN isocenter.
+			# isocenter = self.patient.rtplan.beam[index-1].isocenter
+			isocenter = self.envRtplan[index-1].getIsocenter(raw=True)
 
 		# Finally, we can send the points off for calculation to `theBrain`!
 		self.system.solver.setInputs(
@@ -685,8 +595,6 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 
 		# We have some points. Calculate the global result.
 		alignment6d = self.system.solver.solve()
-		# Get synchrotron axes alignment.
-		# synchrotron6d = [-alignment6d[2],alignment6d[1],-alignment6d[0],-alignment6d[5],alignment6d[4],-alignment6d[3]]
 
 		# If table already exists, update information...
 		self.property.updateVariable('Alignment',['Rotation','X','Y','Z'],[float(alignment6d[3]),float(alignment6d[4]),float(alignment6d[5])])
@@ -699,9 +607,10 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 	def patientApplyAlignment(self,index):
 		"""Calculate alignment first."""
 		self.patientCalculateAlignment(index=index)
-
 		# Calculate alignment for stage.
 		self.system.calculateAlignment()
+		# Do the alignment.
+		self.system.applyAlignment()
 
 if __name__ == "__main__":
 	# QApp 

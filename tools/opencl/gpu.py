@@ -91,12 +91,12 @@ class gpu:
 		# Create a basic box for calculations of a cube. Built off (row,cols,depth).
 		basicBox = np.array([
 			[0,0,0],
-			[0,1,0],
 			[1,0,0],
+			[0,1,0],
 			[1,1,0],
 			[0,0,1],
-			[0,1,1],
 			[1,0,1],
+			[0,1,1],
 			[1,1,1]
 		])
 		# Input array shape
@@ -104,7 +104,7 @@ class gpu:
 		# Output array shape after rotation.
 		outputShape = np.empty((8,3),dtype=float)
 		for i in range(8):
-			outputShape[i,:] = rotationMatrix@inputShape[i,:]
+			outputShape[i,:] = gpuRotationMatrix@inputShape[i,:]
 		mins = np.absolute(np.amin(outputShape,axis=0))
 		maxs = np.absolute(np.amax(outputShape,axis=0))
 		outputShape = np.rint(mins+maxs).astype(int)

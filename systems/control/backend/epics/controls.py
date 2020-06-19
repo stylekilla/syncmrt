@@ -118,7 +118,7 @@ class motor:
 			if attribute == 'TWV':
 				self.pv[attribute].put(value)
 			else:
-				while self.pv['DMOV'] == 0:
+				while self.pv['DMOV'].get() == 0:
 					pass
 				self.pv[attribute].put(value)
 
@@ -141,7 +141,7 @@ class motor:
 				if self.checkAbsLimit(value):
 					self.pv['VAL'].put(float(value))
 				else:
-					logging.error("Cannot move {} to {} - motorlimit will be reached.\nH.Lim:{}\tL.Lim:{}".format(self.pv['DESC'],value,self.pv['HLM'],self.pv['LLM']))
+					logging.error("Cannot move {} to {} - motorlimit will be reached.\nH.Lim:{}\tL.Lim:{}".format(self.pv['DESC'].get(),value,self.pv['HLM'].get(),self.pv['LLM'].get()))
 					return
 		elif mode=='relative':
 			if self.pv['TWV']:
@@ -159,7 +159,7 @@ class motor:
 						# Do nothing.
 						pass
 				else: 
-					logging.error("Cannot move {} by {} - motorlimit will be reached.\nH.Lim:{}\tL.Lim:{}".format(self.pv['DESC'],value,self.pv['HLM'],self.pv['LLM']))
+					logging.error("Cannot move {} by {} - motorlimit will be reached.\nH.Lim:{}\tL.Lim:{}".format(self.pv['DESC'].get(),value,self.pv['HLM'].get(),self.pv['LLM'].get()))
 					return
 		# Give epics 100ms to get the command to the motor.
 		time.sleep(0.2)
@@ -167,33 +167,34 @@ class motor:
 		while self.pv['DMOV'].get() == 0:
 			pass
 		# Finished.
-		#checking that the move occurred
+
+		# Checking that the move occurred.
 		newPosition = self.read()
 		retryCounter = 0
 		maxRetrties = 3
 		BDST=self.pv['BDST'].get()
-		while (abs(newPosition-predictedPosition)>BDST) and (retryCounter<maxRetrties): 
-			logging.error("Motor {} did not move to {}. Retry #{} of {}.".format(self.pv['DESC'],predictedPosition,retryCounter+1,maxRetrties))
+
+		while (abs(newPosition-predictedPosition) > BDST) and (retryCounter < maxRetrties): 
+			logging.error("Motor {} did not move to {}. Retry #{} of {}.".format(self.pv['DESC'].get(), predictedPosition,retryCounter + 1, maxRetrties))
 			self.pv['VAL'].put(predictedPosition)
 			time.sleep(0.2)
 			while self.pv['DMOV'].get() == 0:
 				pass
 			retryCounter+=1
 			newPosition=self.read()
-		if (newPosition != predictedPosition) and (retryCounter==maxRetrties):
-			logging.error("Couldn't complete the movement.")
+		if (newPosition != predictedPosition) and (retryCounter == maxRetrties):
+			logging.error("Was unable to complete the movement after {} tries.".format(maxRetrties))
 		return
 
 	def checkAbsLimit(self,value):
-		stillInLimitBool=False
-		if float(value)<=float(self.pv['HLM']) and float(value)>=float(self.pv['LLM']):
-			stillInLimitBool=True
+		stillInLimitBool = False
+		if float(value) <= float(self.pv['HLM'].get()) and float(value) >= float(self.pv['LLM'].get()):
+			stillInLimitBool = True
 		return stillInLimitBool
 
 	def checkRelLimit(self,value):
-		stillInLimitBool=False
-		if (float(value)+float(self.pv['RBV']))>=float(self.pv['LLM']) \
-			and (float(value)+float(self.pv['RBV']))<=float(self.pv['HLM']) :
+		stillInLimitBool = False
+		if (float(value) + float(self.pv['RBV'].get())) >= float(self.pv['LLM'].get()) and (float(value) + float(self.pv['RBV'].get())) <= float(self.pv['HLM'].get()):
 				stillInLimitBool=True
 		return stillInLimitBool
 

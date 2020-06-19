@@ -1,6 +1,6 @@
 class markers:
 	""" Marker settings for fiducials. """
-	quantity = 4
+	quantity = 3
 	size = 2.00
  
 class files:
@@ -11,7 +11,7 @@ class files:
 class imager:
 	""" Settings for the imager configuration. """
 	# Pixel size and isocenter specified as (row,col).
-	isocenter = [232.9,579.625]
+	isocenter = [234.75,572.219]
 	# Pixel size is SAX/SID which is 1.2m / 1.5m.
 	pixelSize = [0.16,0.16]
 	sad = 1.2
