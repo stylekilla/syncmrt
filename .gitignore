@@ -2,8 +2,11 @@
 ################
 *.pyc
 *.pyo
-env/
-synctools
+
+
+# Folders #
+###########
+cache
 
 # QT Creator #
 ##############
@@ -28,6 +31,7 @@ synctools
 ###############
 build/
 dist/
+# env/
 
 # Packages #
 ############
@@ -42,11 +46,12 @@ dist/
 *.tar
 *.zip
 
-# Test Files #
-##############
+# Generated Files #
+###################
 *.npy
 *.dcm
 *.hdf5
+*.tif
 
 # Logs and databases #
 ######################
@@ -71,4 +76,4 @@ ehthumbs.db
 Thumbs.db
 ~$*
 *.directory
-scripts/LOOKATME\.tif
+.bash*

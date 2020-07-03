@@ -19,6 +19,7 @@ Assumes:
 ##################
 # INPUT PARAMETERS
 ##################
+logging.critical("These input params are probably wrong. Should be read out of a cfg file.")
 # Save images?
 SAVE = False
 # This is the left bottom top right of the field in RUBY in pixels.
@@ -93,6 +94,7 @@ for i in range(3):
 	horizontalImages = []
 	verticalImages = []
 	# Move to first mask.
+	logging.critical("Selecting a mask position is probably wrong. Not sure how epics does that. Check me. In fact, check ALL PV's!")
 	epics.caput('SR08ID01SST25:MASK_POS:{}.VAL'.format(i),1,wait=True)
 	logging.info("Acquiring images...")
 	# Move mask to +ve (right) edge and take an image.
@@ -120,6 +122,7 @@ for i in range(3):
 	horizontalLines = []
 	verticalLines = []
 
+	logging.critical("Finding the edges of the mask will need to be developed. Haven't worked that out yet.")
 	for i in range(len(horizontalImages)):
 		horizontalImages[i] = gaussian_filter(horizontalImages[i],sigma=10)
 		temp = horizontalImages[i][_row,:].astype(float)
