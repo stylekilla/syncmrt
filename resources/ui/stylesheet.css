@@ -21,12 +21,15 @@ QHBoxLayout {
 
 QVBoxLayout {
 	padding: 0px;
+	margin: 0px;
 }
 
 QGridLayout {
 	padding: 0px;
+	margin: 0px;
 }
 
 QSplitter {
 	padding: 0px;
+	margin: 0px;
 }
