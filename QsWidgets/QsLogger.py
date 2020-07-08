@@ -49,7 +49,7 @@ QToolButton:menu-indicator {
 
 __all__ = ['QLog']
 
-coloredlogs.install()
+coloredlogs.install(fmt="%(asctime)s,%(msecs)-3d %(levelname)-8s [%(filename)s:%(lineno)d] %(message)s",level=logging.INFO)
 
 # Remove matplotlib warnings.
 logging.info("Removing matplotlib logs.")
