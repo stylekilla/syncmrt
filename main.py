@@ -58,6 +58,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		self.statusBar.setContentsMargins(0,0,0,0)
 		self.layoutSidebar.setContentsMargins(0,0,0,0)
 		self.layoutWorkspace.setContentsMargins(0,0,0,0)
+		self.centralWidgetTop.setContentsMargins(0,0,0,0)
 
 		# Logging window
 		self.logger = QsWidgets.QLog(self.frameLogger)
