@@ -3,10 +3,20 @@
 *.pyc
 *.pyo
 
+
+# Folders #
+###########
+cache
+
 # QT Creator #
 ##############
 *.pro
 *.user
+
+# Design Files #
+################
+*.ai
+*.psd
 
 # Compiled source #
 ###################
@@ -16,6 +26,12 @@
 *.exe
 *.o
 *.so
+
+# Build Files #
+###############
+build/
+dist/
+# env/
 
 # Packages #
 ############
@@ -30,16 +46,23 @@
 *.tar
 *.zip
 
+# Generated Files #
+###################
+*.npy
+*.dcm
+*.hdf5
+*.tif
+
 # Logs and databases #
 ######################
 *.log
 *.sql
 *.sqlite
 
-# Git files #
+# Unwanted Git files #
 ######################
-.fuse*
-.bash_history*
+*.fuse*
+*.bash_history*
 
 # OS generated files #
 ######################
@@ -51,3 +74,6 @@ _DS_Store
 .Trashes
 ehthumbs.db
 Thumbs.db
+~$*
+*.directory
+.bash*
