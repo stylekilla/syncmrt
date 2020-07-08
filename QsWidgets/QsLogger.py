@@ -69,7 +69,7 @@ class QLogHandler(logging.Handler,QtCore.QObject):
 		# Set up the log style.
 		self.setFormatter(coloredlogs.ColoredFormatter("%(asctime)s,%(msecs)-3d %(levelname)-8s [%(filename)s:%(lineno)d] %(message)s"))
 		# Set the level.
-		self.setLevel(logging.INFO)
+		self.setLevel(logging.WARNING)
 
 	def emit(self,record):
 		# Format the record.
