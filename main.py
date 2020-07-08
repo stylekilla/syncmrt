@@ -93,15 +93,6 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		self.property = ui.workspace.propertyModel()
 		self.propertyTree = ui.workspace.propertyManager(self.frameVariablePane,self.property)
 
-		# Collapsing button for Property Manager.
-		icon = QtGui.QIcon(resourceFilepath+'/images/CollapseRight.png')
-		icon.pixmap(20,20)
-		self.pbCollapseProperties = QtWidgets.QPushButton(icon,'')
-		self.pbCollapseProperties.setToolTip("Toggle Properties Panel")
-		self.pbCollapseProperties.setFlat(True)
-		self.statusBar.addPermanentWidget(self.pbCollapseProperties)
-		self.pbCollapseProperties.clicked.connect(partial(self.propertyTree.toggleFrame,self.frameVariablePane))
-
 		# Collapsing button for Logger.
 		icon = QtGui.QIcon(resourceFilepath+'/images/CollapseBottom.png')
 		icon.pixmap(20,20)
@@ -110,6 +101,15 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		self.pbCollapseLogger.setFlat(True)
 		self.statusBar.addPermanentWidget(self.pbCollapseLogger)
 		self.pbCollapseLogger.clicked.connect(self.logger.toggleVisibility)
+
+		# Collapsing button for Property Manager.
+		icon = QtGui.QIcon(resourceFilepath+'/images/CollapseRight.png')
+		icon.pixmap(20,20)
+		self.pbCollapseProperties = QtWidgets.QPushButton(icon,'')
+		self.pbCollapseProperties.setToolTip("Toggle Properties Panel")
+		self.pbCollapseProperties.setFlat(True)
+		self.statusBar.addPermanentWidget(self.pbCollapseProperties)
+		self.pbCollapseProperties.clicked.connect(partial(self.propertyTree.toggleFrame,self.frameVariablePane))
 
 		# Create alignment table.
 		self.property.addSection('Alignment')
