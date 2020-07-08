@@ -23,8 +23,6 @@ class main(QtWidgets.QMainWindow):
 		logger.addHandler(logWidget.handler)
 		logger.setLevel(logging.INFO)
 		logging.critical("Test critical message.")
-
-
 """
 
 CSS_STYLESHEET = """
@@ -69,9 +67,9 @@ class QLogHandler(logging.Handler,QtCore.QObject):
 		# Signal connections (thread safe).
 		self.appendLog.connect(self.widget.appendLog)
 		# Set up the log style.
-		self.setFormatter(coloredlogs.ColoredFormatter("%(asctime)s,%(msecs)d %(levelname)-8s [%(filename)s:%(lineno)d] %(message)s"))
+		self.setFormatter(coloredlogs.ColoredFormatter("%(asctime)s,%(msecs)-3d %(levelname)-8s [%(filename)s:%(lineno)d] %(message)s"))
 		# Set the level.
-		self.setLevel(logging.WARNING)
+		self.setLevel(logging.INFO)
 
 	def emit(self,record):
 		# Format the record.
