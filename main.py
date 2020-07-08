@@ -31,13 +31,7 @@ qtCreatorFile = resourceFilepath+"/ui/main.ui"
 qtStyleSheet = open(resourceFilepath+"/ui/stylesheet.css")
 Ui_MainWindow, QtBaseClass = uic.loadUiType(qtCreatorFile)
 
-# Colored logs.
-import logging, coloredlogs
-coloredlogs.install(
-	fmt='%(asctime)s,%(msecs)d %(levelname)-8s [%(filename)s:%(lineno)d] %(message)s',
-	datefmt='%H:%M:%S',
-	level=logging.INFO
-	)
+import logging
 
 """
 MAIN CLASS: Application starts here.
@@ -64,6 +58,12 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		self.statusBar.setContentsMargins(0,0,0,0)
 		self.layoutSidebar.setContentsMargins(0,0,0,0)
 		self.layoutWorkspace.setContentsMargins(0,0,0,0)
+
+		# Logging window
+		self.logger = QsWidgets.QLog(self.frameLogger)
+		logger = logging.getLogger()
+		logger.addHandler(self.logger.handler)
+		logger.setLevel(logging.INFO)
 
 		# Sidebar panel.
 		self.sidebar = ui.sidebar.Sidebar(self.frameSidebarStack,self.frameSidebarList)
@@ -93,10 +93,20 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		self.property = ui.workspace.propertyModel()
 		self.propertyTree = ui.workspace.propertyManager(self.frameVariablePane,self.property)
 
+		# Collapsing button for Logger.
+		icon = QtGui.QIcon(resourceFilepath+'/images/CollapseBottom.png')
+		icon.pixmap(20,20)
+		self.pbCollapseLogger = QtWidgets.QPushButton(icon,'')
+		self.pbCollapseLogger.setToolTip("Toggle Log Viewer")
+		self.pbCollapseLogger.setFlat(True)
+		self.statusBar.addPermanentWidget(self.pbCollapseLogger)
+		self.pbCollapseLogger.clicked.connect(self.logger.toggleVisibility)
+
 		# Collapsing button for Property Manager.
 		icon = QtGui.QIcon(resourceFilepath+'/images/CollapseRight.png')
 		icon.pixmap(20,20)
 		self.pbCollapseProperties = QtWidgets.QPushButton(icon,'')
+		self.pbCollapseProperties.setToolTip("Toggle Properties Panel")
 		self.pbCollapseProperties.setFlat(True)
 		self.statusBar.addPermanentWidget(self.pbCollapseProperties)
 		self.pbCollapseProperties.clicked.connect(partial(self.propertyTree.toggleFrame,self.frameVariablePane))
