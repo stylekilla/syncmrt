@@ -12,11 +12,11 @@ class Brain(QtCore.QObject):
 	imagesAcquired = QtCore.pyqtSignal(int)
 	newImageSet = QtCore.pyqtSignal(str)
 
-	def __init__(self,patientSupports,detectors,config):
+	def __init__(self,patientSupports,detectors,config,**kwargs):
 		super().__init__()
 		self.solver = imageGuidance.solver()
 		# self.source = control.hardware.source()
-		self.patientSupport = control.hardware.patientSupport(patientSupports)
+		self.patientSupport = control.hardware.patientSupport(patientSupports,kwargs['epicsMonitor'])
 		self.imager = control.hardware.Imager(detectors,config.imager)
 		self.patient = None
 		# Counter

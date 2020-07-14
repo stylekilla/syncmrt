@@ -61,28 +61,17 @@ class motor(QtCore.QObject):
 		# Connect user interface.
 		self._ui = motor.ui(ui)
 
-	# def _finished(self):
-	# 	# Delete the worker thread.
-	# 	self._workerThread = None
-	# 	self.finished.emit()
-
 	def setPosition(self,position):
 		position *= self._direction
 		self._controller.write(position,mode='absolute')
 		# Once finished, emit signal.
 		self.finished.emit()
-		# _workerThread = workerThread(self._controller,position,'absolute')
-		# _workerThread.start()
-		# _workerThread.finished.connect(self._finished)
 
 	def shiftPosition(self,position):
 		position *= self._direction
 		self._controller.write(position,mode='relative')
 		# Once finished, emit signal.
 		self.finished.emit()
-		# self._workerThread = workerThread(self._controller,position,'relative')
-		# self._workerThread.start()
-		# self._workerThread.finished.connect(self._finished)
 
 	def readPosition(self):
 		return self._controller.read()
@@ -110,19 +99,3 @@ class motor(QtCore.QObject):
 
 	def reconnectControls(self):
 		self._controller.reconnect()
-
-
-# class workerThread(QtCore.QThread):
-# 	finished = QtCore.pyqtSignal()
-
-# 	def __init__(self,controller,position,mode):
-# 		super().__init__()
-# 		self.controller = controller
-# 		self.position = position
-# 		self.mode = mode
-# 	def run(self):
-# 		# This is the thread running section.
-# 		logging.info("Started worker thread.")
-# 		self.controller.write(self.position,mode=self.mode)
-# 		logging.info("Finished worker thread.")
-# 		self.finished.emit()

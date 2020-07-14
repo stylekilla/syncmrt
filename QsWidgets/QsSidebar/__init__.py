@@ -6,6 +6,6 @@ from .QCtProperties import QCtProperties
 from .QXrayProperties import QXrayProperties
 from .QRtplanProperties import QRtplanProperties
 from .QSettings import QSettings
-from .QStageMonitor import QStageMonitor
+from .QMotorMonitor import QMotorMonitor
 from .QStatusMonitor import QStatusMonitor
 from .QPropertyManager import QPropertyManager

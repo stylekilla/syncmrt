@@ -52,6 +52,8 @@ class patientSupport(QtCore.QObject):
 			# Remove all motors.
 			for i in range(len(self.currentMotors)):
 				del self.currentMotors[-1]
+				# Remove the UI elements as well.
+				self._ui.remove(self.currentMotors[-1].pv)
 			# Iterate over new motors.
 			for support in self.motors:
 				# Does the motor match the name?
@@ -65,7 +67,8 @@ class patientSupport(QtCore.QObject):
 						)
 					# Set a ui for the motor if we are doing that.
 					if self._ui is not None:
-						newMotor.setUi(self._ui)
+						# newMotor.setUi(self._ui)
+						self._ui.addPV(newMotor.pv,support['Description'])
 					# Connect to finished method.
 					newMotor.finished.connect(self._finished)
 					# Append the motor to the list.
