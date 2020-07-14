@@ -91,12 +91,12 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		self.environment.workspaceChanged.connect(partial(self.sidebar.linkPages,'ImageProperties'))
 
 		# Right Sidebar: ToolBox.
-		# self.property = ui.workspace.propertyModel()
-		# self.propertyTree = ui.workspace.propertyManager(self.frameVariablePane,self.property)
 		self.rightSidebar = QsWidgets.QsSidebar.QSidebarList(self.frameRightSidebar)
 		self.rightSidebar.addSection("Status Monitor",QsWidgets.QsSidebar.QStatusMonitor())
-		self.rightSidebar.addSection("Alignment Calculations",QsWidgets.QsSidebar.QStatusMonitor())
-		self.rightSidebar.addSection("Position Controls",QsWidgets.QsSidebar.QStatusMonitor())
+		# Property manager.
+		self.properties = QsWidgets.QsSidebar.QPropertyManager()
+		self.rightSidebar.addSection("Poperties",self.properties)
+		self.rightSidebar.addSection("Position Controls",QsWidgets.QsSidebar.QStageMonitor())
 
 		# Collapsing button for Logger.
 		icon = QtGui.QIcon(resourceFilepath+'/images/CollapseBottom.png')
@@ -113,15 +113,14 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		self.pbCollapseSidebar = QtWidgets.QPushButton(icon,'')
 		self.pbCollapseSidebar.setToolTip("Toggle Properties Panel")
 		self.pbCollapseSidebar.setFlat(True)
+		self.pbCollapseSidebar.clicked.connect(self.rightSidebar.toggleVisibility)
 		self.statusBar.addPermanentWidget(self.pbCollapseSidebar)
-		# self.pbCollapseProperties.clicked.connect(partial(self.propertyTree.toggleFrame,self.frameVariablePane))
 
 		# Create alignment table.
-		# self.property.addSection('Alignment')
-		# self.property.addVariable('Alignment',['Rotation','X','Y','Z'],[0,0,0])
-		# self.property.addVariable('Alignment',['Translation','X','Y','Z'],[0,0,0])
-		# self.property.addVariable('Alignment','Scale',0)
-		# self.propertyTree.expandAll()
+		self.properties.addSection('Alignment')
+		self.properties.addVariable('Alignment',['Rotation','X','Y','Z'],[0,0,0])
+		self.properties.addVariable('Alignment',['Translation','X','Y','Z'],[0,0,0])
+		self.properties.addVariable('Alignment','Scale',0)
 
 		# Connect menubar items.
 		self._menuBar['new_xray'].triggered.connect(partial(self.newFile,'xray'))
@@ -612,9 +611,9 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		alignment6d = self.system.solver.solve()
 
 		# If table already exists, update information...
-		# self.property.updateVariable('Alignment',['Rotation','X','Y','Z'],[float(alignment6d[3]),float(alignment6d[4]),float(alignment6d[5])])
-		# self.property.updateVariable('Alignment',['Translation','X','Y','Z'],[float(alignment6d[0]),float(alignment6d[1]),float(alignment6d[2])])
-		# self.property.updateVariable('Alignment','Scale',float(self.system.solver.scale))
+		self.properties.updateVariable('Alignment',['Rotation','X','Y','Z'],[float(alignment6d[3]),float(alignment6d[4]),float(alignment6d[5])])
+		self.properties.updateVariable('Alignment',['Translation','X','Y','Z'],[float(alignment6d[0]),float(alignment6d[1]),float(alignment6d[2])])
+		self.properties.updateVariable('Alignment','Scale',float(self.system.solver.scale))
 
 		# Calculate alignment for stage.
 		self.system.calculateAlignment()
