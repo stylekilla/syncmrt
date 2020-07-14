@@ -1,9 +1,5 @@
 from PyQt5 import QtWidgets, QtCore
-from functools import partial
-from resources import config
-import QsWidgets
 import logging
-import epics
 
 class QMotorMonitor(QtWidgets.QWidget):
 	def __init__(self,monitor):
