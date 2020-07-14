@@ -1,6 +1,6 @@
 from PyQt5 import QtCore, QtGui, QtWidgets
 
-__all__ = ['QRangeSlider']
+__all__ = ['QRangeSlider','QHUSpinBox','QXraySpinBox','QHLine']
 
 DEFAULT_CSS = """
 QRangeSlider * {
@@ -298,3 +298,27 @@ class QRangeSlider(QtWidgets.QWidget, Ui_Form):
 		_unlockWidth(self._tail)
 		_unlockWidth(self._head)
 		_unlockWidth(self._handle)
+
+
+class QHUSpinBox(QtWidgets.QSpinBox):
+	'''CT HU windowing spinbox'''
+	def __init__(self):
+		super().__init__()
+		self.setRange(-1000,5000)
+		self.setSingleStep(100)
+		self.setValue(-1000)
+
+class QXraySpinBox(QtWidgets.QSpinBox):
+	'''Xray windowing spin box'''
+	def __init__(self):
+		super().__init__()
+		self.setRange(0,65535)
+		self.setSingleStep(5000)
+		self.setValue(0)
+
+class QHLine(QtWidgets.QFrame):
+	'''Horizontal line.'''
+	def __init__(self):
+		super().__init__()
+		self.setFrameShape(QtWidgets.QFrame.HLine)
+		self.setFrameShadow(QtWidgets.QFrame.Sunken)

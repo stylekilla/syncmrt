@@ -304,42 +304,6 @@ class variableModel(QtGui.QStandardItemModel):
 		descr.setData(string,QtCore.Qt.DisplayRole)
 
 '''
-LOGFILES
-- class logFile(): Keep a logfile in a class. Execute as self.logFile = logFile().
-- method log(logwindow, message, rank): Print logs in the application. Called from the application window.
-- class: logFile
-- meth: log
-'''
-
-class logFile:
-	def __init__(self):
-		self.message = ()
-		self.rank = ()
-
-	def addLog(self,message,rank):
-		self.message.append(message)
-		self.rank.append(rank)
-
-	def resetLog():
-		self.message = ()
-		self.rank = ()
-
-def log(window,message,rank):
-	if rank == 'error':
-		window.setTextColor(QtCore.Qt.red)
-		window.setFontWeight(QtGui.QFont.Medium)
-		window.append(message)
-	elif rank == 'warning':
-		window.setTextColor(QtCore.Qt.red)
-		window.append(message)
-	elif rank == 'event':
-		window.setTextColor(QtCore.Qt.black)
-		window.append(message)
-	else:
-		window.setTextColor(QtCore.Qt.gray)
-		window.append(message)
-
-'''
 WIDGET TOGGLES
 - meth: widgetToggle
 '''
