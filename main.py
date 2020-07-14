@@ -66,33 +66,37 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		logger.addHandler(self.logger.handler)
 		logger.setLevel(logging.INFO)
 
-		# Sidebar panel.
+		# Left Sidebar: General Commands.
 		self.sidebar = ui.sidebar.Sidebar(self.frameSidebarStack,self.frameSidebarList)
 		# Sidebar: Imaging
-		self.sidebar.addPage('Imaging',QsWidgets.QImaging(),before='all')
+		self.sidebar.addPage('Imaging',QsWidgets.QsSidebar.QImaging(),before='all')
 		self.sbImaging = self.sidebar.getPage('Imaging')
 		# Sidebar: Alignment.
-		self.sbAlignment = self.sidebar.addPage('Alignment',QsWidgets.QAlignment(),after='Imaging')
+		self.sbAlignment = self.sidebar.addPage('Alignment',QsWidgets.QsSidebar.QAlignment(),after='Imaging')
 		self.sbAlignment.widget['maxMarkers'].valueChanged.connect(partial(self.updateSettings,'global',self.sbAlignment.widget['maxMarkers']))
 		self.sbAlignment.widget['optimise'].toggled.connect(partial(self.toggleOptimise))
 		self.sbAlignment.calculateAlignment.connect(self.patientCalculateAlignment)
 		self.sbAlignment.doAlignment.connect(self.patientApplyAlignment)
 		# Add treatment section to sidebar.
-		self.sidebar.addPage('Treatment',QsWidgets.QTreatment(),after='Alignment')
+		self.sidebar.addPage('Treatment',QsWidgets.QsSidebar.QTreatment(),after='Alignment')
 		self.sbTreatment = self.sidebar.getPage('Treatment')
 		# Add image properties section to sidebar.
 		self.sidebar.addPage('ImageProperties',None,after='Treatment')
 		# Add settings section to sidebar.
-		self.sidebar.addPage('Settings',QsWidgets.QSettings(),after='all')
+		self.sidebar.addPage('Settings',QsWidgets.QsSidebar.QSettings(),after='all')
 		self.sbSettings = self.sidebar.getPage('Settings')
 
 		# Create work environment
 		self.environment = ui.workspace.environment(self.toolbarPane,self.workStack)
 		self.environment.workspaceChanged.connect(partial(self.sidebar.linkPages,'ImageProperties'))
 
-		# PropertyManager
-		self.property = ui.workspace.propertyModel()
-		self.propertyTree = ui.workspace.propertyManager(self.frameVariablePane,self.property)
+		# Right Sidebar: ToolBox.
+		# self.property = ui.workspace.propertyModel()
+		# self.propertyTree = ui.workspace.propertyManager(self.frameVariablePane,self.property)
+		self.rightSidebar = QsWidgets.QsSidebar.QSidebarList(self.frameRightSidebar)
+		self.rightSidebar.addSection("Status Monitor",QsWidgets.QsSidebar.QStatusMonitor())
+		self.rightSidebar.addSection("Alignment Calculations",QsWidgets.QsSidebar.QStatusMonitor())
+		self.rightSidebar.addSection("Position Controls",QsWidgets.QsSidebar.QStatusMonitor())
 
 		# Collapsing button for Logger.
 		icon = QtGui.QIcon(resourceFilepath+'/images/CollapseBottom.png')
@@ -103,21 +107,21 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		self.statusBar.addPermanentWidget(self.pbCollapseLogger)
 		self.pbCollapseLogger.clicked.connect(self.logger.toggleVisibility)
 
-		# Collapsing button for Property Manager.
+		# Collapsing button for Sidebar (Right).
 		icon = QtGui.QIcon(resourceFilepath+'/images/CollapseRight.png')
 		icon.pixmap(20,20)
-		self.pbCollapseProperties = QtWidgets.QPushButton(icon,'')
-		self.pbCollapseProperties.setToolTip("Toggle Properties Panel")
-		self.pbCollapseProperties.setFlat(True)
-		self.statusBar.addPermanentWidget(self.pbCollapseProperties)
-		self.pbCollapseProperties.clicked.connect(partial(self.propertyTree.toggleFrame,self.frameVariablePane))
+		self.pbCollapseSidebar = QtWidgets.QPushButton(icon,'')
+		self.pbCollapseSidebar.setToolTip("Toggle Properties Panel")
+		self.pbCollapseSidebar.setFlat(True)
+		self.statusBar.addPermanentWidget(self.pbCollapseSidebar)
+		# self.pbCollapseProperties.clicked.connect(partial(self.propertyTree.toggleFrame,self.frameVariablePane))
 
 		# Create alignment table.
-		self.property.addSection('Alignment')
-		self.property.addVariable('Alignment',['Rotation','X','Y','Z'],[0,0,0])
-		self.property.addVariable('Alignment',['Translation','X','Y','Z'],[0,0,0])
-		self.property.addVariable('Alignment','Scale',0)
-		self.propertyTree.expandAll()
+		# self.property.addSection('Alignment')
+		# self.property.addVariable('Alignment',['Rotation','X','Y','Z'],[0,0,0])
+		# self.property.addVariable('Alignment',['Translation','X','Y','Z'],[0,0,0])
+		# self.property.addVariable('Alignment','Scale',0)
+		# self.propertyTree.expandAll()
 
 		# Connect menubar items.
 		self._menuBar['new_xray'].triggered.connect(partial(self.newFile,'xray'))
@@ -608,9 +612,9 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		alignment6d = self.system.solver.solve()
 
 		# If table already exists, update information...
-		self.property.updateVariable('Alignment',['Rotation','X','Y','Z'],[float(alignment6d[3]),float(alignment6d[4]),float(alignment6d[5])])
-		self.property.updateVariable('Alignment',['Translation','X','Y','Z'],[float(alignment6d[0]),float(alignment6d[1]),float(alignment6d[2])])
-		self.property.updateVariable('Alignment','Scale',float(self.system.solver.scale))
+		# self.property.updateVariable('Alignment',['Rotation','X','Y','Z'],[float(alignment6d[3]),float(alignment6d[4]),float(alignment6d[5])])
+		# self.property.updateVariable('Alignment',['Translation','X','Y','Z'],[float(alignment6d[0]),float(alignment6d[1]),float(alignment6d[2])])
+		# self.property.updateVariable('Alignment','Scale',float(self.system.solver.scale))
 
 		# Calculate alignment for stage.
 		self.system.calculateAlignment()

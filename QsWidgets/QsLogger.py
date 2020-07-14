@@ -26,10 +26,6 @@ class main(QtWidgets.QMainWindow):
 """
 
 CSS_STYLESHEET = """
-TopBar {
-	margin: 0px;
-}
-
 QToolBar {
 	margin: 0px;
     border-style: none;			/* Remove the stupid top and bottom lines */
@@ -89,14 +85,15 @@ class QLog(QtWidgets.QWidget):
 		# Top Widget.
 		topBar = QtWidgets.QWidget()
 		topBar.setStyleSheet("QWidget {background-color: #1A1A1A;}")
+		topBar.setContentsMargins(20,0,10,0)
 
 		# Title.
 		self.title = QtWidgets.QLabel("Log Output (Warning)")
-		self.title.setContentsMargins(20,0,0,0)
+		self.title.setContentsMargins(0,0,0,0)
 
 		# Toolbar.
 		toolbar = QtWidgets.QToolBar()
-		toolbar.setContentsMargins(0,0,10,0)
+		toolbar.setContentsMargins(0,0,0,0)
 		toolbar.setFixedHeight(24)
 
 		# Menu Button.
