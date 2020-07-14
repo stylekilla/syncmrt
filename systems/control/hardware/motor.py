@@ -57,6 +57,10 @@ class motor(QtCore.QObject):
 		self._controller = controls.motor(self.pv)
 		logging.info("Loading motor {} on aixs {} with PV {}".format(name,axis,pv))
 
+	def isConnected(self):
+		# Return True or False for the connection state of the motor.
+		return self._controller.isConnected()
+
 	def setUi(self,ui):
 		# Connect user interface.
 		self._ui = motor.ui(ui)

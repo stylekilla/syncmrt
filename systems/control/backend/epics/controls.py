@@ -72,7 +72,7 @@ class motor:
 		connected = self.isConnected()
 		return connected
 
-	def _updateConnectionStatus(self,pvname,conn):
+	def _updateConnectionStatus(self,pvname,conn,*args,**kwargs):
 		# Update connection status per PV.
 		self._connected[pvname] = conn
 
@@ -215,7 +215,7 @@ class detector:
 		connected = self.isConnected()
 		return connected
 
-	def _updateConnectionStatus(self,pvname,conn):
+	def _updateConnectionStatus(self,pvname,conn,*args,**kwargs):
 		# Update connection status per PV.
 		self._connected[pvname] = conn
 

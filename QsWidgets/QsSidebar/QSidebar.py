@@ -31,6 +31,7 @@ class QSidebarList(QtWidgets.QTreeWidget):
 		self.setStyleSheet(CSS_STYLESHEET)
 		# Hide arrows and remove indendations.
 		self.setIndentation(0)
+		self.setHeaderHidden(True)
 
 		# Install self into frame.
 		layout = QtWidgets.QVBoxLayout()

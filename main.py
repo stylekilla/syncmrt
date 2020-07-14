@@ -102,7 +102,11 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 
 		# Right Sidebar: ToolBox.
 		self.rightSidebar = QsWidgets.QsSidebar.QSidebarList(self.frameRightSidebar)
-		self.rightSidebar.addSection("Status Monitor",QsWidgets.QsSidebar.QStatusMonitor())
+		# Status Monitor.
+		self.statusMonitor = QsWidgets.QsSidebar.QStatusMonitor()
+		self.rightSidebar.addSection("Status Monitor",self.statusMonitor)
+		self.statusMonitor.addMonitor('Positioning Stage')
+		self.statusMonitor.addMonitor('Imaging Detector')
 		# Property manager.
 		self.properties = QsWidgets.QsSidebar.QPropertyManager()
 		self.rightSidebar.addSection("Poperties",self.properties)
