@@ -8,3 +8,4 @@ from .QRtplanProperties import QRtplanProperties
 from .QSettings import QSettings
 from .QStageMonitor import QStageMonitor
 from .QStatusMonitor import QStatusMonitor
+from .QPropertyManager import QPropertyManager

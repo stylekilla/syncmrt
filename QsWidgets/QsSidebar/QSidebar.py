@@ -11,8 +11,14 @@ QPushButton#treeHeader {
     border-bottom-color: #FFFFFF;
 }
 
-QPushButton#treeHeader::clicked {
-    background: #1A1A1A;
+QPushButton#treeHeader:hover {
+    background: #3A3A3A;
+    border-bottom: 1px;
+    border-bottom-color: #FFFFFF;
+}
+
+QPushButton#treeHeader:pressed {
+    background: #3A3A3A;
     border-bottom: 1px;
     border-bottom-color: #FFFFFF;
 }
@@ -32,6 +38,8 @@ class QSidebarList(QtWidgets.QTreeWidget):
 		layout.setContentsMargins(0,0,0,0)
 		layout.addWidget(self)
 		frame.setLayout(layout)
+		# Save the frame for later.
+		self.frame = frame
 
 	def addSection(self,title,widget):
 		# Add a section to the sidebar.
@@ -60,6 +68,10 @@ class QSidebarList(QtWidgets.QTreeWidget):
 			self.collapseItem(item)
 		else:
 			self.expandItem(item)
+
+	def toggleVisibility(self):
+		'''Show/hide frane as requested.'''
+		self.frame.setVisible(not self.frame.isVisible())
 
 
 
