@@ -67,15 +67,12 @@ class epicsMotor(QtCore.QObject):
 		if ('pvname' in kwargs) and ('conn' in kwargs):
 			logging.info("{} connection state is {} ({}).".format(kwargs['pvname'],kwargs['conn'],type(kwargs['conn'])))
 			# Update the device connection state (by testing all the devices pv's connection states).
-			# Note, we set the current connection status sent to this function as the first state in the teststate list.
-			# This is because epics hasn't actually set it's connection status to True/False yet, so if we query the motor
-			# with .connected it will not provide the correct response. They only set it after the signal has been sent to us.
 			teststate = [kwargs['conn']]
-			# Get status of every motor except the one sent to this function.
+			# N.B. Epics hasn't actually updated the pv.connected state of the motor sent to this function yet.
+			# So instead, get status of every motor except the one sent to this function.
 			for pv in [x for x in MOTOR_PVS if x!=kwargs['pvname'][kwargs['pvname'].find('.')+1:]]:
 				testpv = getattr(self,pv)
 				teststate.append(testpv.connected)
-			logging.critical(teststate)
 			self._connectionStatus = all(teststate)
 
 		# Send out an appropriate signal.
