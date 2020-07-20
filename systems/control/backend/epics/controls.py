@@ -2,180 +2,172 @@ import epics
 import numpy as np
 import logging
 import time
+from PyQt5 import QtCore
 
 """
-Definitely have a look at: https://cars9.uchicago.edu/software/python/pyepics3/devices.html
-Includes Motor and Device class!
+We don't use the device classes due to a lack of callback functionality and you can't check things like
+the connection state of the pv's/device etc. 
+Therefore, we implement all that functionality ourselves.
 """
 
-class motor:
-	def __init__(self,pv):
-		# Initialise the thread.
+MOTOR_PVS = [
+	'VAL', 'DESC', 'RBV', 'PREC', 'DMOV',
+	'BDST', 'BACC', 'BVEL',
+	'TWV', 'TWF', 'TWR',
+	'VELO',
+	'LLM', 'HLM', 'HLS', 'LLS','LVIO'
+]
+
+class MotorException(Exception):
+	""" Raised to indicate a problem with a motor """
+	def __init__(self, msg, *args):
+		Exception.__init__(self, *args)
+		self.msg = msg
+	def __str__(self):
+		# Debugging logs included.
+		logging.debug(self.msg)
+		return str(self.msg)
+
+class MotorLimitException(Exception):
+	""" Raised to indicate a problem with a motor """
+	def __init__(self, msg, *args):
+		Exception.__init__(self, *args)
+		self.msg = msg
+	def __str__(self):
+		# Debugging logs included.
+		logging.debug(self.msg)
+		return str(self.msg)
+
+class epicsMotor(QtCore.QObject):
+	"""
+	If the motor driver can't do anything, it raises an exception MotorException.
+	The caller function should attempt to catch this in the event something goes wrong.
+	"""
+	connected = QtCore.pyqtSignal()
+	disconnected = QtCore.pyqtSignal()
+	moveFinished = QtCore.pyqtSignal()
+
+	def __init__(self,pvName):
 		super().__init__()
-		# Base PV.
-		self._pv = str(pv)
-		# PV vars.
+		# Save the pv base.
+		self.pvBase = pvName
+		# Initialisation vars.
+		self._connectionStatus = True
+		# Add all the pv's.
 		self.pv = {}
-		# self.pv['RBV'] = False # read back value (position)
-		# self.pv['VAL'] = False # position at value (absolute)
-		# self.pv['TWV'] = False # tweak value (relative )
-		# self.pv['TWR'] = False # tweak value reverse (relative backwards)
-		# self.pv['TWF'] = False # tweak value forward
-		# self.pv['DMOV'] = False # detector moving (1 is 'finished move')
-		# self.pv['HLM'] = False # High motor limit
-		# self.pv['LLM'] = False # Low motor limit
-		# self.pv['BDST'] = False # Backlash distance
-		# self.pv['BVEL'] = False # Backlash velocity
-		# self.pv['BACC'] = False # Backlash acceleration
-		# self.pv['DESC'] = False # Description of the motor (i.e. name)
-		# Connection status per motor.
-		self._connected = {}
-		# Connect the PV's
-		self._connectPVs()
+		for pv in MOTOR_PVS:
+			setattr(self,pv,epics.PV("{}.{}".format(self.pvBase,pv),auto_monitor=True,connection_callback=self._connectionMonitor))
 
-	def _connectPVs(self):
-		# Record PV root information and connect to motors.
-		# Read Back Value
-		self.pv['RBV'] = epics.PV(self._pv+'.RBV',connection_callback=self._updateConnectionStatus)
-		# Is motor moving?
-		self.pv['DMOV'] = epics.PV(self._pv+'.DMOV',connection_callback=self._updateConnectionStatus)
-		# Value to put to moto,wait=Truer
-		self.pv['VAL'] = epics.PV(self._pv+'.VAL',connection_callback=self._updateConnectionStatus)
-		# Tweak Value
-		self.pv['TWV'] = epics.PV(self._pv+'.TWV',connection_callback=self._updateConnectionStatus)
-		# Tweak Reverse
-		self.pv['TWR'] = epics.PV(self._pv+'.TWR',connection_callback=self._updateConnectionStatus)
-		# Tweak Forward
-		self.pv['TWF'] = epics.PV(self._pv+'.TWF',connection_callback=self._updateConnectionStatus)
-		#High limit of motor range
-		self.pv['HLM'] = epics.PV(self._pv+'.HLM',connection_callback=self._updateConnectionStatus)
-		#Low limit of motor range
-		self.pv['LLM'] = epics.PV(self._pv+'.LLM',connection_callback=self._updateConnectionStatus)
-		#Backlash distance
-		self.pv['BDST'] = epics.PV(self._pv+'.BDST',connection_callback=self._updateConnectionStatus)
-		#Backlash velocity
-		self.pv['BVEL'] = epics.PV(self._pv+'.BVEL',connection_callback=self._updateConnectionStatus)
-		#Backlash acceleration
-		self.pv['BACC'] = epics.PV(self._pv+'.BACC',connection_callback=self._updateConnectionStatus)
-		#Name of the pv
-		self.pv['DESC'] = epics.PV(self._pv+'.DESC',connection_callback=self._updateConnectionStatus)
+	def _connectionMonitor(self,*args,**kwargs):
+		"""
+		Update the device connection status.
+		All PV's must be connected in order for the device to be considered connected.
+		If any PV in the device is disconnected, the whole device is demmed disconnected.
+		"""
+		if ('pvname' in kwargs) and ('conn' in kwargs):
+			logging.info("{} connection state is {} ({}).".format(kwargs['pvname'],kwargs['conn'],type(kwargs['conn'])))
+			# Update the device connection state (by testing all the devices pv's connection states).
+			# Note, we set the current connection status sent to this function as the first state in the teststate list.
+			# This is because epics hasn't actually set it's connection status to True/False yet, so if we query the motor
+			# with .connected it will not provide the correct response. They only set it after the signal has been sent to us.
+			teststate = [kwargs['conn']]
+			# Get status of every motor except the one sent to this function.
+			for pv in [x for x in MOTOR_PVS if x!=kwargs['pvname'][kwargs['pvname'].find('.')+1:]]:
+				testpv = getattr(self,pv)
+				teststate.append(testpv.connected)
+			logging.critical(teststate)
+			self._connectionStatus = all(teststate)
 
-		# Connection status per motor. Set to false by default.
-		for pv in self.pv.values():
-			self._connected[pv.pvname] = False
-
-	def reconnect(self):
-		# Reconnect the pv's.
-		for pv in self.pv.values():
-			pv.reconnect()
-		# Return if they are now connected or not.
-		connected = self.isConnected()
-		return connected
-
-	def _updateConnectionStatus(self,pvname,conn,*args,**kwargs):
-		# Update connection status per PV.
-		self._connected[pvname] = conn
+		# Send out an appropriate signal.
+		if self._connectionStatus:
+			self.connected.emit()
+		else:
+			self.disconnected.emit()
 
 	def isConnected(self):
-		# Return True or False for if all the PV's are connected or not.
-		return all(self._connected.values())
+		# Return if we are connected or not.
+		return self._connectionStatus
 
-	def readValue(self,attribute):
-		if self.isConnected():
-			return self.pv[attribute].get()
-		else:
-			return None
-
-	def writeValue(self,attribute,value):
-		if self.isConnected(): 
-			if attribute == 'TWV':
-				self.pv[attribute].put(value,wait=True)
-			else:
-				while self.pv['DMOV'].get() == 0:
-					pass
-				self.pv[attribute].put(value,wait=True)
-		else: 
-			return None
+	def reconnect(self):
+		for pv in MOTOR_PVS:
+			epicspv = getattr(self,pv)
+			try:
+				epicspv.reconnect()
+			except:
+				raise MotorException("Failed to force {} to reconnect.".format(pv))
 
 	def read(self):
-		# Straight up reading where the motor is.
-		if self.isConnected():
-			return self.pv['RBV'].get()
+		# Return position of motor.
+		if self._connectionStatus:
+			return self.RBV.get()
 		else:
-			return -999
+			raise MotorException("Connection error. Could not read motor position.")
 
 	def write(self,value,mode='absolute'):
-		# logging.info("Writing {} to {} with mode {}.".format(value,self._pv,mode))
-		if not self.isConnected(): 
-			return
-		# Straight up telling the motor where to go.
-		elif mode=='absolute':
-			if self.pv['VAL']: 
-				oldPosition = self.read()
-				predictedPosition = float(value)
-				if self.checkAbsLimit(value):
-					self.pv['VAL'].put(float(value),wait=True)
-				else:
-					logging.error("Cannot move {} to {} - motorlimit will be reached.\nH.Lim:{}\tL.Lim:{}".format(self.pv['DESC'].get(),value,self.pv['HLM'].get(),self.pv['LLM'].get()))
-					return
+		if not self._connectionStatus: 
+			raise MotorException("Connection error. Could not write motor position.")
 
-		elif mode=='relative':
-			if self.pv['TWV']:
-				oldPosition = self.read()
-				predictedPosition = oldPosition + float(value)
-				if self.checkRelLimit(value):
-					# Place tweak value.
-					self.pv['TWV'].put(float(np.absolute(value)),wait=True)
-					if value < 0:
-						# Negative direction
-						self.pv['TWR'].put(1,wait=True)
-					elif value > 0:
-						self.pv['TWF'].put(1,wait=True)
-					else:
-						# Do nothing.
-						pass
-				else: 
-					logging.error("Cannot move {} by {} - motorlimit will be reached.\nH.Lim:{}\tL.Lim:{}".format(self.pv['DESC'].get(),value,self.pv['HLM'].get(),self.pv['LLM'].get()))
-					return
+		# Get the current motor position, before any attempt of movement.
+		previousPosition = self.RBV.get()
 
-		# Give epics 100ms to get the command to the motor.
-		time.sleep(0.2)
-		# Stay here while the motor is moving.
-		while self.pv['DMOV'].get() == 0:
-			pass
-		# Finished.
+		# Calculate the writevalue.
+		if mode == 'absolute':
+			writeValue = value
+		elif mode == 'relative':
+			writeValue = previousPosition + value
 
-		# Checking that the move occurred.
-		newPosition = self.read()
-		retryCounter = 0
-		maxRetrties = 3
-		BDST=self.pv['BDST'].get()
+		# Write the value if acceptable.
+		if self.withinLimits(writeValue):
+			# If the value is within the limits, write it.
+			self.VAL.put(
+				writeValue,
+				wait=True,
+				callback=self._checkMovement,
+				callback_data=[previousPosition,writeValue]
+			)
+		else:
+			# It is outside the limits.
+			raise MotorLimitException("Value {} exceeds motor limits.".format(writeValue))
 
-		while (abs(newPosition-predictedPosition) > BDST) and (retryCounter < maxRetrties): 
-			logging.error("Motor {} did not move to {}. Retry #{} of {}.".format(self.pv['DESC'].get(), predictedPosition,retryCounter + 1, maxRetrties))
-			self.pv['VAL'].put(predictedPosition,wait=True)
-			time.sleep(0.2)
-			while self.pv['DMOV'].get() == 0:
-				pass
-			retryCounter+=1
-			newPosition=self.read()
-		if (newPosition != predictedPosition) and (retryCounter == maxRetrties):
-			logging.error("Was unable to complete the movement after {} tries.".format(maxRetrties))
-		return
+	def withinLimits(self,value):
+		print(self.HLM.get())
+		return (value <= self.HLM.get() and value >= self.LLM.get())
 
-	def checkAbsLimit(self,value):
-		stillInLimitBool = False
-		if float(value) <= float(self.pv['HLM'].get()) and float(value) >= float(self.pv['LLM'].get()):
-			stillInLimitBool = True
-		return stillInLimitBool
+	def _checkMovement(self,*args,**kwargs):
+		# Get the previous and new positions.
+		previousPosition, expectedPosition = kwargs['data']
+		# Get the current position.
+		currentPosition = self.RBV.get()
 
-	def checkRelLimit(self,value):
-		stillInLimitBool = False
-		if (float(value) + float(self.pv['RBV'].get())) >= float(self.pv['LLM'].get()) and (float(value) + float(self.pv['RBV'].get())) <= float(self.pv['HLM'].get()):
-				stillInLimitBool=True
-		return stillInLimitBool
+		if float(abs(expectedPosition - currentPosition)) > (float(self.PREC)+float(self.BDST)):
+			# We are outside our precision range and backlash distance.
+			raise MotorException("The motor did not stop at the expected position of {}.".format(expectedPosition))
 
-class detector:
+		self.moveFinished.emit()
+
+# class epicsDetector(QtCore.QObject):
+# 	"""
+# 	If the motor driver can't do anything, it raises an exception MotorException.
+# 	The caller function should attempt to catch this in the event something goes wrong.
+# 	"""
+# 	connected = QtCore.pyqtSignal()
+# 	disconnected = QtCore.pyqtSignal()
+# 	# moveFinished = QtCore.pyqtSignal(bool)
+
+# 	def __init__(self,pvName):
+# 		super().__init__()
+# 		# Save the pv base.
+# 		self.pvBase = pvName
+# 		# Initialisation vars.
+# 		self._connectionStatus = True
+# 		# Add all the pv's.
+# 		self.pv = {}
+# 		for pv in MOTOR_PVS:
+# 			setattr(self,pv,epics.PV("{}.{}".format(self.pvBase,pv),auto_monitor=True,connection_callback=self._connectionMonitor))
+
+
+
+class detector(QtCore.QObject):
 	def __init__(self,pv):
 		# Initialise the thread.
 		super().__init__()

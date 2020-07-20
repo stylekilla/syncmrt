@@ -39,7 +39,7 @@ class Imager(QtCore.QObject):
 	deviceList : set
 		A list of all the detector names available to the system.
 	"""
-
+	connectionStatus = QtCore.pyqtSignal(bool)
 	imageAcquired = QtCore.pyqtSignal(int)
 	newImageSet = QtCore.pyqtSignal(str,int)
 
@@ -92,6 +92,12 @@ class Imager(QtCore.QObject):
 	def reconnect(self):
 		""" Reconnect the detector controller to Epics. Use this if the connection dropped out. """
 		self.detector.reconnect()
+
+	def isConnected(self):
+		if self.detector is None:
+			return False
+		else:
+			return self.detector.isConnected()
 
 	def setImagingParameters(self,params):
 		""" As they appear on PV's. """

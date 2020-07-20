@@ -4,12 +4,10 @@ import numpy as np
 import logging
 
 class patientSupport(QtCore.QObject):
-	# startedMove = QtC
-	# moving = QtCore.pyqtSignal()
+	connected = QtCore.pyqtSignal(bool)
+	moving = QtCore.pyqtSignal()
 	finishedMove = QtCore.pyqtSignal()
-	# error = QtCore.pyqtSignal()
-
-	# This needs to be re-written to accept 6DoF movements and split it up into individual movements.
+	error = QtCore.pyqtSignal()
 
 	def __init__(self,database,ui=None):
 		super().__init__()
@@ -29,6 +27,8 @@ class patientSupport(QtCore.QObject):
 		self._counter = 0
 		# Counter for calculate motion loop.
 		self._i = 0
+		# Connection status, True = Connected, False = Disconnected.
+		self._connectionStatus = False
 
 		# Get list of motors.
 		import csv, os
@@ -47,13 +47,17 @@ class patientSupport(QtCore.QObject):
 				self.deviceList.add(row['PatientSupport'])
 
 	def load(self,name):
+		# Load a set of motors for the patient support.
 		logging.info("Loading patient support: {}.".format(name))
+
+		# Check if the desired device is in the devices list.
 		if name in self.deviceList:
-			# Remove all motors.
+			# Remove all existing motors.
 			for i in range(len(self.currentMotors)):
 				del self.currentMotors[-1]
 				# Remove the UI elements as well.
 				self._ui.remove(self.currentMotors[-1].pv)
+
 			# Iterate over new motors.
 			for support in self.motors:
 				# Does the motor match the name?
@@ -65,23 +69,45 @@ class patientSupport(QtCore.QObject):
 							int(support['Order']),
 							pv = support['PV Root']
 						)
+
 					# Set a ui for the motor if we are doing that.
 					if self._ui is not None:
 						# newMotor.setUi(self._ui)
 						self._ui.addPV(newMotor.pv,support['Description'])
-					# Connect to finished method.
-					newMotor.finished.connect(self._finished)
+
+					# Signals and slots.
+					newMotor.connected.connect(self._connectionMonitor)
+					newMotor.disconnected.connect(self._connectionMonitor)
+					newMotor.moveFinished.connect(self._finished)
+					newMotor.error.connect(self.error.emit)
+
 					# Append the motor to the list.
 					self.currentMotors.append(newMotor)
+
 			# Set the order of the list from 0-i.
 			self.currentMotors = sorted(self.currentMotors, key=lambda k: k._order) 
 			# Update the name details.
 			self.currentDevice = name
 			# Calibrate with no calibration offset. This can be recalculated later.
 			self.calibrate(np.array([0,0,0]))
+
 			# Update GUI.
-			if self._ui is not None:
-				self._ui.update()
+			# if self._ui is not None:
+				# self._ui.update()
+
+	def isConnected(self):
+		# Return the connection status.
+		return self._connectionStatus
+
+	def _connectionMonitor(self):
+		# Connection monitor for all the motors that make up the patient support system.
+		teststate = []
+		for motor in self.currentMotors:
+			teststate.append(motor.isConnected())
+		self._connectionStatus = all(teststate)
+
+		# Send out an appropriate signal.
+		self.connected.emit(self._connectionStatus)
 
 	def reconnect(self):
 		for motor in self.currentMotors:
