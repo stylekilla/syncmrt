@@ -11,12 +11,16 @@ Should only use motor.read() and motor.write() methods.
 """
 
 class motor(QtCore.QObject):
-	finished = QtCore.pyqtSignal()
+	connected = QtCore.pyqtSignal()
+	disconnected = QtCore.pyqtSignal()
+	moveFinished = QtCore.pyqtSignal()
+	error = QtCore.pyqtSignal()
+	# finished = QtCore.pyqtSignal()
 
 	def __init__(self,name,axis,order,
 				pv=None,
-				direction=1,
 				mrange=np.array([-np.inf,np.inf]),
+				direction=1,
 				frame=1,
 				size=np.array([0,0,0]),
 				workDistance=np.array([0,0,0]),
@@ -54,7 +58,12 @@ class motor(QtCore.QObject):
 		# Interfaces (Qt and Epics).
 		self._workerThread = None
 		self._ui = None
-		self._controller = controls.motor(self.pv)
+		# Backend Controller.
+		self._controller = controls.epicsMotor(self.pv)
+		self._controller.connected.connect(self.connected.emit)
+		self._controller.disconnected.connect(self.disconnected.emit)
+		self._controller.moveFinished.connect(self.moveFinished.emit)
+
 		logging.info("Loading motor {} on aixs {} with PV {}".format(name,axis,pv))
 
 	def isConnected(self):
@@ -67,18 +76,29 @@ class motor(QtCore.QObject):
 
 	def setPosition(self,position):
 		position *= self._direction
-		self._controller.write(position,mode='absolute')
-		# Once finished, emit signal.
-		self.finished.emit()
+		try:
+			self._controller.write(position,mode='absolute')
+		except:
+			self.error.emit()
+				
+		logging.critical("Do I still send our the finished movement signal?")
 
 	def shiftPosition(self,position):
 		position *= self._direction
-		self._controller.write(position,mode='relative')
-		# Once finished, emit signal.
-		self.finished.emit()
+		try:
+			self._controller.write(position,mode='relative')
+		except:
+			self.error.emit()
+
+		logging.critical("Do I still send our the finished movement signal?")
 
 	def readPosition(self):
-		return self._controller.read()
+		try:
+			value = self._controller.read()
+		except:
+			value = np.NaN
+
+		return value
 
 	def transform(self,value):
 		# If we are a translation motor, return a translation transfrom.

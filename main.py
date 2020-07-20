@@ -160,7 +160,9 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 			resourceFilepath+config.files.patientSupports,
 			resourceFilepath+config.files.detectors,
 			config,
-			epicsMonitor=self.motorMonitor
+			deviceMonitor=self.statusMonitor,
+			epicsMonitor=self.motorMonitor,
+			epicsThread=self.epicsThread
 		)
 		self.patient = systems.patient.Patient()
 		# Link the system with the patient data.

@@ -50,4 +50,4 @@ class QStatusMonitor(QtWidgets.QWidget):
 
 	def updateMonitor(self,name,status):
 		# Update the value label with the new value.
-		self.device[name].setText(status)
+		self.device[name].setText(str(status))

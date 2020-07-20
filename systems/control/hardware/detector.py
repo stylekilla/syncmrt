@@ -33,6 +33,10 @@ class detector(QtCore.QObject):
 		if self._controller is not None:
 			self._controller.reconnect()
 
+	def isConnected(self):
+		# Return True or False for the connection state of the motor.
+		return self._controller.isConnected()
+
 	def setup(self):
 		if self._controller._connected:
 			epics.caput(self.pv+':CAM:ImageMode','Single')

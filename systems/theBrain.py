@@ -8,7 +8,6 @@ class Brain(QtCore.QObject):
 	"""
 	This module creates a treatment 'system' that is made up of imaging devices, positioning aparatus, beam delivery controls etc.
 	"""
-	
 	imagesAcquired = QtCore.pyqtSignal(int)
 	newImageSet = QtCore.pyqtSignal(str)
 
@@ -24,6 +23,12 @@ class Brain(QtCore.QObject):
 		self._imagingMode = 'step'
 		# When a new image set is acquired, tell the GUI.
 		self.imager.newImageSet.connect(self.newImageSet)
+		# Device monitor for monitoring subsystems.
+		self.deviceMonitor = None
+		if 'deviceMonitor' in kwargs:
+			self.deviceMonitor = kwargs['deviceMonitor']
+			self.patientSupport.connected.connect(partial(self.deviceMonitor.updateMonitor,'Positioning Stage'))
+			self.imager.connectionStatus.connect(partial(self.deviceMonitor.updateMonitor,'Imaging Detector'))
 
 	def loadPatient(self,patient):
 		""" Assumes patient has an already loaded x-ray dataset. """
