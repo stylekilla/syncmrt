@@ -45,6 +45,8 @@ class epicsMotor(QtCore.QObject):
 	"""
 	connected = QtCore.pyqtSignal()
 	disconnected = QtCore.pyqtSignal()
+	moveStarted = QtCore.pyqtSignal(float,float)
+	position = QtCore.pyqtSignal(float)
 	moveFinished = QtCore.pyqtSignal()
 
 	def __init__(self,pvName):
@@ -56,7 +58,13 @@ class epicsMotor(QtCore.QObject):
 		# Add all the pv's.
 		self.pv = {}
 		for pv in MOTOR_PVS:
-			setattr(self,pv,epics.PV("{}.{}".format(self.pvBase,pv),auto_monitor=True,connection_callback=self._connectionMonitor))
+			setattr(self,pv,epics.PV("{}.{}".format(self.pvBase,pv),
+				auto_monitor=True,
+				connection_callback=self._connectionMonitor
+				)
+			)
+		# Add callback for positioning monitoring.
+		self.VAL.add_callback(self._positionMonitor)
 
 	def _connectionMonitor(self,*args,**kwargs):
 		"""
@@ -65,7 +73,6 @@ class epicsMotor(QtCore.QObject):
 		If any PV in the device is disconnected, the whole device is demmed disconnected.
 		"""
 		if ('pvname' in kwargs) and ('conn' in kwargs):
-			logging.info("{} connection state is {} ({}).".format(kwargs['pvname'],kwargs['conn'],type(kwargs['conn'])))
 			# Update the device connection state (by testing all the devices pv's connection states).
 			teststate = [kwargs['conn']]
 			# N.B. Epics hasn't actually updated the pv.connected state of the motor sent to this function yet.
@@ -92,6 +99,11 @@ class epicsMotor(QtCore.QObject):
 				epicspv.reconnect()
 			except:
 				raise MotorException("Failed to force {} to reconnect.".format(pv))
+
+	def _positionMonitor(self,*args,**kwargs):
+		# Update the device's position.
+		if ('pvname' in kwargs) and ('value' in kwargs):
+			self.position.emit(float(kwargs['value']))
 
 	def read(self):
 		# Return position of motor.
@@ -122,6 +134,7 @@ class epicsMotor(QtCore.QObject):
 				callback=self._checkMovement,
 				callback_data=[previousPosition,writeValue]
 			)
+			self.moveStarted.emit(float(previousPosition),float(writeValue))
 		else:
 			# It is outside the limits.
 			raise MotorLimitException("Value {} exceeds motor limits.".format(writeValue))

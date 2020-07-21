@@ -9,7 +9,7 @@ class patientSupport(QtCore.QObject):
 	finishedMove = QtCore.pyqtSignal()
 	error = QtCore.pyqtSignal()
 
-	def __init__(self,database,ui=None):
+	def __init__(self,database,ui=None,backendThread=None):
 		super().__init__()
 		# Information
 		self.currentDevice = None
@@ -29,7 +29,11 @@ class patientSupport(QtCore.QObject):
 		self._i = 0
 		# Connection status, True = Connected, False = Disconnected.
 		self._connectionStatus = False
-
+		# Save the backend thread (if any).
+		self.backendThread = backendThread
+		"""
+		Load the CSV dataset.
+		"""
 		# Get list of motors.
 		import csv, os
 		# Open CSV file
@@ -56,7 +60,7 @@ class patientSupport(QtCore.QObject):
 			for i in range(len(self.currentMotors)):
 				del self.currentMotors[-1]
 				# Remove the UI elements as well.
-				self._ui.remove(self.currentMotors[-1].pv)
+				# self._ui.remove(self.currentMotors[-1].pv)
 
 			# Iterate over new motors.
 			for support in self.motors:
@@ -67,13 +71,14 @@ class patientSupport(QtCore.QObject):
 							support['Description'],
 							int(support['Axis']),
 							int(support['Order']),
-							pv = support['PV Root']
+							pv = support['PV Root'],
+							backendThread=self.backendThread
 						)
 
 					# Set a ui for the motor if we are doing that.
-					if self._ui is not None:
+					# if self._ui is not None:
 						# newMotor.setUi(self._ui)
-						self._ui.addPV(newMotor.pv,support['Description'])
+						# self._ui.addPV(newMotor.pv,support['Description'])
 
 					# Signals and slots.
 					newMotor.connected.connect(self._connectionMonitor)

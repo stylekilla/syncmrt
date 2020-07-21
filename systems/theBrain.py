@@ -15,7 +15,10 @@ class Brain(QtCore.QObject):
 		super().__init__()
 		self.solver = imageGuidance.solver()
 		# self.source = control.hardware.source()
-		self.patientSupport = control.hardware.patientSupport(patientSupports,kwargs['epicsMonitor'])
+		if 'backendThread' in kwargs:
+			self.patientSupport = control.hardware.patientSupport(patientSupports,backendThread=kwargs['backendThread'])
+		else:
+			self.patientSupport = control.hardware.patientSupport(patientSupports)
 		self.imager = control.hardware.Imager(detectors,config.imager)
 		self.patient = None
 		# Counter
