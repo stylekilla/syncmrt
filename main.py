@@ -52,11 +52,11 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		Epics.
 		"""
 		# Put epics on it's own thread.
-		self.epicsThread = QtCore.QThread()
-		self.epicsThread.start()
+		self.backendControlThread = QtCore.QThread()
+		self.backendControlThread.start()
 		# Create the monitor and move it to the epics thread.
 		self.epicsMonitor = systems.control.backend.epics.EpicsMonitor()
-		self.epicsMonitor.moveToThread(self.epicsThread)
+		self.epicsMonitor.moveToThread(self.backendControlThread)
 
 		"""
 		Qt5 Setup
@@ -153,7 +153,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		self._isRTPOpen = False
 
 		"""
-		SyncMRT Setup
+		The Brain Setup.
 		"""
 		# Create a new system, this has a solver, detector and stage.
 		self.system = systems.theBrain.Brain(
@@ -162,8 +162,14 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 			config,
 			deviceMonitor=self.statusMonitor,
 			epicsMonitor=self.motorMonitor,
-			epicsThread=self.epicsThread
+			backendThread=self.backendControlThread
 		)
+
+		# Put the brain on it's own thread.
+		self.systemThread = QtCore.QThread()
+		self.systemThread.start()
+		self.system.moveToThread(self.systemThread)
+		# Create a patient.
 		self.patient = systems.patient.Patient()
 		# Link the system with the patient data.
 		self.system.loadPatient(self.patient)

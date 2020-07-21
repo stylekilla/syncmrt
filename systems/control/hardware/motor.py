@@ -17,8 +17,10 @@ class motor(QtCore.QObject):
 	error = QtCore.pyqtSignal()
 	# finished = QtCore.pyqtSignal()
 
-	def __init__(self,name,axis,order,
+	def __init__(self,
+				name,axis,order,
 				pv=None,
+				backendThread=None,
 				mrange=np.array([-np.inf,np.inf]),
 				direction=1,
 				frame=1,
@@ -56,10 +58,14 @@ class motor(QtCore.QObject):
 		# Upper and lower limits of motor movement.
 		self._range = mrange
 		# Interfaces (Qt and Epics).
-		self._workerThread = None
-		self._ui = None
+		# self._ui = None
+
 		# Backend Controller.
 		self._controller = controls.epicsMotor(self.pv)
+		# Move to thread if specified.
+		if backendThread is not None:
+			self._controller.moveToThread(backendThread)
+		# Signals.
 		self._controller.connected.connect(self.connected.emit)
 		self._controller.disconnected.connect(self.disconnected.emit)
 		self._controller.moveFinished.connect(self.moveFinished.emit)
