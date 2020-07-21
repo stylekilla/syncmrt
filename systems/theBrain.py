@@ -56,6 +56,14 @@ class Brain(QtCore.QObject):
 		logging.debug("Imaging mode changed to {}.".format(mode))
 		self._imagingMode = mode
 
+	def setPatientSupportMonitor(self,monitor):
+		# The monitor should have functions to connect to singals and update the positions from.
+		self.patientSupport.newSupportSelected.connect(monitor.newMotors)
+		self.patientSupport.motorMoving.connect(monitor.updateMotor)
+		# If a support has already been selected, add that.
+		if self.patientSupport.currentDevice is not None:
+			monitor.newMotors(self.patientSupport.currentDevice,self.patientSupport.currentMotors)
+
 	def calculateAlignment(self):
 		""" This is where the calculation magic happens. """
 		# Decomposition routine.

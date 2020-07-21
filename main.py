@@ -55,8 +55,8 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		self.backendControlThread = QtCore.QThread()
 		self.backendControlThread.start()
 		# Create the monitor and move it to the epics thread.
-		self.epicsMonitor = systems.control.backend.epics.EpicsMonitor()
-		self.epicsMonitor.moveToThread(self.backendControlThread)
+		# self.epicsMonitor = systems.control.backend.epics.EpicsMonitor()
+		# self.epicsMonitor.moveToThread(self.backendControlThread)
 
 		"""
 		Qt5 Setup
@@ -76,7 +76,9 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		logger.addHandler(self.logger.handler)
 		logger.setLevel(logging.INFO)
 
+		# ===============================
 		# Left Sidebar: General Commands.
+		# ===============================
 		self.sidebar = ui.sidebar.Sidebar(self.frameSidebarStack,self.frameSidebarList)
 		# Sidebar: Imaging
 		self.sidebar.addPage('Imaging',QsWidgets.QsSidebar.QImaging(),before='all')
@@ -100,7 +102,9 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		self.environment = ui.workspace.environment(self.toolbarPane,self.workStack)
 		self.environment.workspaceChanged.connect(partial(self.sidebar.linkPages,'ImageProperties'))
 
+		# =======================
 		# Right Sidebar: ToolBox.
+		# =======================
 		self.rightSidebar = QsWidgets.QsSidebar.QSidebarList(self.frameRightSidebar)
 		# Status Monitor.
 		self.statusMonitor = QsWidgets.QsSidebar.QStatusMonitor()
@@ -111,9 +115,18 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		self.properties = QsWidgets.QsSidebar.QPropertyManager()
 		self.rightSidebar.addSection("Poperties",self.properties)
 		# Stage Position Monitor.
-		self.motorMonitor = QsWidgets.QsSidebar.QMotorMonitor(self.epicsMonitor)
-		self.rightSidebar.addSection("Position Monitor",self.motorMonitor)
+		self.ppsMonitor = QsWidgets.QsSidebar.QMotorMonitor()
+		self.rightSidebar.addSection("Positioning Stage",self.ppsMonitor)
 
+		# Create alignment table.
+		self.properties.addSection('Alignment')
+		self.properties.addVariable('Alignment',['Rotation','X','Y','Z'],[0,0,0])
+		self.properties.addVariable('Alignment',['Translation','X','Y','Z'],[0,0,0])
+		self.properties.addVariable('Alignment','Scale',0)
+
+		# ==================
+		# Bottom Status Bar.
+		# ==================
 		# Collapsing button for Logger.
 		icon = QtGui.QIcon(resourceFilepath+'/images/CollapseBottom.png')
 		icon.pixmap(20,20)
@@ -132,12 +145,9 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		self.pbCollapseSidebar.clicked.connect(self.rightSidebar.toggleVisibility)
 		self.statusBar.addPermanentWidget(self.pbCollapseSidebar)
 
-		# Create alignment table.
-		self.properties.addSection('Alignment')
-		self.properties.addVariable('Alignment',['Rotation','X','Y','Z'],[0,0,0])
-		self.properties.addVariable('Alignment',['Translation','X','Y','Z'],[0,0,0])
-		self.properties.addVariable('Alignment','Scale',0)
-
+		# =============
+		# Top Menu Bar.
+		# =============
 		# Connect menubar items.
 		self._menuBar['new_xray'].triggered.connect(partial(self.newFile,'xray'))
 		self._menuBar['load_xray'].triggered.connect(partial(self.openFiles,'xray'))
@@ -161,7 +171,6 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 			resourceFilepath+config.files.detectors,
 			config,
 			deviceMonitor=self.statusMonitor,
-			epicsMonitor=self.motorMonitor,
 			backendThread=self.backendControlThread
 		)
 
@@ -173,6 +182,8 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		self.patient = systems.patient.Patient()
 		# Link the system with the patient data.
 		self.system.loadPatient(self.patient)
+		# Add a monitor to the pps.
+		self.system.setPatientSupportMonitor(self.ppsMonitor)
 
 		"""
 		More GUI linking from System and Patient.
@@ -475,6 +486,10 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		self._isRTPOpen = True
 		self.environment.button['BEV1'].clicked.emit()
 		self.sidebar.linkPages('ImageProperties','bev1ImageProperties')
+
+	# def showMovement(self):
+		# Show a pop up with the current movements.
+		# movementWindow = QsWidgets.QMovementWindow()
 
 	def updateSettings(self,mode,origin,idx=0):
 		"""Update variable based of changed data in property model (in some cases, external sources)."""

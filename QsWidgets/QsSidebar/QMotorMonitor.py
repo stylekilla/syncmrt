@@ -2,15 +2,10 @@ from PyQt5 import QtWidgets, QtCore
 import logging
 
 class QMotorMonitor(QtWidgets.QWidget):
-	def __init__(self,monitor):
+	def __init__(self):
 		super().__init__()
 		# Dict of pv's that are being monitored.
 		self.motor = {}
-
-		# Create the monitor. This should be part of your backend system and should run on a separate thread.
-		self.monitor = monitor
-		# Signals and slots.
-		self.monitor.pvUpdated.connect(self.updatePV)
 
 		# Make a form layout for this wiget.
 		layout = QtWidgets.QFormLayout()
@@ -21,31 +16,37 @@ class QMotorMonitor(QtWidgets.QWidget):
 		layout.setFormAlignment(QtCore.Qt.AlignLeft)
 		self.setLayout(layout)
 
-	def addPV(self,pvName,displayName=''):
-		# Set the display name for the pv.
-		if displayName is not '':
-			name = str(displayName)
-		else:
-			name = str(pvName)
-
+	def addMotor(self,name,value='-'):
 		# Create a label for the value.
-		value = QtWidgets.QLabel('Not Connected')
+		self.motor[name] = QtWidgets.QLabel(value)
 		# Add the title and value to the layout.
-		self.layout().addRow("{}:".format(name),value)
-		# Save the widgets.
-		self.motor[pvName] = value
+		self.layout().addRow("{}:".format(name),self.motor[name])
+		logging.info("Adding motor {}".format(name))
 
-		# Add the pv to the monitor.
-		self.monitor.addPV(pvName,displayName)
+	def removeMotor(self,name=None):
+		if name is None:
+			# Remove all widgets.
+			for key in self.motor:
+				self.layout().removeRow(self.motor[key])
+			# Clear the dictionary.
+			self.motor.clear()
 
-	def removePV(self,pvName):
-		# Disconnect the PV from the monitor including all callbacks.
-		self.monitor.removePV(pvName)
-		# Remove wigets from layout.
-		self.layout().removeRow(self.motor[pvName])
-		# Remove from the dict.
-		del self.motor[pvName]
+		elif name in self.motor:
+			# Remove the singular widget.
+			self.layout().removeRow(self.motor[name])
+			del self.motor[name]
 
-	def updatePV(self,pvName,value):
+		else:
+			logging.warning("Motor {} not in list of active motor monitors.".format(name))
+
+	def newMotors(self,name,motors):
+		# Remove any existing motors.
+		self.removeMotor()
+		# Add each new motor.
+		for motor in motors:
+			self.addMotor(motor)
+
+	def updateMotor(self,name,value):
 		# Update the value label with the new value.
-		self.motor[pvName].setText("{:.3f}".format(value))
+		if name in self.motor:
+			self.motor[name].setText("{:.3f}".format(value))
