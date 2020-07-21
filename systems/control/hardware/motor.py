@@ -13,9 +13,10 @@ Should only use motor.read() and motor.write() methods.
 class motor(QtCore.QObject):
 	connected = QtCore.pyqtSignal()
 	disconnected = QtCore.pyqtSignal()
+	position = QtCore.pyqtSignal(float)
+	moveStarted = QtCore.pyqtSignal(float,float)
 	moveFinished = QtCore.pyqtSignal()
 	error = QtCore.pyqtSignal()
-	# finished = QtCore.pyqtSignal()
 
 	def __init__(self,
 				name,axis,order,
@@ -68,8 +69,10 @@ class motor(QtCore.QObject):
 		# Signals.
 		self._controller.connected.connect(self.connected.emit)
 		self._controller.disconnected.connect(self.disconnected.emit)
+		self._controller.position.connect(self.position.emit)
+		self._controller.moveStarted.connect(self.moveStarted.emit)
 		self._controller.moveFinished.connect(self.moveFinished.emit)
-
+		
 		logging.info("Loading motor {} on aixs {} with PV {}".format(name,axis,pv))
 
 	def isConnected(self):

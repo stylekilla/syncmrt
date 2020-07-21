@@ -59,6 +59,8 @@ class QSidebarList(QtWidgets.QTreeWidget):
 		# Add the widget to the placeholders (always in column 0).
 		self.setItemWidget(item,0,header)
 		self.setItemWidget(child,0,widget)
+		# Set it expanded by default.
+		self.expandItem(item)
 
 		# Signals and slots.
 		header.clicked.connect(partial(self.toggleSection,item))

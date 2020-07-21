@@ -1,12 +1,15 @@
 from systems.control.hardware.motor import motor
 from PyQt5 import QtCore, QtWidgets
 import numpy as np
+from functools import partial
 import logging
 
 class patientSupport(QtCore.QObject):
 	connected = QtCore.pyqtSignal(bool)
 	moving = QtCore.pyqtSignal()
+	motorMoving = QtCore.pyqtSignal(str,float)
 	finishedMove = QtCore.pyqtSignal()
+	newSupportSelected = QtCore.pyqtSignal(str,list)
 	error = QtCore.pyqtSignal()
 
 	def __init__(self,database,ui=None,backendThread=None):
@@ -31,6 +34,7 @@ class patientSupport(QtCore.QObject):
 		self._connectionStatus = False
 		# Save the backend thread (if any).
 		self.backendThread = backendThread
+
 		"""
 		Load the CSV dataset.
 		"""
@@ -59,8 +63,6 @@ class patientSupport(QtCore.QObject):
 			# Remove all existing motors.
 			for i in range(len(self.currentMotors)):
 				del self.currentMotors[-1]
-				# Remove the UI elements as well.
-				# self._ui.remove(self.currentMotors[-1].pv)
 
 			# Iterate over new motors.
 			for support in self.motors:
@@ -72,17 +74,13 @@ class patientSupport(QtCore.QObject):
 							int(support['Axis']),
 							int(support['Order']),
 							pv = support['PV Root'],
-							backendThread=self.backendThread
+							backendThread = self.backendThread
 						)
-
-					# Set a ui for the motor if we are doing that.
-					# if self._ui is not None:
-						# newMotor.setUi(self._ui)
-						# self._ui.addPV(newMotor.pv,support['Description'])
 
 					# Signals and slots.
 					newMotor.connected.connect(self._connectionMonitor)
 					newMotor.disconnected.connect(self._connectionMonitor)
+					newMotor.position.connect(partial(self.motorMoving.emit,newMotor.name))
 					newMotor.moveFinished.connect(self._finished)
 					newMotor.error.connect(self.error.emit)
 
@@ -90,15 +88,13 @@ class patientSupport(QtCore.QObject):
 					self.currentMotors.append(newMotor)
 
 			# Set the order of the list from 0-i.
-			self.currentMotors = sorted(self.currentMotors, key=lambda k: k._order) 
+			self.currentMotors = sorted(self.currentMotors, key=lambda k: k._order)
 			# Update the name details.
 			self.currentDevice = name
 			# Calibrate with no calibration offset. This can be recalculated later.
 			self.calibrate(np.array([0,0,0]))
-
-			# Update GUI.
-			# if self._ui is not None:
-				# self._ui.update()
+			# Emit a signal to say we've selected a new patient support.
+			self.newSupportSelected.emit(name,[x.name for x in self.currentMotors])
 
 	def isConnected(self):
 		# Return the connection status.
