@@ -64,7 +64,7 @@ class epicsMotor(QtCore.QObject):
 				)
 			)
 		# Add callback for positioning monitoring.
-		self.VAL.add_callback(self._positionMonitor)
+		self.RBV.add_callback(self._positionMonitor)
 
 	def _connectionMonitor(self,*args,**kwargs):
 		"""
