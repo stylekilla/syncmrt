@@ -6,11 +6,11 @@ import logging
 
 class patientSupport(QtCore.QObject):
 	connected = QtCore.pyqtSignal(bool)
-	moving = QtCore.pyqtSignal()
-	motorMoving = QtCore.pyqtSignal(str,float)
-	finishedMove = QtCore.pyqtSignal()
 	newSupportSelected = QtCore.pyqtSignal(str,list)
+	moving = QtCore.pyqtSignal()
+	finishedMove = QtCore.pyqtSignal(str)
 	error = QtCore.pyqtSignal()
+	motorMoving = QtCore.pyqtSignal(str,float)
 
 	def __init__(self,database,ui=None,backendThread=None):
 		super().__init__()
@@ -18,6 +18,8 @@ class patientSupport(QtCore.QObject):
 		self.currentDevice = None
 		self.currentMotors = []
 		self._dof = (0,[0,0,0,0,0,0])
+		# Current movement id.
+		self.uid = None
 		# A preloadable motion.
 		self._motion = None
 		# Stage size information.
@@ -122,9 +124,11 @@ class patientSupport(QtCore.QObject):
 			if motor._stage == 0:
 				self._size = np.add(self._size,motor._size)
 
-	def shiftPosition(self,position):
+	def shiftPosition(self,position,uid=None):
 		logging.info("Shifting position to {}".format(position))
 		# This is a relative position change.
+		# Set the uid.
+		self.uid = str(uid)
 		# Iterate through available motors.
 		for motor in self.currentMotors:
 			# Get position to move to for that motor.
@@ -134,9 +138,11 @@ class patientSupport(QtCore.QObject):
 			# Set position variable to 0 (if motor was successful).
 			position[(motor._axis + (3*motor._type))] = 0
 
-	def setPosition(self,position):
+	def setPosition(self,position,uid=None):
 		logging.info("Setting position to {}".format(position))
 		# This is a direct position change.
+		# Set the uid.
+		self.uid = str(uid)
 		# Iterate through available motors.
 		for motor in self.currentMotors:
 			# Get position to move to for that motor.
@@ -156,7 +162,10 @@ class patientSupport(QtCore.QObject):
 			self._counter = 0
 			# Send signal.
 			logging.debug("Emitting finished move.")
-			self.finishedMove.emit()
+			# Set the uid to none before sending out the signal.
+			uid = str(self.uid)
+			self.uid = None
+			self.finishedMove.emit(uid)
 
 	def position(self,idx=None):
 		# return the current position of the stage in Global XYZ.
@@ -179,7 +188,8 @@ class patientSupport(QtCore.QObject):
 	def calculateMotion(self,G,variables):
 		# We take in the 4x4 transformation matrix G, and a list of 6 parameters (3x translations, 3x rotations).
 		self._i += 1
-		if self._i > 10: return
+		if self._i > 10: 
+			return
 		# Create a transform for this stage, S.
 		print('\n'*3)
 		logging.info('Stage Name: {}'.format(self.currentDevice))

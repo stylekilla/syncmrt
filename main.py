@@ -109,7 +109,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		# Status Monitor.
 		self.statusMonitor = QsWidgets.QsSidebar.QStatusMonitor()
 		self.rightSidebar.addSection("Status Monitor",self.statusMonitor)
-		self.statusMonitor.addMonitor('Positioning Stage')
+		self.statusMonitor.addMonitor('Positioning Support')
 		self.statusMonitor.addMonitor('Imaging Detector')
 		# Property manager.
 		self.properties = QsWidgets.QsSidebar.QPropertyManager()
@@ -117,7 +117,6 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		# Stage Position Monitor.
 		self.ppsMonitor = QsWidgets.QsSidebar.QMotorMonitor()
 		self.rightSidebar.addSection("Positioning Stage",self.ppsMonitor)
-
 		# Create alignment table.
 		self.properties.addSection('Alignment')
 		self.properties.addVariable('Alignment',['Rotation','X','Y','Z'],[0,0,0])
@@ -133,6 +132,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		self.pbCollapseLogger = QtWidgets.QPushButton(icon,'')
 		self.pbCollapseLogger.setToolTip("Toggle Log Viewer")
 		self.pbCollapseLogger.setFlat(True)
+		self.pbCollapseLogger.setFixedWidth(22)
 		self.statusBar.addPermanentWidget(self.pbCollapseLogger)
 		self.pbCollapseLogger.clicked.connect(self.logger.toggleVisibility)
 
@@ -142,6 +142,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		self.pbCollapseSidebar = QtWidgets.QPushButton(icon,'')
 		self.pbCollapseSidebar.setToolTip("Toggle Properties Panel")
 		self.pbCollapseSidebar.setFlat(True)
+		self.pbCollapseSidebar.setFixedWidth(22)
 		self.pbCollapseSidebar.clicked.connect(self.rightSidebar.toggleVisibility)
 		self.statusBar.addPermanentWidget(self.pbCollapseSidebar)
 
@@ -154,7 +155,8 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		self._menuBar['load_syncplan'].triggered.connect(partial(self.openFiles,'syncplan'))
 		self._menuBar['load_ct'].triggered.connect(partial(self.openFiles,'ct'))
 		self._menuBar['load_rtplan'].triggered.connect(partial(self.openFiles,'rtp'))
-		self._menuBar['load_folder'].triggered.connect(partial(self.openFiles,'folder'))
+		# self._menuBar['load_folder'].triggered.connect(partial(self.openFiles,'folder'))
+		self._menuBar['load_folder'].triggered.connect(self.test)
 
 		# Switches.
 		self._isXrayOpen = False
@@ -184,6 +186,8 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		self.system.loadPatient(self.patient)
 		# Add a monitor to the pps.
 		self.system.setPatientSupportMonitor(self.ppsMonitor)
+		# Get signal for a new patient support move.
+		self.system.newMove.connect(self.showMovement)
 
 		"""
 		More GUI linking from System and Patient.
@@ -204,6 +208,9 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		# When the image mode changes tell the system.
 		self.sbImaging.imageModeChanged.connect(self.system.setImagingMode)
 
+	def test(self):
+		logging.critical("Running test function.")
+		self.system.movePatient([10,5,1,0,0,2.5],'absolute')
 
 	def newFile(self,modality):
 		if modality == 'xray':
@@ -487,9 +494,21 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		self.environment.button['BEV1'].clicked.emit()
 		self.sidebar.linkPages('ImageProperties','bev1ImageProperties')
 
-	# def showMovement(self):
+	def showMovement(self,uid):
+		logging.info("Show Movement UID: {}".format(uid))
+		# Get all the appropriate data. We assume since there is a move that there must be a patient support system connected.
+		device = self.system.patientSupport.currentDevice
+		motors = self.system.patientSupport.currentMotors
+
 		# Show a pop up with the current movements.
-		# movementWindow = QsWidgets.QMovementWindow()
+		self._movementWindow = QsWidgets.QMovementWindow(device,motors,uid)
+
+		# Setup.
+		# origin = self.system.get(uid)
+		destination = self.system.getPatientMove(uid)
+		# movements = self.system.get(uid)
+
+		self._movementWindow.show()
 
 	def updateSettings(self,mode,origin,idx=0):
 		"""Update variable based of changed data in property model (in some cases, external sources)."""
