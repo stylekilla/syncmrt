@@ -1,4 +1,5 @@
 from PyQt5 import QtWidgets, QtCore
+from .QsGeneric import QHLine
 from functools import partial
 import logging
 
@@ -30,7 +31,11 @@ class QMovementWindow(QtWidgets.QMainWindow):
 		# Widget holder.
 		self.motor = {}
 		# Set the device name as the header.
-		header = QtWidgets.QLabel("{} ({})".format(device,uid))
+		header = QtWidgets.QWidget()
+		headerLayout = QtWidgets.QVBoxLayout()
+		headerLayout.addWidget(QtWidgets.QLabel("{} ({})".format(device,uid)))
+		headerLayout.addWidget(QHLine())
+		header.setLayout(headerLayout)
 		# Add it to the layout.
 		layout.addWidget(header,1,1,1,3)
 		# Column headers.
@@ -52,13 +57,16 @@ class QMovementWindow(QtWidgets.QMainWindow):
 			# Add the widgets to the layout.
 			layout.addWidget(self.motor[motor.name][0],index+3,1)
 			layout.addWidget(self.motor[motor.name][1],index+3,2)
-			layout.addWidget(self.motor[motor.name][1],index+3,3)
+			layout.addWidget(self.motor[motor.name][2],index+3,3)
 			# Signals.
 			motor.position.connect(partial(self.updateMotorPosition,motor.name))
 			motor.moveFinished.connect(partial(self.motorFinished,motor.name))
 
 		centralWidget.setLayout(layout)
 		self.setCentralWidget(centralWidget)
+
+	def setDestination(self,destination):
+		pass
 
 	def updateMotorPosition(self,name):
 		# Set the stylesheet to say finished.
