@@ -12,6 +12,7 @@ class Brain(QtCore.QObject):
 	imagesAcquired = QtCore.pyqtSignal(int)
 	newImageSet = QtCore.pyqtSignal(str)
 	newMove = QtCore.pyqtSignal(str)
+	moveFinished = QtCore.pyqtSignal(str)
 
 	def __init__(self,patientSupports,detectors,config,**kwargs):
 		super().__init__()
@@ -86,9 +87,11 @@ class Brain(QtCore.QObject):
 
 	def _removePatientMove(self,uid):
 		logging.info("Removing Movement UID: {}".format(uid))
-		# Remove the uid froom the move list.
+		# Remove the uid from the move list.
 		if str(uid) in self._moveList:
 			del self._moveList[str(uid)]
+		# Emiting signal to say we have finish move.
+		self.moveFinished.emit(str(uid))
 
 	def calculateAlignment(self):
 		""" This is where the calculation magic happens. """
