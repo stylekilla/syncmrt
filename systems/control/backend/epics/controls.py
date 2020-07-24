@@ -60,7 +60,6 @@ class epicsMotor(QtCore.QObject):
 		# Add all the pv's.
 		self.pv = {}
 		for pv in MOTOR_PVS:
-			logging.warning("Adding PV {} to {}".format(pv,pvName))
 			setattr(self,pv,epics.PV("{}.{}".format(self.pvBase,pv),
 				auto_monitor=True,
 				connection_callback=self._connectionMonitor

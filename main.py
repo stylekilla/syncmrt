@@ -505,8 +505,9 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 
 		# Setup.
 		# origin = self.system.get(uid)
-		destination = self.system.getPatientMove(uid)
 		# movements = self.system.get(uid)
+		destination = self.system.getPatientMove(uid)
+		self._movementWindow.setDestination(destination)
 
 		self._movementWindow.show()
 
