@@ -51,6 +51,8 @@ class epicsMotor(QtCore.QObject):
 
 	def __init__(self,pvName):
 		super().__init__()
+		# Flag for init completion. Without this, callbacks will run before we've finished setting up and it will crash.
+		self._initComplete = False
 		# Save the pv base.
 		self.pvBase = pvName
 		# Initialisation vars.
@@ -58,6 +60,7 @@ class epicsMotor(QtCore.QObject):
 		# Add all the pv's.
 		self.pv = {}
 		for pv in MOTOR_PVS:
+			logging.warning("Adding PV {} to {}".format(pv,pvName))
 			setattr(self,pv,epics.PV("{}.{}".format(self.pvBase,pv),
 				auto_monitor=True,
 				connection_callback=self._connectionMonitor
@@ -65,6 +68,8 @@ class epicsMotor(QtCore.QObject):
 			)
 		# Add callback for positioning monitoring.
 		self.RBV.add_callback(self._positionMonitor)
+		# Flag for init completion.
+		self._initComplete = True
 
 	def _connectionMonitor(self,*args,**kwargs):
 		"""
@@ -72,6 +77,10 @@ class epicsMotor(QtCore.QObject):
 		All PV's must be connected in order for the device to be considered connected.
 		If any PV in the device is disconnected, the whole device is demmed disconnected.
 		"""
+		if not self._initComplete:
+			# We haven't finished setting up the motor yet, don't do anything.
+			return
+
 		if ('pvname' in kwargs) and ('conn' in kwargs):
 			# Update the device connection state (by testing all the devices pv's connection states).
 			teststate = [kwargs['conn']]
