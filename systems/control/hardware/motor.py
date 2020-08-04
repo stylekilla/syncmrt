@@ -1,5 +1,5 @@
 from tools import math
-from systems.control.backend.epics import controls
+from systems.control.backend import epics
 from PyQt5 import QtCore
 import numpy as np
 import logging
@@ -62,7 +62,7 @@ class motor(QtCore.QObject):
 		# self._ui = None
 
 		# Backend Controller.
-		self._controller = controls.epicsMotor(self.pv)
+		self._controller = epics.motor(self.pv)
 		# Move to thread if specified.
 		if backendThread is not None:
 			self._controller.moveToThread(backendThread)
