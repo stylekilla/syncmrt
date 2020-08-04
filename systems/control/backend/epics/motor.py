@@ -10,6 +10,8 @@ the connection state of the pv's/device etc.
 Therefore, we implement all that functionality ourselves.
 """
 
+__all__ = ['motor']
+
 MOTOR_PVS = [
 	'VAL', 'DESC', 'RBV', 'PREC', 'DMOV',
 	'BDST', 'BACC', 'BVEL',
@@ -38,7 +40,7 @@ class MotorLimitException(Exception):
 		logging.debug(self.msg)
 		return str(self.msg)
 
-class epicsMotor(QtCore.QObject):
+class motor(QtCore.QObject):
 	"""
 	If the motor driver can't do anything, it raises an exception MotorException.
 	The caller function should attempt to catch this in the event something goes wrong.
@@ -163,91 +165,22 @@ class epicsMotor(QtCore.QObject):
 
 		self.moveFinished.emit()
 
-# class epicsDetector(QtCore.QObject):
-# 	"""
-# 	If the motor driver can't do anything, it raises an exception MotorException.
-# 	The caller function should attempt to catch this in the event something goes wrong.
-# 	"""
-# 	connected = QtCore.pyqtSignal()
-# 	disconnected = QtCore.pyqtSignal()
-# 	# moveFinished = QtCore.pyqtSignal(bool)
+class epicsDetector(QtCore.QObject):
+	"""
+	If the motor driver can't do anything, it raises an exception MotorException.
+	The caller function should attempt to catch this in the event something goes wrong.
+	"""
+	connected = QtCore.pyqtSignal()
+	disconnected = QtCore.pyqtSignal()
+	frameAcquired = QtCore.pyqtSignal()
 
-# 	def __init__(self,pvName):
-# 		super().__init__()
-# 		# Save the pv base.
-# 		self.pvBase = pvName
-# 		# Initialisation vars.
-# 		self._connectionStatus = True
-# 		# Add all the pv's.
-# 		self.pv = {}
-# 		for pv in MOTOR_PVS:
-# 			setattr(self,pv,epics.PV("{}.{}".format(self.pvBase,pv),auto_monitor=True,connection_callback=self._connectionMonitor))
-
-
-
-class detector(QtCore.QObject):
-	def __init__(self,pv):
-		# Initialise the thread.
+	def __init__(self,pvName):
 		super().__init__()
-		# PV Base.
-		self._pv = pv
-		# PV vars.
+		# Save the pv base.
+		self.pvBase = pvName
+		# Initialisation vars.
+		self._connectionStatus = True
+		# Add all the pv's.
 		self.pv = {}
-		# Connection status per motor.
-		self._connected = {}
-		# Connect the PV's
-		self._connectPVs()
-
-	def _connectPVs(self):
-		# Record PV root information and connect to motors.
-		self.pv['CAM:Acquire'] = epics.PV(self._pv+':CAM:Acquire',connection_callback=self._updateConnectionStatus)
-		self.pv['CAM:DataType_RBV'] = epics.PV(self._pv+':CAM:DataType_RBV',connection_callback=self._updateConnectionStatus)
-		self.pv['IMAGE:ArrayData'] = epics.PV(self._pv+':IMAGE:ArrayData',connection_callback=self._updateConnectionStatus)
-		# self.pv['IMAGE:ArraySize0_RBV'] = epics.PV(self._pv+':IMAGE:ArraySize0_RBV',connection_timeout=1)
-		# self.pv['IMAGE:ArraySize1_RBV'] = epics.PV(self._pv+':IMAGE:ArraySize1_RBV',connection_timeout=1)
-
-		# Connection status per motor. Set to false by default.
-		for pv in self.pv.values():
-			self._connected[pv.pvname] = False
-
-	def reconnect(self):
-		# Reconnect the pv's.
-		for pv in self.pv.values():
-			pv.reconnect()
-		# Return if they are now connected or not.
-		connected = self.isConnected()
-		return connected
-
-	def _updateConnectionStatus(self,pvname,conn,*args,**kwargs):
-		# Update connection status per PV.
-		self._connected[pvname] = conn
-
-	def isConnected(self):
-		# Return True or False for if all the PV's are connected or not.
-		return all(self._connected.values())
-
-	def readImage(self):
-		if self.isConnected():
-			# self.pv['CAM:Acquire'].put(1,wait=True)
-			# im = self.pv['IMAGE:ArrayData'].get()
-			# try:
-			# 	image = np.array(im,dtype='uint16')
-			# except:
-			# 	logging.error("Tried to get image from RUBY. Instead got {}".format(im))
-			# 	# Try again.
-			# 	image = np.array(im,dtype='uint16')
-			image = None
-			while image is None:
-				logging.critical("epics wait=True for hamapapa times out...")
-				self.pv['CAM:Acquire'].put(1,wait=False)
-				# self.pv['CAM:Acquire'].put(1,wait=True)
-				time.sleep(1)
-				image = self.pv['IMAGE:ArrayData'].get()
-
-			# x = self.pv['IMAGE:ArraySize1_RBV'].get()
-			# y = self.pv['IMAGE:ArraySize0_RBV'].get()
-			# logging.info("Flipping RUBY images because it is retarded.")
-			# return np.fliplr(np.flipud(image.reshape(x,y)))
-			return image.reshape(616,1216)
-		else:
-			return None
+		for pv in DETECTOR_PVS:
+			setattr(self,pv,epics.PV("{}.{}".format(self.pvBase,pv),auto_monitor=True,connection_callback=self._connectionMonitor))™

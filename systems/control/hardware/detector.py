@@ -1,5 +1,5 @@
 import epics
-from systems.control.backend.epics import controls
+from systems.control.backend import epics
 from PyQt5 import QtCore, QtWidgets
 import logging
 import numpy as np
@@ -24,7 +24,7 @@ class detector(QtCore.QObject):
 		# Make a buffer.
 		self.buffer = []
 		# Controllers.
-		self._controller = controls.detector(pv)
+		self._controller = epics.detector(pv)
 		# Setup.
 		# logging.critical("Turning off detector setup for development.")
 		self.setup()
