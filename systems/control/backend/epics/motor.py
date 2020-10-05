@@ -183,4 +183,4 @@ class epicsDetector(QtCore.QObject):
 		# Add all the pv's.
 		self.pv = {}
 		for pv in DETECTOR_PVS:
-			setattr(self,pv,epics.PV("{}.{}".format(self.pvBase,pv),auto_monitor=True,connection_callback=self._connectionMonitor))™
+			setattr(self,pv,epics.PV("{}.{}".format(self.pvBase,pv),auto_monitor=True,connection_callback=self._connectionMonitor))
