@@ -144,7 +144,7 @@ def checkDicomModality(dataset,modality):
 class ct(QtCore.QObject):
 	newCtView = QtCore.pyqtSignal()
 
-	def __init__(self,dataset,gpu):
+	def __init__(self,dataset,gpu=None):
 		super().__init__()
 		# Hold a reference to the gpu instance.
 		self.gpu = gpu
@@ -152,7 +152,7 @@ class ct(QtCore.QObject):
 		# Check that the dataset is indeed a DICOM CT dataset.
 		dataset = checkDicomModality(dataset,'CT')
 
-		if len(dataset) is 0:
+		if len(dataset) == 0:
 			# If the dataset has no CT files, then exit this function.
 			return
 		else:
@@ -219,15 +219,17 @@ class ct(QtCore.QObject):
 		# self.zeroIndex = np.linalg.inv(self.M)@np.array([0,0,0,1])
 
 		# Load array onto GPU for future reference.
-		self.gpu.loadData(self.pixelArray)
+		if self.gpu is not None:
+			self.gpu.loadData(self.pixelArray)
 		# Create a 2d image list for plotting.
 		self.image = [Image2d(),Image2d()]
 
 		# Create an isocenter for treatment if desired. This must be in DICOM XYZ.
 		self.isocenter = None
 
-		# Set the default.
-		self.calculateView('AP')
+		if self.gpu is not None:
+			# Set the default.
+			self.calculateView('AP')
 
 	def calculateView(self,view,roi=None,flatteningMethod='sum'):
 		""" Rotate the CT array for a new view of the dataset. """
