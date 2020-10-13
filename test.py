@@ -2,8 +2,11 @@ import numpy as np
 from matplotlib import pyplot as plt
 import imageio
 import pydicom as dicom
+import logging
 import os
 
+# Logging.
+logging.basicConfig(format="%(levelname)-8s [%(filename)s:%(lineno)d] %(message)s",level=logging.INFO)
 # Pretty Numpy Printing.
 np.set_printoptions(precision=3,suppress=True)
 

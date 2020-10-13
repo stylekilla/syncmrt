@@ -45,7 +45,7 @@ class gpu:
 		""" Return a list of references to new memory objects. """
 		buffers = []
 		for i in range(amount):
-			buffer.append( cl.Buffer(context, mf.READ_WRITE, size=size) )
+			buffers.append( cl.Buffer(context, cl.mem_flags.READ_WRITE, size=size) )
 		return buffers
 
 	def findFeaturesSIFT(self,array):
@@ -62,6 +62,7 @@ class gpu:
 		# Variable inputs:
 		sigma = 1.0
 		lowerDataThreshold = 0.0
+		contrastRejectionThreshold = 0.03
 
 		# Fixed inputs:
 		# Number of octaves = 3
@@ -88,23 +89,40 @@ class gpu:
 		"""
 		# Memory overhead.
 		octavesShape = [array.shape, tuple(np.array(np.array(array.shape)/2,dtype=int)), tuple(np.array(np.array(array.shape)/4,dtype=int))]
-		octavesSize = [array.size, int(array.size/2), int(array.size/4)]
+		subSamplingFactors = [1,2,4]
 		octaveScaleImages = [
-			_generateDeviceMemoryObjects(context,octaveSize[0],nScaleLevels),
-			_generateDeviceMemoryObjects(context,octaveSize[1],nScaleLevels),
-			_generateDeviceMemoryObjects(context,octaveSize[2],nScaleLevels)
+			self._generateDeviceMemoryObjects(self.ctx_gpu,int(array.nbytes/subSamplingFactors[0]),nScaleLevels),
+			self._generateDeviceMemoryObjects(self.ctx_gpu,int(array.nbytes/subSamplingFactors[1]),nScaleLevels),
+			self._generateDeviceMemoryObjects(self.ctx_gpu,int(array.nbytes/subSamplingFactors[2]),nScaleLevels)
 		]
 		octaveDogImages = [
-			_generateDeviceMemoryObjects(context,octaveSize[0],nScaleLevels-1),
-			_generateDeviceMemoryObjects(context,octaveSize[1],nScaleLevels-1),
-			_generateDeviceMemoryObjects(context,octaveSize[2],nScaleLevels-1)
+			self._generateDeviceMemoryObjects(self.ctx_gpu,int(array.nbytes/subSamplingFactors[0]),nScaleLevels),
+			self._generateDeviceMemoryObjects(self.ctx_gpu,int(array.nbytes/subSamplingFactors[1]),nScaleLevels),
+			self._generateDeviceMemoryObjects(self.ctx_gpu,int(array.nbytes/subSamplingFactors[2]),nScaleLevels)
 		]
 
 		# Iterate over all octaves and scales.
-		for scaleImage,dogImage,kernelShape in zip(octaveScaleImages,octaveDogImages,octavesShape):
+		for scaleImage,dogImage,kernelShape,subSamplingFactor in zip(octaveScaleImages,octaveDogImages,octavesShape,subSamplingFactors):
+			logging.info("Starting calculations for Octave {}.".format(subSamplingFactors.index(subSamplingFactor)+1))
 			# We are now on a per-octave level.
+			# If our octave requires resampling, do it.
+			if subSamplingFactor > 1:
+				logging.info("Subsampling array at {} intervals.".format(subSamplingFactor))
+				imageArray = cl.Buffer(self.ctx_gpu, mf.READ_WRITE, size=int(array.nbytes/subSamplingFactor))
+				# Program args.
+				args = (
+					gArray,
+					imageArray,
+					cl.cltypes.int(subSamplingFactor)
+				)
+				# Run the program
+				program.SubSample(self.queue_gpu,kernelShape,None,*(args))
+			else:
+				# Otherwise, just pass the original data on.
+				imageArray = gArray
 			# Calculate scale images.
 			for i in range(nScaleLevels):
+				logging.info("Calculating Scale Image {}.".format(i+1))
 				# We are now on a per-buffer level within an octave.
 				gScaleImage = scaleImage[i]
 				# Scale, k, should start at 1, not 0.
@@ -130,47 +148,137 @@ class gpu:
 				program.Gaussian2D(self.queue_gpu,kernelShape,None,*(args))
 			# Calculate Difference of Gaussian.
 			for i,j in zip(range(0,nScaleLevels-1),range(1,nScaleLevels)):
+				logging.info("Calculating Difference of Gaussian between scale images {} and {}.".format(i+1,j+1))
 				# Grab pairs of octaves and a dog image to fill in.
 				args = (
 					scaleImage[i],
 					scaleImage[j],
-					dogImage
+					dogImage[i]
 				)
 				program.Difference(self.queue_gpu,kernelShape,None,*(args))				
 
-		"""
-		STEP 2: Locate stable local extrema positions.
-		"""
+			"""
+			STEP 2: Locate stable local extrema positions.
+			"""
+			# Create features map.
+			features = np.zeros(array.shape,dtype=cl.cltypes.int)
+			gFeatures = cl.Buffer(self.ctx_gpu, mf.READ_WRITE | mf.COPY_HOST_PTR, hostbuf=features)
+			# For each Dog map, find the local minima and maxima.
+			for i in range(1,nScaleLevels-2):
+				logging.info("Finding local extrema in DoG Images {} to {}.".format(i,i+2))
+				gDog1 = dogImage[i-1]
+				gDog2 = dogImage[i]
+				gDog3 = dogImage[i+1]
+				# Program args.
+				args = (
+					gDog1,
+					gDog2,
+					gDog3,
+					cl.cltypes.int(i+1),
+					gFeatures
+				)
+				# These will write the scale factor, s, at the xy position in which the extrema was found.
+				program.FindLocalMinima(self.queue_gpu,kernelShape,None,*(args))
+				program.FindLocalMaxima(self.queue_gpu,kernelShape,None,*(args))
 
-		# Find local extrema in DoG's.
-		gExtrema = cl.Buffer(self.ctx_gpu, mf.READ_WRITE, size=array.size)
-		for i in range(1,len(octave1dog)-1):
-			gArray1 = octave1dog[i-1]
-			gArray2 = octave1dog[i]
-			gArray3 = octave1dog[i+1]
-			# Program args.
+			# This is probably the biggest time suck.
+			logging.info("Refining local extrema positions with sub-pixel precision.")
+			# Bring back our list of features.
+			cl.enqueue_copy(self.queue_gpu, features, gFeatures)
+			# Find out how many features there were.
+			x,y = np.nonzero(features)
+			scale = features[tuple([x,y])]
+			# Now make a new array to house those features as (x,y,sigma) coordinates.
+			featureList = np.array(list(zip(x,y,scale)),dtype=cl.cltypes.float)
+			# Find out how many features there are.
+			nFeatures = len(x)
+			# Assign gpu memory for the featurelist. This will be the main call of our kernel.
+			gFeatureList = cl.Buffer(self.ctx_gpu, mf.READ_WRITE | mf.COPY_HOST_PTR, hostbuf=featureList)
+			# We also need to pass the kernel information on how big the images are. For each octave this has been previously described as kernelShape.
+			imageSize = np.array(kernelShape,dtype=cl.cltypes.int)
+			gImageSize = cl.Buffer(self.ctx_gpu, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=imageSize)
+			# Now we want to refine the local positions with sub-pixel accuracy and identify the stable features.
 			args = (
-				gArray1,
-				gArray2,
-				gArray3,
-				i,
-				gExtrema
+				gFeatureList,
+				gImageSize,
+				cl.cltypes.float(contrastRejectionThreshold),
+				dogImage[0],
+				dogImage[1],
+				dogImage[2],
+				dogImage[3],
+				dogImage[4]
 			)
-			program.FindLocalMinima(self.queue_gpu,array.shape,None,*(args))
-			program.FindLocalMaxima(self.queue_gpu,array.shape,None,*(args))
-			program.RefineLocalPositions(self.queue_gpu,array.shape,None,*(args))
-			program.LocateStableFeatures(self.queue_gpu,array.shape,None,*(args))
-			program.GenerateDescriptors(self.queue_gpu,array.shape,None,*(args))
+			program.LocateStableFeatures(self.queue_gpu,(nFeatures,),None,*(args)) 
+
+			# # Bring back our list of stable features.
+			# cl.enqueue_copy(self.queue_gpu, featureList, gFeatureList)
+			# # Reshape it into a (n,3) array.
+			# featureList = featureList.reshape(nFeatures,3)
+			# # Reduce the feature list into valid components. Remove everything set to (0,0,0).
+			# mask = np.all(featureList>0,axis=1)
+			# featureList = featureList[mask]
+			# # Find out how many features there are in the reduced list.
+			# nFeatures = len(featureList[mask])
+			# # Make a descriptors array that is (n,2 + {4*4*8}). That is (x,y,4x4x8 descriptor array).
+			# descriptors = np.zeros((nFeatures,130),dtype=cl.cltypes.float)
+			# # Assign the known information to the descriptors (x,y,sigma).
+			# descriptors[:,:3] = featureList
+			# # Copy it to the gpu.
+			# gDescriptors = cl.Buffer(self.ctx_gpu, mf.READ_WRITE | mf.COPY_HOST_PTR, hostbuf=descriptors)
+
+			# Before we build our descriptors, we need a gradient map of (m,theta) for each point in the image.
+			# Gradient maps are an (m,n,2) array). Their size is the shape product times the cl datatype.
+			nbytes = np.prod(kernelShape) * np.dtype(cl.cltypes.float2).itemsize
+			gradientMaps = self._generateDeviceMemoryObjects(self.ctx_gpu,nbytes,nScaleLevels)
+			for idx in range(nScaleLevels):
+				args = (
+					scaleImage[idx],
+					gradientMaps[idx]
+				)
+				program.GenerateGradientMap(self.queue_gpu,kernelShape,None,*(args))
+			exit()
+			# To generate descriptors, we need the features and the scale.
+			args = (
+				gDescriptors,
+				gImageSize,
+				scaleImage[0],
+				scaleImage[1],
+				scaleImage[2],
+				scaleImage[3],
+				scaleImage[4],
+				scaleImage[5]
+			)
+			# Generate the descriptors for the stable features.
+			program.GenerateDescriptors(self.queue_gpu,(nFeatures,),None,*(args))
 
 
-		# Remove low contrast extrema.
-		# https://dsp.stackexchange.com/questions/10403/sift-taylor-expansion
-		# https://math.stackexchange.com/questions/302160/correct-way-to-calculate-numeric-derivative-in-discrete-time
+		"""
+		Comments
+		--------
+		-	I am unsure whether it is useful to allocate memory to the GPU for this and just re-use it and if it is bigger than needed then so be it ...
+			... or whether it is useful to copy down, assess and then allocate more memory as we go.
+			+	I think memory allocation is expensive and time consuming. So maybe it is better to initialise the data first and then just reduce how much of it we use.
+		-	I think I need to re-visit scale, k*sigma where k = 2^(1/s).
+		-	The Gradient and Orientation assignment could be done by re-using the DoG memory?
+		- 	Is it better to do Grad and Ori assignment for each point or pre-compute it for an entire array?
 
-		# Eliminate edge responses.
+		References used
+		---------------
+		2D Implenetation:
+			https://dsp.stackexchange.com/questions/10403/sift-taylor-expansion
+			https://math.stackexchange.com/questions/302160/correct-way-to-calculate-numeric-derivative-in-discrete-time
+			http://vnit.ac.in/ece/wp-content/uploads/2019/10/lecture10_1.pdf
+			https://robo.fish/wiki/images/5/58/Image_Features_From_Scale_Invariant_Keypoints_Lowe_2004.pdf
+		3D Implementation:
+			Allaire, S., Kim, J. J., Breen, S. L., Jaffray, D. A., & Pekar, V. (2008). Full orientation invarlance and improved feature selectivity of 3D SIFT with application to medical image analysis. 2008 IEEE Computer Society Conference on Computer Vision and Pattern Recognition Workshops, CVPR Workshops. https://doi.org/10.1109/CVPRW.2008.4563023
+		"""
 
 		return None
 
 	def SIFT3D(self,array):
 		# Array will be signed two's complement 16-bit integer.
-		array = np.ascontiguousarray(array,dtype=cl.cltypes.short)
+		# array = np.ascontiguousarray(array,dtype=cl.cltypes.short)
+
+		logging.warning("Not implemented yet, doing nothing.")
+
+		return None
