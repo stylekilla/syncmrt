@@ -123,12 +123,12 @@ class Imager(QtCore.QObject):
 		metadata.update(_data[1])
 		image = _data[0]
 		# Calculate the extent.
-		if index == 1:
-			l = self.detector.imageIsocenter[1]*self.detector.pixelSize[1]
-			r = l - image.shape[1]*self.detector.pixelSize[1]
-		elif index == 2:
-			l = -self.detector.imageIsocenter[1]*self.detector.pixelSize[1]
-			r = l + image.shape[1]*self.detector.pixelSize[1]
+		# if index == 1:
+			# l = self.detector.imageIsocenter[1]*self.detector.pixelSize[1]
+			# r = l - image.shape[1]*self.detector.pixelSize[1]
+		# elif index == 2:
+		l = -self.detector.imageIsocenter[1]*self.detector.pixelSize[1]
+		r = l + image.shape[1]*self.detector.pixelSize[1]
 		t = self.detector.imageIsocenter[0]*self.detector.pixelSize[0]
 		b = t - image.shape[0]*self.detector.pixelSize[0]
 		extent = (l,r,b,t)
@@ -166,9 +166,9 @@ class Imager(QtCore.QObject):
 			logging.warning("Cannot acquire x-rays when there is no HDF5 file.")
 			return None
 		# Define the region of interest.
-		t = int(self.detector.imageIsocenter[1] - (beamHeight/self.detector.pixelSize[1])/2)
-		b = int(self.detector.imageIsocenter[1] + (beamHeight/self.detector.pixelSize[1])/2)
-		logging.critical("Top and bottom indexes of array are: {}t {}b.".format(t,b))
+		t = int(self.detector.imageIsocenter[0] - (beamHeight/self.detector.pixelSize[0])/2)
+		b = int(self.detector.imageIsocenter[0] + (beamHeight/self.detector.pixelSize[0])/2)
+		logging.debug("Top and bottom indexes of array are: {}t {}b.".format(t,b))
 		# Get the image ROI and add it to the stitch buffer.
 		self._stitchBuffer.append(list(self.detector.acquire()))
 		self._stitchBuffer[-1][0] = self._stitchBuffer[-1][0][t:b,:]
@@ -198,7 +198,7 @@ class Imager(QtCore.QObject):
 		self.detector.setParameters(kwargs)
 
 
-	def stitch(self,index,metadata,z,z1,z2):
+	def stitch(self,index,metadata,z1,z2):
 		"""
 		The `imager._stitchBuffer` is stitched together and the complete image is sent to the `imager.buffer` along with its finalised metadata.
 		Stitching assumes the middle of the beam window is the middle of the beam. No offset.
@@ -206,7 +206,7 @@ class Imager(QtCore.QObject):
 		Parameters
 		----------
 		index : int
-			Index of the image to be stitched.
+			Index of the image to be stitched (1 or 2).
 		metadata : dict
 			The metadata of the image to be included in the HDF5 file as image attributes.
 		z : float
@@ -215,13 +215,11 @@ class Imager(QtCore.QObject):
 			The top position of the patient at the start of imaging.
 		z2 : float
 			The bottom position of the patient at the end imaging.
-		# tz : list
-			# The range of vertical movement as `[-tz,+tz]` relative to the pre-imaging position `z`.
 		"""
 		# Metadata
 		finish = self._stitchBuffer[-1][1]
 		metadata.update(finish)
-		logging.critical("The pre-imaging height position is {} ({}, {})".format(z,z1,z2))
+		logging.critical("Stitching image {}. The pre-imaging height positions are [{}, {}]".format(index,z1,z2))
 
 		# Stitch the image.
 		image = self._stitchBuffer[0][0]
@@ -232,11 +230,10 @@ class Imager(QtCore.QObject):
 		logging.critical("Extent calculation for stitching is currently wrong. Unfinished")
 		l = (image.shape[1]/2)*self.detector.pixelSize[1]
 		r = -(image.shape[1]/2)*self.detector.pixelSize[1]
-		# t = z + tz[1] + 0.5*self._stitchBuffer[0][0].shape[0]*self.detector.pixelSize[0]
-		# b = z + tz[0] - 0.5*self._stitchBuffer[0][0].shape[0]*self.detector.pixelSize[0]
-		t = z1 - z + 0.5*self._stitchBuffer[0][0].shape[0]*self.detector.pixelSize[0]
-		b = -(z - z2) - 0.5*self._stitchBuffer[0][0].shape[0]*self.detector.pixelSize[0]
+		t = z2 + 0.5*self._stitchBuffer[0][0].shape[0]*self.detector.pixelSize[0]
+		b = z1 - 0.5*self._stitchBuffer[0][0].shape[0]*self.detector.pixelSize[0]
 		extent = (l,r,b,t)
+		print(extent)
 		# Add the transformation matrix into the images frame of reference.
 		# Imagers FOR is a RH-CS where +x propagates down the beamline.
 		M = np.identity(3)
