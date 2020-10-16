@@ -139,9 +139,9 @@ class motor:
 				oldPosition = self.read()
 				predictedPosition = float(value)
 				if self.checkAbsLimit(value):
-					self.pv['VAL'].put(float(value))
+					self.pv['VAL'].put(float(value),wait=True)
 				else:
-					logging.error("Cannot move {} to {} - motorlimit will be reached.\nH.Lim:{}\tL.Lim:{}".format(self.pv['DESC'].get(),value,self.pv['HLM'].get(),self.pv['LLM'].get()))
+					# logging.error("Cannot move {} to {} - motorlimit will be reached.\nH.Lim:{}\tL.Lim:{}".format(self.pv['DESC'].get(),value,self.pv['HLM'].get(),self.pv['LLM'].get()))
 					return
 		elif mode=='relative':
 			if self.pv['TWV']:
@@ -152,14 +152,14 @@ class motor:
 					self.pv['TWV'].put(float(np.absolute(value)))
 					if value < 0:
 						# Negative direction
-						self.pv['TWR'].put(1)
+						self.pv['TWR'].put(1,wait=True)
 					elif value > 0:
-						self.pv['TWF'].put(1)
+						self.pv['TWF'].put(1,wait=True)
 					else:
 						# Do nothing.
 						pass
 				else: 
-					logging.error("Cannot move {} by {} - motorlimit will be reached.\nH.Lim:{}\tL.Lim:{}".format(self.pv['DESC'].get(),value,self.pv['HLM'].get(),self.pv['LLM'].get()))
+					# logging.error("Cannot move {} by {} - motorlimit will be reached.\nH.Lim:{}\tL.Lim:{}".format(self.pv['DESC'].get(),value,self.pv['HLM'].get(),self.pv['LLM'].get()))
 					return
 		# Give epics 100ms to get the command to the motor.
 		time.sleep(0.2)
@@ -175,15 +175,15 @@ class motor:
 		BDST=self.pv['BDST'].get()
 
 		while (abs(newPosition-predictedPosition) > BDST) and (retryCounter < maxRetrties): 
-			logging.error("Motor {} did not move to {}. Retry #{} of {}.".format(self.pv['DESC'].get(), predictedPosition,retryCounter + 1, maxRetrties))
+			# logging.error("Motor {} did not move to {}. Retry #{} of {}.".format(self.pv['DESC'].get(), predictedPosition,retryCounter + 1, maxRetrties))
 			self.pv['VAL'].put(predictedPosition)
 			time.sleep(0.2)
 			while self.pv['DMOV'].get() == 0:
 				pass
 			retryCounter+=1
 			newPosition=self.read()
-		if (newPosition != predictedPosition) and (retryCounter == maxRetrties):
-			logging.error("Was unable to complete the movement after {} tries.".format(maxRetrties))
+		# if (newPosition != predictedPosition) and (retryCounter == maxRetrties):
+			# logging.error("Was unable to complete the movement after {} tries.".format(maxRetrties))
 		return
 
 	def checkAbsLimit(self,value):
@@ -209,8 +209,8 @@ class detector:
 		self.pv['CAM:Acquire'] = None
 		self.pv['CAM:DataType_RBV'] = None
 		self.pv['IMAGE:ArrayData'] = None
-		# self.pv['IMAGE:ArraySize0_RBV'] = None
-		# self.pv['IMAGE:ArraySize0_RBV'] = None
+		self.pv['IMAGE:ArraySize0_RBV'] = None
+		self.pv['IMAGE:ArraySize0_RBV'] = None
 		# Set to False to start.
 		self._connected = False
 		# Connect the PV's
@@ -220,9 +220,10 @@ class detector:
 		# Record PV root information and connect to motors.
 		self.pv['CAM:Acquire'] = epics.PV(self._pv+':CAM:Acquire',connection_timeout=1)
 		self.pv['CAM:DataType_RBV'] = epics.PV(self._pv+':CAM:DataType_RBV',connection_timeout=1)
+		self.pv['CAM:AcquirePeriod_RBV'] = epics.PV(self._pv+':CAM:AcquirePeriod_RBV',connection_timeout=1)
 		self.pv['IMAGE:ArrayData'] = epics.PV(self._pv+':IMAGE:ArrayData',connection_timeout=1)
-		# self.pv['IMAGE:ArraySize0_RBV'] = epics.PV(self._pv+':IMAGE:ArraySize0_RBV',connection_timeout=1)
-		# self.pv['IMAGE:ArraySize1_RBV'] = epics.PV(self._pv+':IMAGE:ArraySize1_RBV',connection_timeout=1)
+		self.pv['IMAGE:ArraySize0_RBV'] = epics.PV(self._pv+':IMAGE:ArraySize0_RBV',connection_timeout=1)
+		self.pv['IMAGE:ArraySize1_RBV'] = epics.PV(self._pv+':IMAGE:ArraySize1_RBV',connection_timeout=1)
 		# Connections.
 		state = []
 		for key in self.pv.keys():
@@ -242,23 +243,13 @@ class detector:
 		if self._connected is False:
 			return None
 		else:
-			# self.pv['CAM:Acquire'].put(1)
-			# im = self.pv['IMAGE:ArrayData'].get()
-			# try:
-			# 	image = np.array(im,dtype='uint16')
-			# except:
-			# 	logging.error("Tried to get image from RUBY. Instead got {}".format(im))
-			# 	# Try again.
-			# 	image = np.array(im,dtype='uint16')
-			image = None
-			while image is None:
-				logging.critical("epics wait=True for hamapapa times out...")
-				self.pv['CAM:Acquire'].put(1,wait=False)
-				time.sleep(1)
-				image = self.pv['IMAGE:ArrayData'].get()
-
-			# x = self.pv['IMAGE:ArraySize1_RBV'].get()
-			# y = self.pv['IMAGE:ArraySize0_RBV'].get()
-			# logging.info("Flipping RUBY images because it is retarded.")
+			# Tell the detector to acquire.
+			self.pv['CAM:Acquire'].put(1,wait=True)
+			# Sleep for the acquisition period.
+			image = self.pv['IMAGE:ArrayData'].get()
+			# Grab image shape.
+			x = self.pv['IMAGE:ArraySize1_RBV'].get()
+			y = self.pv['IMAGE:ArraySize0_RBV'].get()
+			logging.info("Flipping RUBY images because it is retarded.")
+			return np.flipud(image.reshape(x,y))
 			# return np.fliplr(np.flipud(image.reshape(x,y)))
-			return image.reshape(616,1216)

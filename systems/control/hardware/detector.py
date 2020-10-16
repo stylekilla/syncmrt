@@ -36,13 +36,9 @@ class detector(QtCore.QObject):
 	def setup(self):
 		if self._controller._connected:
 			epics.caput(self.pv+':CAM:ImageMode','Single')
-			epics.caput(self.pv+':CAM:AcquireTime',.1)
-			epics.caput(self.pv+':CAM:AcquirePeriod',0)
+			epics.caput(self.pv+':CAM:AcquireTime',0.1)
+			epics.caput(self.pv+':CAM:AcquirePeriod',0.2)
 			epics.caput(self.pv+':TIFF:AutoSave','No')
-		# Region of interest.
-		# self._roix = PV(':CAM:SizeX_RBV')
-		# self._roiy = PV(':CAM:SizeY_RBV')
-		# self.roi = [self._roix,self._roiy]
 
 	def setParameters(self,**kwargs):
 		# Kwargs should be in the form of a dict: {'key'=value}.
@@ -68,8 +64,8 @@ class detector(QtCore.QObject):
 
 		else:
 			# Return a tuple of the image and metadata.
-			logging.critical("Waiting for x-ray tube.")
-			QtWidgets.QMessageBox.warning(None,"Image Acquisition","Press OK to start image acquisition.")
+			# logging.critical("Waiting for x-ray tube.")
+			# QtWidgets.QMessageBox.warning(None,"Image Acquisition","Press OK to start image acquisition.")
 			return (self._controller.readImage(), metadata)
 
 	def acquireContinous(self,array):
