@@ -1,15 +1,15 @@
-import epics
-from systems.control.backend import epics
+from systems.control.backend import epics as backend
 from PyQt5 import QtCore, QtWidgets
 import logging
 import numpy as np
 from datetime import datetime as dt
 
-'''
+"""
 class detector:
 	__init__ requires a name (string) for the detector and base PV (string) to connect to.
 	setup specifies some useful variables for the detector and it's images
-'''
+"""
+
 class detector(QtCore.QObject):
 	imageAcquired = QtCore.pyqtSignal()
 
@@ -18,16 +18,17 @@ class detector(QtCore.QObject):
 		# self._name = str(name)
 		self.name = name
 		self.pv = pv
+		# Row/Col pixel sizes.
 		self.pixelSize = [1,1]
+		# Bool triggers.
+		self.fliplr = False
+		self.flipud = False
 		# Isocenter as a pixel location in the image.
 		self.imageIsocenter = [0,0]
-		# Make a buffer.
+		# Make a buffer. Useful for stitching images.
 		self.buffer = []
 		# Controllers.
-		self._controller = epics.detector(pv)
-		# Setup.
-		# logging.critical("Turning off detector setup for development.")
-		self.setup()
+		self._controller = backend.detector(pv)
 
 	def reconnect(self):
 		if self._controller is not None:
@@ -37,20 +38,13 @@ class detector(QtCore.QObject):
 		# Return True or False for the connection state of the motor.
 		return self._controller.isConnected()
 
-	def setup(self):
-		if self._controller._connected:
-			epics.caput(self.pv+':CAM:ImageMode','Single')
-			epics.caput(self.pv+':CAM:AcquireTime',0.1)
-			epics.caput(self.pv+':CAM:AcquirePeriod',0.2)
-			epics.caput(self.pv+':TIFF:AutoSave','No')
-
 	def setParameters(self,**kwargs):
 		# Kwargs should be in the form of a dict: {'key'=value}.
 		for key, value in kwargs:
 			# Assumes correct value type for keyword argument.
-			epics.caput(self._pv+str(key),value)
+			backend.set(key,value)
 
-	def acquire(self,continous=False):
+	def acquire(self):
 		time = dt.now()
 		# HDF5 does not support python datetime objects.
 		metadata = {
@@ -60,17 +54,9 @@ class detector(QtCore.QObject):
 			'Time': time.strftime("%H:%M:%S"),
 			'Date': time.strftime("%d/%m/%Y"),
 		}
-		# Take a dark field?
-		if continous:
-			# Assumes stage moving at constant speed.
-			# Write all to buffer, then when finished return the image and metadata.
-			return (self.buffer,metadata)
-
-		else:
-			# Return a tuple of the image and metadata.
-			# logging.critical("Waiting for x-ray tube.")
-			# QtWidgets.QMessageBox.warning(None,"Image Acquisition","Press OK to start image acquisition.")
-			return (self._controller.readImage(), metadata)
+		logging.info("Could be useful to have a flood/dark field image set stored and incorporated.")
+		# Acquire a static image.
+		return (self._controller.acquire(), metadata)
 
 	def acquireContinous(self,array):
 		self.buffer.append(array)

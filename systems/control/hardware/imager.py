@@ -82,7 +82,7 @@ class Imager(QtCore.QObject):
 		name : str
 			The name of the detector to look up in the database file.
 		"""
-		logging.info("Loading the {} detector.".format(name))
+		logging.info("Loading the {} detector with settings from `settings.cfg`.".format(name))
 		if name in self.deviceList:
 			self.detector = detector(name,self.detectors[name])
 			self.name = name
@@ -129,10 +129,6 @@ class Imager(QtCore.QObject):
 		metadata.update(_data[1])
 		image = _data[0]
 		# Calculate the extent.
-		# if index == 1:
-			# l = self.detector.imageIsocenter[1]*self.detector.pixelSize[1]
-			# r = l - image.shape[1]*self.detector.pixelSize[1]
-		# elif index == 2:
 		l = -self.detector.imageIsocenter[1]*self.detector.pixelSize[1]
 		r = l + image.shape[1]*self.detector.pixelSize[1]
 		t = self.detector.imageIsocenter[0]*self.detector.pixelSize[0]
@@ -197,9 +193,9 @@ class Imager(QtCore.QObject):
 			return
 		# Set detector acusition time. ROI? How to port images straight to me?
 		kwargs = {
-			':CAM:AcquireTime': beamHeight/speed,
-			':CAM:AcquirePeriod': 0,
-			':CAM:ImageMode': 'Continuous',
+			'AcquireTime':		beamHeight/speed,
+			'AcquirePeriod':	0,
+			'ImageMode':		'Continuous',
 		}
 		self.detector.setParameters(kwargs)
 
