@@ -61,11 +61,8 @@ class detector(QtCore.QObject):
 				connection_callback=self._connectionMonitor
 				)
 			)
-		# Add callbacks?
-
 		# Set up the detector preferences. Should link to config file or settings?
 		self.setup()
-
 		# Flag for init completion.
 		self._initComplete = True
 
@@ -107,12 +104,15 @@ class detector(QtCore.QObject):
 		return self._connectionStatus
 
 	def reconnect(self):
+		# Reconnect the PV's.
 		for pv in DETECTOR_PVS.values():
 			epicspv = getattr(self,pv)
 			try:
 				epicspv.reconnect()
 			except:
 				raise DetectorException("Failed to force {} to reconnect.".format(pv))
+		# Run the setup again.
+		self.setup()
 
 	def setup(self):
 		# Set up the detector.
@@ -125,6 +125,19 @@ class detector(QtCore.QObject):
 		self.ArrayCounter.put(0)
 		self.NumImages.put(1)
 
+	def set(self,parameter,value):
+		# If the parameter is known to the backend...
+		if parameter in DETECTOR_PVS:
+			# Grab the PV.
+			pv = DETECTOR_PVS[parameter]
+			epicspv = getattr(self,pv)
+			# Assign the value (doesn't do any error checking).
+			epicspv.put(value)
+			# Return successful.
+			return True
+		else:
+			raise DetectorException("Could not set unknown parameter {} on device {}.".format(parameter,self.pvBase))
+
 	def acquire(self):
 		if self._connectionStatus:
 			# Run Acquire.
@@ -132,7 +145,6 @@ class detector(QtCore.QObject):
 			# Once finished grab the frame and return it.
 			image = self.ArrayData.get()
 			logging.debug("This is set to ArraySize0 and ArraySize1... should this not be X and Y? Is there something wrong with the IOC?")
-			logging.debug("Do we need a flipud here?")
 			return image.reshape(self.ArraySize0,self.ArraySize1)
 		else:
 			raise DetectorException("Detector not connected. Cannot acquired image.")
