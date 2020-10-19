@@ -3,27 +3,51 @@ import logging
 import numpy as np
 from functools import partial
 from PyQt5 import QtCore
+from uuid import uuid1
 
 class Brain(QtCore.QObject):
 	"""
 	This module creates a treatment 'system' that is made up of imaging devices, positioning aparatus, beam delivery controls etc.
 	"""
-	
 	imagesAcquired = QtCore.pyqtSignal(int)
 	newImageSet = QtCore.pyqtSignal(str)
+	newMove = QtCore.pyqtSignal(str)
+	moveFinished = QtCore.pyqtSignal(str)
 
-	def __init__(self,patientSupports,detectors,config):
+	def __init__(self,patientSupports,detectors,config,**kwargs):
 		super().__init__()
+		# Image guidance solution solver.
 		self.solver = imageGuidance.solver()
+
 		# self.source = control.hardware.source()
-		self.patientSupport = control.hardware.patientSupport(patientSupports)
-		self.imager = control.hardware.Imager(detectors,config.imager)
+		if 'backendThread' in kwargs:
+			self.patientSupport = control.hardware.patientSupport(patientSupports,backendThread=kwargs['backendThread'])
+			self.imager = control.hardware.Imager(detectors,config.imager)
+		else:
+			self.patientSupport = control.hardware.patientSupport(patientSupports)
+			self.imager = control.hardware.Imager(detectors,config.imager)
+
+		# Signals
+		self.patientSupport.finishedMove.connect(self._removePatientMove)
+
+		# Current patient.
 		self.patient = None
-		# Counter
+		# Stack.
+		self._moveList = dict()
+
+		# Counters.
 		self._routine = None
 		self._imagingMode = 'step'
+
 		# When a new image set is acquired, tell the GUI.
 		self.imager.newImageSet.connect(self.newImageSet)
+
+		# Device monitor for monitoring subsystems.
+		self.deviceMonitor = None
+		if 'deviceMonitor' in kwargs:
+			self.deviceMonitor = kwargs['deviceMonitor']
+			self.patientSupport.connected.connect(partial(self.deviceMonitor.updateMonitor,'Positioning Support'))
+			self.imager.connectionStatus.connect(partial(self.deviceMonitor.updateMonitor,'Imaging Detector'))
 
 	def loadPatient(self,patient):
 		""" Assumes patient has an already loaded x-ray dataset. """
@@ -48,17 +72,55 @@ class Brain(QtCore.QObject):
 		logging.debug("Imaging mode changed to {}.".format(mode))
 		self._imagingMode = mode
 
+	def setPatientSupportMonitor(self,monitor):
+		# The monitor should have functions to connect to singals and update the positions from.
+		self.patientSupport.newSupportSelected.connect(monitor.newMotors)
+		self.patientSupport.motorMoving.connect(monitor.updateMotor)
+		# If a support has already been selected, add that.
+		if self.patientSupport.currentDevice is not None:
+			monitor.newMotors(self.patientSupport.currentDevice,self.patientSupport.currentMotors)
+
+	def getPatientMove(self,uid):
+		logging.info("Getting Movement UID: {}".format(uid))
+		# Return the move from the move list.
+		return self._moveList[str(uid)]
+
+	def _removePatientMove(self,uid):
+		logging.info("Removing Movement UID: {}".format(uid))
+		# Remove the uid from the move list.
+		if str(uid) in self._moveList:
+			del self._moveList[str(uid)]
+		# Emiting signal to say we have finish move.
+		self.moveFinished.emit(str(uid))
+
 	def calculateAlignment(self):
 		""" This is where the calculation magic happens. """
 		# Decomposition routine.
 		self.patientSupport.calculateMotion(self.solver.transform,self.solver.solution)
 
 	def applyAlignment(self):
-		""" Tell the patientSupport to apply the calculated/prepared motion. """
+		""" Tell the patientSupport to apply the calculated/prepared motion. """		# Create a new uuid.
+		uid = uuid1()
+		# Send the signal saying we have a new move.
+		self.newMove.emit(str(uid))
+		self._moveList[str(uid)] = self.patientSupport._motion
+		# Tell the patient support to move.
 		self.patientSupport.applyMotion()
 
-	def movePatient(self,amount):
-		self.patientSupport.shiftPosition(amount)
+	def movePatient(self,amount,motionType):
+		""" All patient movement must be done through this function, as it sets a UUID for the motion. """
+		# Create a new uuid.
+		uid = uuid1()
+		self._moveList[str(uid)] = amount
+		# Send the signal saying we have a new move.
+		self.newMove.emit(str(uid))
+		# Finally, tell the patient support to move.
+		if motionType == 'relative':
+			self.patientSupport.shiftPosition(amount,uid)
+		elif motionType == 'absolute':
+			self.patientSupport.setPosition(amount,uid)
+		else:
+			logging.warning("Could not move patient with motion type {}.".format(motionType))
 
 	def acquireXray(self,theta,trans,comment=''):
 		if self.imager.file is None:

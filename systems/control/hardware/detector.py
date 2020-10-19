@@ -1,5 +1,5 @@
 import epics
-from systems.control.backend.epics import controls
+from systems.control.backend import epics
 from PyQt5 import QtCore, QtWidgets
 import logging
 import numpy as np
@@ -24,21 +24,15 @@ class detector(QtCore.QObject):
 		# Make a buffer.
 		self.buffer = []
 		# Controllers.
-		self._controller = controls.detector(pv)
-		# Setup.
-		# logging.critical("Turning off detector setup for development.")
-		self.setup()
+		self._controller = epics.detector(pv)
 
 	def reconnect(self):
 		if self._controller is not None:
 			self._controller.reconnect()
 
-	def setup(self):
-		if self._controller._connected:
-			epics.caput(self.pv+':CAM:ImageMode','Single')
-			epics.caput(self.pv+':CAM:AcquireTime',0.1)
-			epics.caput(self.pv+':CAM:AcquirePeriod',0.2)
-			epics.caput(self.pv+':TIFF:AutoSave','No')
+	def isConnected(self):
+		# Return True or False for the connection state of the motor.
+		return self._controller.isConnected()
 
 	def setParameters(self,**kwargs):
 		# Kwargs should be in the form of a dict: {'key'=value}.

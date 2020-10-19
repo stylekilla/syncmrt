@@ -1,5 +1,5 @@
 from tools import math
-from systems.control.backend.epics import controls
+from systems.control.backend import epics
 from PyQt5 import QtCore
 import numpy as np
 import logging
@@ -11,12 +11,19 @@ Should only use motor.read() and motor.write() methods.
 """
 
 class motor(QtCore.QObject):
-	finished = QtCore.pyqtSignal()
+	connected = QtCore.pyqtSignal()
+	disconnected = QtCore.pyqtSignal()
+	position = QtCore.pyqtSignal(float)
+	moveStarted = QtCore.pyqtSignal(float,float)
+	moveFinished = QtCore.pyqtSignal()
+	error = QtCore.pyqtSignal()
 
-	def __init__(self,name,axis,order,
+	def __init__(self,
+				name,axis,order,
 				pv=None,
-				direction=1,
+				backendThread=None,
 				mrange=np.array([-np.inf,np.inf]),
+				direction=1,
 				frame=1,
 				size=np.array([0,0,0]),
 				workDistance=np.array([0,0,0]),
@@ -52,40 +59,55 @@ class motor(QtCore.QObject):
 		# Upper and lower limits of motor movement.
 		self._range = mrange
 		# Interfaces (Qt and Epics).
-		self._workerThread = None
-		self._ui = None
-		self._controller = controls.motor(self.pv)
+		# self._ui = None
+
+		# Backend Controller.
+		self._controller = epics.motor(self.pv)
+		# Move to thread if specified.
+		if backendThread is not None:
+			self._controller.moveToThread(backendThread)
+		# Signals.
+		self._controller.connected.connect(self.connected.emit)
+		self._controller.disconnected.connect(self.disconnected.emit)
+		self._controller.position.connect(self.position.emit)
+		self._controller.moveStarted.connect(self.moveStarted.emit)
+		self._controller.moveFinished.connect(self.moveFinished.emit)
+		
 		logging.info("Loading motor {} on aixs {} with PV {}".format(name,axis,pv))
+
+	def isConnected(self):
+		# Return True or False for the connection state of the motor.
+		return self._controller.isConnected()
 
 	def setUi(self,ui):
 		# Connect user interface.
 		self._ui = motor.ui(ui)
 
-	# def _finished(self):
-	# 	# Delete the worker thread.
-	# 	self._workerThread = None
-	# 	self.finished.emit()
-
 	def setPosition(self,position):
 		position *= self._direction
-		self._controller.write(position,mode='absolute')
-		# Once finished, emit signal.
-		self.finished.emit()
-		# _workerThread = workerThread(self._controller,position,'absolute')
-		# _workerThread.start()
-		# _workerThread.finished.connect(self._finished)
+		try:
+			self._controller.write(position,mode='absolute')
+		except:
+			self.error.emit()
+				
+		logging.critical("Do I still send our the finished movement signal?")
 
 	def shiftPosition(self,position):
 		position *= self._direction
-		self._controller.write(position,mode='relative')
-		# Once finished, emit signal.
-		self.finished.emit()
-		# self._workerThread = workerThread(self._controller,position,'relative')
-		# self._workerThread.start()
-		# self._workerThread.finished.connect(self._finished)
+		try:
+			self._controller.write(position,mode='relative')
+		except:
+			self.error.emit()
+
+		logging.critical("Do I still send our the finished movement signal?")
 
 	def readPosition(self):
-		return self._controller.read()
+		try:
+			value = self._controller.read()
+		except:
+			value = np.NaN
+
+		return value
 
 	def transform(self,value):
 		# If we are a translation motor, return a translation transfrom.
@@ -110,19 +132,3 @@ class motor(QtCore.QObject):
 
 	def reconnectControls(self):
 		self._controller.reconnect()
-
-
-# class workerThread(QtCore.QThread):
-# 	finished = QtCore.pyqtSignal()
-
-# 	def __init__(self,controller,position,mode):
-# 		super().__init__()
-# 		self.controller = controller
-# 		self.position = position
-# 		self.mode = mode
-# 	def run(self):
-# 		# This is the thread running section.
-# 		logging.info("Started worker thread.")
-# 		self.controller.write(self.position,mode=self.mode)
-# 		logging.info("Finished worker thread.")
-# 		self.finished.emit()

@@ -49,6 +49,16 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		self.setWindowIcon(QtGui.QIcon(resourceFilepath+'images/icon.png'))
 
 		"""
+		Epics.
+		"""
+		# Put epics on it's own thread.
+		self.backendControlThread = QtCore.QThread()
+		self.backendControlThread.start()
+		# Create the monitor and move it to the epics thread.
+		# self.epicsMonitor = systems.control.backend.epics.EpicsMonitor()
+		# self.epicsMonitor.moveToThread(self.backendControlThread)
+
+		"""
 		Qt5 Setup
 		"""
 		# Menu bar.
@@ -66,66 +76,87 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		logger.addHandler(self.logger.handler)
 		logger.setLevel(logging.INFO)
 
-		# Sidebar panel.
+		# ===============================
+		# Left Sidebar: General Commands.
+		# ===============================
 		self.sidebar = ui.sidebar.Sidebar(self.frameSidebarStack,self.frameSidebarList)
 		# Sidebar: Imaging
-		self.sidebar.addPage('Imaging',QsWidgets.QImaging(),before='all')
+		self.sidebar.addPage('Imaging',QsWidgets.QsSidebar.QImaging(),before='all')
 		self.sbImaging = self.sidebar.getPage('Imaging')
 		# Sidebar: Alignment.
-		self.sbAlignment = self.sidebar.addPage('Alignment',QsWidgets.QAlignment(),after='Imaging')
+		self.sbAlignment = self.sidebar.addPage('Alignment',QsWidgets.QsSidebar.QAlignment(),after='Imaging')
 		self.sbAlignment.widget['maxMarkers'].valueChanged.connect(partial(self.updateSettings,'global',self.sbAlignment.widget['maxMarkers']))
 		self.sbAlignment.widget['optimise'].toggled.connect(partial(self.toggleOptimise))
 		self.sbAlignment.calculateAlignment.connect(self.patientCalculateAlignment)
 		self.sbAlignment.doAlignment.connect(self.patientApplyAlignment)
 		# Add treatment section to sidebar.
-		self.sidebar.addPage('Treatment',QsWidgets.QTreatment(),after='Alignment')
+		self.sidebar.addPage('Treatment',QsWidgets.QsSidebar.QTreatment(),after='Alignment')
 		self.sbTreatment = self.sidebar.getPage('Treatment')
 		# Add image properties section to sidebar.
 		self.sidebar.addPage('ImageProperties',None,after='Treatment')
 		# Add settings section to sidebar.
-		self.sidebar.addPage('Settings',QsWidgets.QSettings(),after='all')
+		self.sidebar.addPage('Settings',QsWidgets.QsSidebar.QSettings(),after='all')
 		self.sbSettings = self.sidebar.getPage('Settings')
 
 		# Create work environment
 		self.environment = ui.workspace.environment(self.toolbarPane,self.workStack)
 		self.environment.workspaceChanged.connect(partial(self.sidebar.linkPages,'ImageProperties'))
 
-		# PropertyManager
-		self.property = ui.workspace.propertyModel()
-		self.propertyTree = ui.workspace.propertyManager(self.frameVariablePane,self.property)
+		# =======================
+		# Right Sidebar: ToolBox.
+		# =======================
+		self.rightSidebar = QsWidgets.QsSidebar.QSidebarList(self.frameRightSidebar)
+		# Status Monitor.
+		self.statusMonitor = QsWidgets.QsSidebar.QStatusMonitor()
+		self.rightSidebar.addSection("Status Monitor",self.statusMonitor)
+		self.statusMonitor.addMonitor('Positioning Support')
+		self.statusMonitor.addMonitor('Imaging Detector')
+		# Property manager.
+		self.properties = QsWidgets.QsSidebar.QPropertyManager()
+		self.rightSidebar.addSection("Poperties",self.properties)
+		# Stage Position Monitor.
+		self.ppsMonitor = QsWidgets.QsSidebar.QMotorMonitor()
+		self.rightSidebar.addSection("Positioning Stage",self.ppsMonitor)
+		# Create alignment table.
+		self.properties.addSection('Alignment')
+		self.properties.addVariable('Alignment',['Rotation','X','Y','Z'],[0,0,0])
+		self.properties.addVariable('Alignment',['Translation','X','Y','Z'],[0,0,0])
+		self.properties.addVariable('Alignment','Scale',0)
 
+		# ==================
+		# Bottom Status Bar.
+		# ==================
 		# Collapsing button for Logger.
 		icon = QtGui.QIcon(resourceFilepath+'/images/CollapseBottom.png')
 		icon.pixmap(20,20)
 		self.pbCollapseLogger = QtWidgets.QPushButton(icon,'')
 		self.pbCollapseLogger.setToolTip("Toggle Log Viewer")
 		self.pbCollapseLogger.setFlat(True)
+		self.pbCollapseLogger.setFixedWidth(22)
 		self.statusBar.addPermanentWidget(self.pbCollapseLogger)
 		self.pbCollapseLogger.clicked.connect(self.logger.toggleVisibility)
 
-		# Collapsing button for Property Manager.
+		# Collapsing button for Sidebar (Right).
 		icon = QtGui.QIcon(resourceFilepath+'/images/CollapseRight.png')
 		icon.pixmap(20,20)
-		self.pbCollapseProperties = QtWidgets.QPushButton(icon,'')
-		self.pbCollapseProperties.setToolTip("Toggle Properties Panel")
-		self.pbCollapseProperties.setFlat(True)
-		self.statusBar.addPermanentWidget(self.pbCollapseProperties)
-		self.pbCollapseProperties.clicked.connect(partial(self.propertyTree.toggleFrame,self.frameVariablePane))
+		self.pbCollapseSidebar = QtWidgets.QPushButton(icon,'')
+		self.pbCollapseSidebar.setToolTip("Toggle Properties Panel")
+		self.pbCollapseSidebar.setFlat(True)
+		self.pbCollapseSidebar.setFixedWidth(22)
+		self.pbCollapseSidebar.clicked.connect(self.rightSidebar.toggleVisibility)
+		self.statusBar.addPermanentWidget(self.pbCollapseSidebar)
 
-		# Create alignment table.
-		self.property.addSection('Alignment')
-		self.property.addVariable('Alignment',['Rotation','X','Y','Z'],[0,0,0])
-		self.property.addVariable('Alignment',['Translation','X','Y','Z'],[0,0,0])
-		self.property.addVariable('Alignment','Scale',0)
-		self.propertyTree.expandAll()
-
+		# =============
+		# Top Menu Bar.
+		# =============
 		# Connect menubar items.
 		self._menuBar['new_xray'].triggered.connect(partial(self.newFile,'xray'))
 		self._menuBar['load_xray'].triggered.connect(partial(self.openFiles,'xray'))
 		self._menuBar['load_syncplan'].triggered.connect(partial(self.openFiles,'syncplan'))
 		self._menuBar['load_ct'].triggered.connect(partial(self.openFiles,'ct'))
 		self._menuBar['load_rtplan'].triggered.connect(partial(self.openFiles,'rtp'))
-		self._menuBar['load_folder'].triggered.connect(partial(self.openFiles,'folder'))
+		# self._menuBar['load_folder'].triggered.connect(partial(self.openFiles,'folder'))
+		self._menuBar['load_folder'].triggered.connect(self.test)
 
 		# Switches.
 		self._isXrayOpen = False
@@ -134,13 +165,29 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		self._isRTPOpen = False
 
 		"""
-		SyncMRT Setup
+		The Brain Setup.
 		"""
 		# Create a new system, this has a solver, detector and stage.
-		self.system = systems.theBrain.Brain(resourceFilepath+config.files.patientSupports,resourceFilepath+config.files.detectors,config)
+		self.system = systems.theBrain.Brain(
+			resourceFilepath+config.files.patientSupports,
+			resourceFilepath+config.files.detectors,
+			config,
+			deviceMonitor=self.statusMonitor,
+			backendThread=self.backendControlThread
+		)
+
+		# Put the brain on it's own thread.
+		self.systemThread = QtCore.QThread()
+		self.systemThread.start()
+		self.system.moveToThread(self.systemThread)
+		# Create a patient.
 		self.patient = systems.patient.Patient()
 		# Link the system with the patient data.
 		self.system.loadPatient(self.patient)
+		# Add a monitor to the pps.
+		self.system.setPatientSupportMonitor(self.ppsMonitor)
+		# Get signal for a new patient support move.
+		self.system.newMove.connect(self.showMovement)
 
 		"""
 		More GUI linking from System and Patient.
@@ -161,33 +208,9 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		# When the image mode changes tell the system.
 		self.sbImaging.imageModeChanged.connect(self.system.setImagingMode)
 
-		# self.testing()
-
-	# def testing(self):
-	# 	self.openXray('../scratch/test.hdf5')
-
-	# 	folder = '../scratch/DICOM/SMRT_CT_ONLY/'
-	# 	dataset = []
-	# 	modality = 'CT'
-	# 	for root, subdir, fp in os.walk(folder):
-	# 		for fn in fp:
-	# 			if (fn.endswith(tuple('.dcm'))) & (fn[:len(modality)] == modality):
-	# 				dataset.append(os.path.join(root,fn))
-	# 	if len(dataset) > 0:
-	# 		self.openCT(dataset)
-
-	# 	self.envXray.addMarker(0,0,0)
-	# 	self.envXray.addMarker(0,50,25)
-	# 	self.envXray.addMarker(0,-50,-25)
-	# 	self.envXray.addMarker(1,0,0)
-	# 	self.envXray.addMarker(1,50,25)
-	# 	self.envXray.addMarker(1,-50,-25)
-	# 	self.envCt.addMarker(0,0,0)
-	# 	self.envCt.addMarker(0,50,25)
-	# 	self.envCt.addMarker(0,-50,-25)
-	# 	self.envCt.addMarker(1,0,0)
-	# 	self.envCt.addMarker(1,50,25)
-	# 	self.envCt.addMarker(1,-50,-25)
+	def test(self):
+		logging.critical("Running test function.")
+		self.system.movePatient([10,5,1,0,0,2.5],'absolute')
 
 	def newFile(self,modality):
 		if modality == 'xray':
@@ -471,6 +494,23 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		self.environment.button['BEV1'].clicked.emit()
 		self.sidebar.linkPages('ImageProperties','bev1ImageProperties')
 
+	def showMovement(self,uid):
+		logging.info("Show Movement UID: {}".format(uid))
+		# Get all the appropriate data. We assume since there is a move that there must be a patient support system connected.
+		device = self.system.patientSupport.currentDevice
+		motors = self.system.patientSupport.currentMotors
+
+		# Show a pop up with the current movements.
+		self._movementWindow = QsWidgets.QMovementWindow(device,motors,uid)
+
+		# Setup.
+		# origin = self.system.get(uid)
+		# movements = self.system.get(uid)
+		destination = self.system.getPatientMove(uid)
+		self._movementWindow.setDestination(destination)
+
+		self._movementWindow.show()
+
 	def updateSettings(self,mode,origin,idx=0):
 		"""Update variable based of changed data in property model (in some cases, external sources)."""
 		if (mode == 'xr') & (self._isXrayOpen):
@@ -608,9 +648,9 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		alignment6d = self.system.solver.solve()
 
 		# If table already exists, update information...
-		self.property.updateVariable('Alignment',['Rotation','X','Y','Z'],[float(alignment6d[3]),float(alignment6d[4]),float(alignment6d[5])])
-		self.property.updateVariable('Alignment',['Translation','X','Y','Z'],[float(alignment6d[0]),float(alignment6d[1]),float(alignment6d[2])])
-		self.property.updateVariable('Alignment','Scale',float(self.system.solver.scale))
+		self.properties.updateVariable('Alignment',['Rotation','X','Y','Z'],[float(alignment6d[3]),float(alignment6d[4]),float(alignment6d[5])])
+		self.properties.updateVariable('Alignment',['Translation','X','Y','Z'],[float(alignment6d[0]),float(alignment6d[1]),float(alignment6d[2])])
+		self.properties.updateVariable('Alignment','Scale',float(self.system.solver.scale))
 
 		# Calculate alignment for stage.
 		self.system.calculateAlignment()

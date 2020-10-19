@@ -1,22 +1,25 @@
 from systems.control.hardware.motor import motor
 from PyQt5 import QtCore, QtWidgets
 import numpy as np
+from functools import partial
 import logging
 
 class patientSupport(QtCore.QObject):
-	# startedMove = QtC
-	# moving = QtCore.pyqtSignal()
-	finishedMove = QtCore.pyqtSignal()
-	# error = QtCore.pyqtSignal()
+	connected = QtCore.pyqtSignal(bool)
+	newSupportSelected = QtCore.pyqtSignal(str,list)
+	moving = QtCore.pyqtSignal()
+	finishedMove = QtCore.pyqtSignal(str)
+	error = QtCore.pyqtSignal()
+	motorMoving = QtCore.pyqtSignal(str,float)
 
-	# This needs to be re-written to accept 6DoF movements and split it up into individual movements.
-
-	def __init__(self,database,ui=None):
+	def __init__(self,database,ui=None,backendThread=None):
 		super().__init__()
 		# Information
 		self.currentDevice = None
 		self.currentMotors = []
 		self._dof = (0,[0,0,0,0,0,0])
+		# Current movement id.
+		self.uid = None
 		# A preloadable motion.
 		self._motion = None
 		# Stage size information.
@@ -29,7 +32,14 @@ class patientSupport(QtCore.QObject):
 		self._counter = 0
 		# Counter for calculate motion loop.
 		self._i = 0
+		# Connection status, True = Connected, False = Disconnected.
+		self._connectionStatus = False
+		# Save the backend thread (if any).
+		self.backendThread = backendThread
 
+		"""
+		Load the CSV dataset.
+		"""
 		# Get list of motors.
 		import csv, os
 		# Open CSV file
@@ -47,11 +57,15 @@ class patientSupport(QtCore.QObject):
 				self.deviceList.add(row['PatientSupport'])
 
 	def load(self,name):
+		# Load a set of motors for the patient support.
 		logging.info("Loading patient support: {}.".format(name))
+
+		# Check if the desired device is in the devices list.
 		if name in self.deviceList:
-			# Remove all motors.
+			# Remove all existing motors.
 			for i in range(len(self.currentMotors)):
 				del self.currentMotors[-1]
+
 			# Iterate over new motors.
 			for support in self.motors:
 				# Does the motor match the name?
@@ -61,24 +75,42 @@ class patientSupport(QtCore.QObject):
 							support['Description'],
 							int(support['Axis']),
 							int(support['Order']),
-							pv = support['PV Root']
+							pv = support['PV Root'],
+							backendThread = self.backendThread
 						)
-					# Set a ui for the motor if we are doing that.
-					if self._ui is not None:
-						newMotor.setUi(self._ui)
-					# Connect to finished method.
-					newMotor.finished.connect(self._finished)
+
+					# Signals and slots.
+					newMotor.connected.connect(self._connectionMonitor)
+					newMotor.disconnected.connect(self._connectionMonitor)
+					newMotor.position.connect(partial(self.motorMoving.emit,newMotor.name))
+					newMotor.moveFinished.connect(self._finished)
+					newMotor.error.connect(self.error.emit)
+
 					# Append the motor to the list.
 					self.currentMotors.append(newMotor)
+
 			# Set the order of the list from 0-i.
-			self.currentMotors = sorted(self.currentMotors, key=lambda k: k._order) 
+			self.currentMotors = sorted(self.currentMotors, key=lambda k: k._order)
 			# Update the name details.
 			self.currentDevice = name
 			# Calibrate with no calibration offset. This can be recalculated later.
 			self.calibrate(np.array([0,0,0]))
-			# Update GUI.
-			if self._ui is not None:
-				self._ui.update()
+			# Emit a signal to say we've selected a new patient support.
+			self.newSupportSelected.emit(name,[x.name for x in self.currentMotors])
+
+	def isConnected(self):
+		# Return the connection status.
+		return self._connectionStatus
+
+	def _connectionMonitor(self):
+		# Connection monitor for all the motors that make up the patient support system.
+		teststate = []
+		for motor in self.currentMotors:
+			teststate.append(motor.isConnected())
+		self._connectionStatus = all(teststate)
+
+		# Send out an appropriate signal.
+		self.connected.emit(self._connectionStatus)
 
 	def reconnect(self):
 		for motor in self.currentMotors:
@@ -92,9 +124,11 @@ class patientSupport(QtCore.QObject):
 			if motor._stage == 0:
 				self._size = np.add(self._size,motor._size)
 
-	def shiftPosition(self,position):
+	def shiftPosition(self,position,uid=None):
 		logging.info("Shifting position to {}".format(position))
 		# This is a relative position change.
+		# Set the uid.
+		self.uid = str(uid)
 		# Iterate through available motors.
 		for motor in self.currentMotors:
 			# Get position to move to for that motor.
@@ -104,9 +138,11 @@ class patientSupport(QtCore.QObject):
 			# Set position variable to 0 (if motor was successful).
 			position[(motor._axis + (3*motor._type))] = 0
 
-	def setPosition(self,position):
+	def setPosition(self,position,uid=None):
 		logging.info("Setting position to {}".format(position))
 		# This is a direct position change.
+		# Set the uid.
+		self.uid = str(uid)
 		# Iterate through available motors.
 		for motor in self.currentMotors:
 			# Get position to move to for that motor.
@@ -126,7 +162,10 @@ class patientSupport(QtCore.QObject):
 			self._counter = 0
 			# Send signal.
 			logging.debug("Emitting finished move.")
-			self.finishedMove.emit()
+			# Set the uid to none before sending out the signal.
+			uid = str(self.uid)
+			self.uid = None
+			self.finishedMove.emit(uid)
 
 	def position(self,idx=None):
 		# return the current position of the stage in Global XYZ.
@@ -149,7 +188,8 @@ class patientSupport(QtCore.QObject):
 	def calculateMotion(self,G,variables):
 		# We take in the 4x4 transformation matrix G, and a list of 6 parameters (3x translations, 3x rotations).
 		self._i += 1
-		if self._i > 10: return
+		if self._i > 10: 
+			return
 		# Create a transform for this stage, S.
 		print('\n'*3)
 		logging.info('Stage Name: {}'.format(self.currentDevice))
