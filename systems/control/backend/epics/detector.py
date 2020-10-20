@@ -12,7 +12,7 @@ Therefore, we implement all that functionality ourselves.
 
 __all__ = ['detector']
 
-DETECTOR_PVS = {
+DETECTOR_PVS = { 
 	'Acquire': 'CAM:Acquire',
 	'AcquireTime': 'CAM:AcquireTime',
 	'AcquirePeriod': 'CAM:AcquirePeriod',
@@ -21,8 +21,8 @@ DETECTOR_PVS = {
 	'ImageMode': 'CAM:ImageMode',
 	'AutoSave': 'TIFF:AutoSave',
 	'DataType': 'IMAGE:DataType_RBV',
-	'ArraySize0': 'IMAGE:ArraySize0_RBV',
-	'ArraySize1': 'IMAGE:ArraySize1_RBV',
+	'ArraySize0': 'CAM:ArraySizeX_RBV',
+	'ArraySize1': 'CAM:ArraySizeY_RBV',
 	'ArrayData': 'IMAGE:ArrayData',
 }
 
@@ -81,18 +81,10 @@ class detector(QtCore.QObject):
 			teststate = [kwargs['conn']]
 			# N.B. Epics hasn't actually updated the pv.connected state of the motor sent to this function yet.
 			# So instead, get status of every motor except the one sent to this function.
-			pvname = kwargs['pvname'][kwargs['pvname'].find(':')+1:]
-			petname = DETECTOR_PVS.get(pvname)
-			# for pv in [x for x in DETECTOR_PVS.values() if x!=kwargs['pvname'][kwargs['pvname'].find('.')+1:]]:
-			for name,pv in DETECTOR_PVS.items():
-				if name == petname:
-					# Don't update this pv, we already know it's status.
-					continue
-				else:
-					testpv = getattr(self,pv)
-					teststate.append(testpv.connected)
+			for pv in [x for x in DETECTOR_PVS if x not in kwargs['pvname'][kwargs['pvname'].rfind(':')+1:]]:
+				testpv = getattr(self,pv)
+				teststate.append(testpv.connected)
 			self._connectionStatus = all(teststate)
-
 		# Send out an appropriate signal.
 		if self._connectionStatus:
 			self.connected.emit()
@@ -105,7 +97,7 @@ class detector(QtCore.QObject):
 
 	def reconnect(self):
 		# Reconnect the PV's.
-		for pv in DETECTOR_PVS.values():
+		for pv in DETECTOR_PVS:
 			epicspv = getattr(self,pv)
 			try:
 				epicspv.reconnect()
@@ -118,6 +110,7 @@ class detector(QtCore.QObject):
 		# Set up the detector.
 		logging.warning(*"Setting up the detector with hard coded defaults.")
 		# Here we should also allow for flipping the image to orientate it correctly.
+		self.Acquire.put(0)
 		self.AcquireTime.put(0.1)
 		self.AcquirePeriod.put(0.0)
 		self.ImageMode.put('Single')
@@ -142,9 +135,11 @@ class detector(QtCore.QObject):
 		if self._connectionStatus:
 			# Run Acquire.
 			self.Acquire.put(1,wait=True)
+			# To aovid a race condition, wait until the motor has started moving before we continue. This ensures epics has had time to process the command.
+			time.sleep(0.1)
 			# Once finished grab the frame and return it.
 			image = self.ArrayData.get()
 			logging.debug("This is set to ArraySize0 and ArraySize1... should this not be X and Y? Is there something wrong with the IOC?")
-			return image.reshape(self.ArraySize0,self.ArraySize1)
+			return image.reshape(self.ArraySize1.get(),self.ArraySize0.get())
 		else:
 			raise DetectorException("Detector not connected. Cannot acquired image.")

@@ -11,10 +11,14 @@ class files:
 class imager:
 	""" Settings for the imager configuration. """
 	# Pixel size and isocenter specified as (row,col).
-	isocenter = [2160/2,2560/2]
+	isocenter = [1084,2560/2]
 	# Pixel size is SAX/SID which is 1.2m / 1.5m.
-	pixelSize = [0.0182,0.0182]
-	sad = 1.2
-	sid = 1.5 
+	pixelSize = [0.0181,0.0181]
+	flipud = True
+	fliplr = False
+	roi = [0,1,0,1]
+	# Can specify using SAD/SID if desired...
+	# sad = 1.2
+	# sid = 1.5
 	# magnification = sad/sid
 	# pixelSize = [0.2,0.2]*magnification

@@ -9,6 +9,7 @@ class Brain(QtCore.QObject):
 	"""
 	This module creates a treatment 'system' that is made up of imaging devices, positioning aparatus, beam delivery controls etc.
 	"""
+	connected = QtCore.pyqtSignal(bool)
 	imagesAcquired = QtCore.pyqtSignal(int)
 	newImageSet = QtCore.pyqtSignal(str)
 	newMove = QtCore.pyqtSignal(str)
@@ -22,13 +23,19 @@ class Brain(QtCore.QObject):
 		# self.source = control.hardware.source()
 		if 'backendThread' in kwargs:
 			self.patientSupport = control.hardware.patientSupport(patientSupports,backendThread=kwargs['backendThread'])
-			self.imager = control.hardware.Imager(detectors,config.imager)
+			self.imager = control.hardware.Imager(detectors,config.imager,backendThread=kwargs['backendThread'])
 		else:
 			self.patientSupport = control.hardware.patientSupport(patientSupports)
 			self.imager = control.hardware.Imager(detectors,config.imager)
 
-		# Signals
+		# Signals.
+		self.patientSupport.connected.connect(self._connectionMonitor)
+		self.imager.connected.connect(self._connectionMonitor)
 		self.patientSupport.finishedMove.connect(self._removePatientMove)
+		self.patientSupport.error.connect(self._resetFromError)
+
+		# Connection status, True = Connected, False = Disconnected.
+		self._connectionStatus = False
 
 		# Current patient.
 		self.patient = None
@@ -47,7 +54,25 @@ class Brain(QtCore.QObject):
 		if 'deviceMonitor' in kwargs:
 			self.deviceMonitor = kwargs['deviceMonitor']
 			self.patientSupport.connected.connect(partial(self.deviceMonitor.updateMonitor,'Positioning Support'))
-			self.imager.connectionStatus.connect(partial(self.deviceMonitor.updateMonitor,'Imaging Detector'))
+			self.imager.connected.connect(partial(self.deviceMonitor.updateMonitor,'Imaging Detector'))
+
+	def isConnected(self):
+		# Return the connection status.
+		return self._connectionStatus
+
+	def _connectionMonitor(self):
+		# Connection monitor for all the motors that make up the patient support system.
+		teststate = []
+		for essentialSystem in [self.patientSupport,self.imager]:
+			teststate.append(essentialSystem.isConnected())
+		self._connectionStatus = all(teststate)
+
+		# Send out an appropriate signal.
+		self.connected.emit(self._connectionStatus)
+
+	def _resetFromError(self):
+		""" reset from an error. """
+		logging.warning("Reset from an error not incorporated yet...")
 
 	def loadPatient(self,patient):
 		""" Assumes patient has an already loaded x-ray dataset. """
@@ -109,49 +134,56 @@ class Brain(QtCore.QObject):
 
 	def movePatient(self,amount,motionType):
 		""" All patient movement must be done through this function, as it sets a UUID for the motion. """
-		# Create a new uuid.
-		uid = uuid1()
-		self._moveList[str(uid)] = amount
-		# Send the signal saying we have a new move.
-		self.newMove.emit(str(uid))
-		# Finally, tell the patient support to move.
-		if motionType == 'relative':
-			self.patientSupport.shiftPosition(amount,uid)
-		elif motionType == 'absolute':
-			self.patientSupport.setPosition(amount,uid)
+		if self.isConnected():
+			# Create a new uuid.
+			uid = uuid1()
+			self._moveList[str(uid)] = amount
+			# Send the signal saying we have a new move.
+			self.newMove.emit(str(uid))
+			# Finally, tell the patient support to move.
+			if motionType == 'relative':
+				self.patientSupport.shiftPosition(amount,uid)
+			elif motionType == 'absolute':
+				self.patientSupport.setPosition(amount,uid)
+			else:
+				logging.warning("Could not move patient with motion type {}.".format(motionType))
 		else:
-			logging.warning("Could not move patient with motion type {}.".format(motionType))
+			logging.warning("Cannot move as not all systems are connected.")
 
 	def acquireXray(self,theta,trans,comment=''):
-		if self.imager.file is None:
-			logging.critical("Cannot save images to dataset, no HDF5 file loaded.")
-			return
-		# Start a new routine.
-		self._routine = ImagingRoutine()
-		# We should ideally define a beam height...
-		self._routine.dz = 5.0
-		logging.critical("Hard setting a beam height of {} for now...".format(self._routine.dz))
-		# Theta and trans are relative values from current position.
-		self._routine.theta = theta
-		# Calculate how many x-rays are required.
-		self._routine.imageCounterLimit = len(theta)
-		# Get the current patient position.
-		self._routine.preImagingPosition = self.patientSupport.position()
-		# Calculate how many steps are required per image.
-		# self._routine.stepCounterLimit = np.ceil(np.absolute(trans[1]-trans[0])/self._routine.dz)
-		m = np.ceil(np.absolute(trans[0])/self._routine.dz - 0.5)
-		n = np.ceil(np.absolute(trans[1])/self._routine.dz - 0.5)
-		s = self._routine.preImagingPosition[2]
-		self._routine.tz = [s-m*self._routine.dz,s+n*self._routine.dz]
-		self._routine.stepCounterLimit = m+n+1
-		print(self._routine.tz,self._routine.stepCounterLimit)
-		# Signals and slots: Connections.
-		logging.info("Connecting patient support and detector signals to imaging routine.")
-		self.patientSupport.finishedMove.connect(partial(self._continueScan,'imaging'))
-		self.imager.imageAcquired.connect(partial(self._continueScan,'moving'))
-		# Start the scan process.
-		logging.info("Pre-imaging position at: {}".format(self._routine.preImagingPosition))
-		self._startScan()
+		if self.isConnected():
+			if self.imager.file is None:
+				logging.critical("Cannot save images to dataset, no HDF5 file loaded.")
+				return
+			# Start a new routine.
+			self._routine = ImagingRoutine()
+			# We should ideally define a beam height...
+			self._routine.dz = 20.0
+			logging.critical("Hard setting a beam height of {} for now...".format(self._routine.dz))
+			# Theta and trans are relative values from current position.
+			self._routine.theta = theta
+			# Calculate how many x-rays are required.
+			self._routine.imageCounterLimit = len(theta)
+			# Get the current patient position.
+			self._routine.preImagingPosition = self.patientSupport.position()
+			# Calculate how many steps are required per image.
+			# self._routine.stepCounterLimit = np.ceil(np.absolute(trans[1]-trans[0])/self._routine.dz)
+			m = np.ceil(np.absolute(trans[0])/self._routine.dz - 0.5)
+			n = np.ceil(np.absolute(trans[1])/self._routine.dz - 0.5)
+			s = self._routine.preImagingPosition[2]
+			self._routine.tz = [s-m*self._routine.dz,s+n*self._routine.dz]
+			self._routine.stepCounterLimit = m+n+1
+			print(self._routine.tz,self._routine.stepCounterLimit)
+			# Signals and slots: Connections.
+			logging.info("Connecting patient support and detector signals to imaging routine.")
+			self.patientSupport.finishedMove.connect(partial(self._continueScan,'imaging'))
+			self.imager.imageAcquired.connect(partial(self._continueScan,'moving'))
+			# Start the scan process.
+			logging.info("Pre-imaging position at: {}".format(self._routine.preImagingPosition))
+			self._startScan()
+		else:
+			logging.warning("Cannot move as not all systems are connected.")
+
 
 	def _startScan(self):
 		if self._routine.imageCounter < self._routine.imageCounterLimit:

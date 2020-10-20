@@ -1,5 +1,5 @@
 from tools import math
-from systems.control.backend import epics
+from systems.control.backend import epics as backend
 from PyQt5 import QtCore
 import numpy as np
 import logging
@@ -58,11 +58,9 @@ class motor(QtCore.QObject):
 		self._workPoint = np.array([0,0,0])
 		# Upper and lower limits of motor movement.
 		self._range = mrange
-		# Interfaces (Qt and Epics).
-		# self._ui = None
 
 		# Backend Controller.
-		self._controller = epics.motor(self.pv)
+		self._controller = backend.motor(self.pv)
 		# Move to thread if specified.
 		if backendThread is not None:
 			self._controller.moveToThread(backendThread)
@@ -89,8 +87,6 @@ class motor(QtCore.QObject):
 			self._controller.write(position,mode='absolute')
 		except:
 			self.error.emit()
-				
-		logging.critical("Do I still send our the finished movement signal?")
 
 	def shiftPosition(self,position):
 		position *= self._direction
@@ -98,8 +94,6 @@ class motor(QtCore.QObject):
 			self._controller.write(position,mode='relative')
 		except:
 			self.error.emit()
-
-		logging.critical("Do I still send our the finished movement signal?")
 
 	def readPosition(self):
 		try:
