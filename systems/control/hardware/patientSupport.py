@@ -26,8 +26,6 @@ class patientSupport(QtCore.QObject):
 		self._size = np.array([0,0,0])
 		# Calibration object size.
 		self._offset = np.array([0,0,0])
-		# UI elements.
-		self._ui = ui
 		# Motor counter for finished arguments.
 		self._counter = 0
 		# Counter for calculate motion loop.
@@ -36,6 +34,8 @@ class patientSupport(QtCore.QObject):
 		self._connectionStatus = False
 		# Save the backend thread (if any).
 		self.backendThread = backendThread
+		# Does this device have a settable work point?
+		self._workPoint = False
 
 		"""
 		Load the CSV dataset.
@@ -88,6 +88,8 @@ class patientSupport(QtCore.QObject):
 
 					# Append the motor to the list.
 					self.currentMotors.append(newMotor)
+					# Update our status as to whether we have a settable work-point.
+					self._workPoint = bool(support['Order'])
 
 			# Set the order of the list from 0-i.
 			self.currentMotors = sorted(self.currentMotors, key=lambda k: k._order)

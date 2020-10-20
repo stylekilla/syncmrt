@@ -11,9 +11,15 @@ class detector:
 """
 
 class detector(QtCore.QObject):
+	connected = QtCore.pyqtSignal()
+	disconnected = QtCore.pyqtSignal()
 	imageAcquired = QtCore.pyqtSignal()
 
-	def __init__(self,name,pv):
+	def __init__(self,
+				name,
+				pv,
+				backendThread=None
+			):
 		super().__init__()
 		# self._name = str(name)
 		self.name = name
@@ -29,6 +35,12 @@ class detector(QtCore.QObject):
 		self.buffer = []
 		# Controllers.
 		self._controller = backend.detector(pv)
+		# Move to thread if specified.
+		if backendThread is not None:
+			self._controller.moveToThread(backendThread)
+		# Signals.
+		self._controller.connected.connect(self.connected.emit)
+		self._controller.disconnected.connect(self.disconnected.emit)
 
 	def reconnect(self):
 		if self._controller is not None:

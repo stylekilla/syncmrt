@@ -1,27 +1,24 @@
-Package         Version
---------------- --------
-appdirs         1.4.4
-coloredlogs     14.0
-cycler          0.10.0
-decorator       4.4.2
-h5py            2.10.0
-humanfriendly   8.2
-imageio         2.9.0
-kiwisolver      1.2.0
-matplotlib      3.3.0
-natsort         7.0.1
-numpy           1.19.1
-Pillow          7.2.0
-pip             20.2.4
-pydicom         2.0.0
-pyepics         3.4.2
-pyopencl        2020.2
-pyparsing       2.4.7
-PyQt5           5.15.0
-PyQt5-sip       12.8.0
-python-dateutil 2.8.1
-pytools         2020.3.1
-scipy           1.5.2
-setuptools      49.2.1
-six             1.15.0
-wheel           0.34.2
+appdirs==1.4.4
+coloredlogs==14.0
+cycler==0.10.0
+decorator==4.4.2
+h5py==2.10.0
+humanfriendly==8.2
+imageio==2.9.0
+kiwisolver==1.2.0
+matplotlib==3.3.0
+natsort==7.0.1
+numpy==1.19.1
+Pillow==7.2.0
+pip==20.2.4
+pydicom==2.0.0
+pyepics==3.4.2
+pyparsing==2.4.7
+PyQt5==5.15.0
+PyQt5-sip==12.8.0
+python-dateutil==2.8.1
+pytools==2020.3.1
+scipy==1.5.2
+setuptools==49.2.1
+six==1.15.0
+wheel==0.34.2

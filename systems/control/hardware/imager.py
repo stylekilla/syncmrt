@@ -39,11 +39,11 @@ class Imager(QtCore.QObject):
 	deviceList : set
 		A list of all the detector names available to the system.
 	"""
-	connectionStatus = QtCore.pyqtSignal(bool)
+	connected = QtCore.pyqtSignal(bool)
 	imageAcquired = QtCore.pyqtSignal(int)
 	newImageSet = QtCore.pyqtSignal(str,int)
 
-	def __init__(self,database,config,ui=None):
+	def __init__(self,database,config,ui=None,backendThread=None):
 		super().__init__()
 		# Information
 		self.detector = None
@@ -56,9 +56,14 @@ class Imager(QtCore.QObject):
 		self._stitchBuffer = []
 		self.metadata = []
 		# System properties.
-		self.sid = self.config.sid
-		self.sad = self.config.sad
-		# Get list of motors.
+		# self.sid = self.config.sid
+		# self.sad = self.config.sad
+		# Connection status, True = Connected, False = Disconnected.
+		self._connectionStatus = False
+		# Save the backend thread (if any).
+		self.backendThread = backendThread
+
+
 		# Open CSV file
 		f = open(database)
 		r = csv.DictReader(f)
@@ -84,20 +89,38 @@ class Imager(QtCore.QObject):
 		"""
 		logging.info("Loading the {} detector with settings from `settings.cfg`.".format(name))
 		if name in self.deviceList:
-			self.detector = detector(name,self.detectors[name])
+			# Update our name accordingly.
 			self.name = name
-			self.detector.imageIsocenter = self.config.isocenter
-			self.detector.pixelSize = self.config.pixelSize
-
+			# Create the new detector and load config settings.
+			newDetector = detector(
+				name,
+				self.detectors[name],
+				backendThread=self.backendThread
+			)
+			newDetector.imageIsocenter = self.config.isocenter
+			newDetector.pixelSize = self.config.pixelSize
+			# Signals and slots.
+			newDetector.connected.connect(self._connectionMonitor)
+			newDetector.disconnected.connect(self._connectionMonitor)
+			# Assign ourselves the new detector.
+			self.detector = newDetector
+			
 	def reconnect(self):
 		""" Reconnect the detector controller to Epics. Use this if the connection dropped out. """
-		self.detector.reconnect()
+		if self.detector is not None:
+			self.detector.reconnect()
 
 	def isConnected(self):
 		if self.detector is None:
 			return False
 		else:
 			return self.detector.isConnected()
+
+	def _connectionMonitor(self):
+		# Connection monitor for the detector.
+		self._connectionStatus = self.detector.isConnected()
+		# Send out an appropriate signal.
+		self.connected.emit(self._connectionStatus)
 
 	def setImagingParameters(self,params):
 		""" As they appear on PV's. """

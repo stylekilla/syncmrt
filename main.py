@@ -356,7 +356,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		# Connect image properties page.
 		self.envXray.toggleSettings.connect(partial(self.sidebar.showStack,'ImageProperties'))
 		# Sidebar page for x-ray image properties.
-		widget = self.sidebar.addPage('xrayImageProperties',QsWidgets.QXrayProperties(),addList=False)
+		widget = self.sidebar.addPage('xrayImageProperties',QsWidgets.QsSidebar.QXrayProperties(),addList=False)
 		widget.toggleOverlay.connect(partial(self.envXray.toggleOverlay))
 		widget.isocenterUpdated.connect(self.envXray.updateIsocenter)
 		widget.pickIsocenter.connect(self.envXray.pickIsocenter)
