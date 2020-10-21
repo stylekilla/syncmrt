@@ -198,7 +198,7 @@ class Imager(QtCore.QObject):
 		self._stitchBuffer.append(list(self.detector.acquire()))
 		self._stitchBuffer[-1][0] = self._stitchBuffer[-1][0][t:b,:]
 		# Emit a signal saying we have acquired an image.
-		logging.info("Step image acquired.")
+		logging.info("Step image acquired. Stitch buffer has {} elements.".format(len(self._stitchBuffer)))
 		self.imageAcquired.emit(-1)
 
 	def prepareScan(self,beamHeight,speed):
@@ -246,10 +246,12 @@ class Imager(QtCore.QObject):
 		metadata.update(finish)
 		logging.critical("Stitching image {}. The pre-imaging height positions are [{}, {}]".format(index,z1,z2))
 
-		# Stitch the image.
-		image = self._stitchBuffer[0][0]
-		for i in range(1,len(self._stitchBuffer)):
-			image = np.vstack((image,self._stitchBuffer[i][0]))
+		# Stitch the image together.
+		images = []
+		for i in reversed(range(0,len(self._stitchBuffer))):
+			images.append(self._stitchBuffer[i][0])
+		images = tuple(images)
+		image = np.vstack(images)
 
 		# Calculate the extent.
 		logging.critical("Extent calculation for stitching is currently wrong. Unfinished")
@@ -258,7 +260,6 @@ class Imager(QtCore.QObject):
 		t = z2 + 0.5*self._stitchBuffer[0][0].shape[0]*self.detector.pixelSize[0]
 		b = z1 - 0.5*self._stitchBuffer[0][0].shape[0]*self.detector.pixelSize[0]
 		extent = (l,r,b,t)
-		print(extent)
 		# Add the transformation matrix into the images frame of reference.
 		# Imagers FOR is a RH-CS where +x propagates down the beamline.
 		M = np.identity(3)

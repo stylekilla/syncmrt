@@ -72,7 +72,7 @@ class Brain(QtCore.QObject):
 
 	def _resetFromError(self):
 		""" reset from an error. """
-		logging.warning("Reset from an error not incorporated yet...")
+		logging.warning("Received an error. Reset from an error not incorporated yet...")
 
 	def loadPatient(self,patient):
 		""" Assumes patient has an already loaded x-ray dataset. """

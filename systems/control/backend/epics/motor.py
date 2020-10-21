@@ -14,7 +14,7 @@ __all__ = ['motor','workpoint']
 
 MOTOR_PVS = [
 	'VAL', 'DESC', 'RBV', 'PREC', 'DMOV',
-	'BDST', 'BACC', 'BVEL',
+	'BDST', 'BACC', 'BVEL', 'MOVN',
 	'TWV', 'TWF', 'TWR',
 	'VELO',
 	'LLM', 'HLM', 'HLS', 'LLS','LVIO'
@@ -47,6 +47,7 @@ class motor(QtCore.QObject):
 	"""
 	connected = QtCore.pyqtSignal()
 	disconnected = QtCore.pyqtSignal()
+	error = QtCore.pyqtSignal()
 	moveStarted = QtCore.pyqtSignal(float,float)
 	position = QtCore.pyqtSignal(float)
 	moveFinished = QtCore.pyqtSignal()
@@ -103,6 +104,9 @@ class motor(QtCore.QObject):
 		return self._connectionStatus
 
 	def reconnect(self):
+		import threading
+		logging.critical("Current Thread: {}".format(QtCore.QThread().currentThread()))
+		logging.critical('%-25s: %s, %s,' % (self, threading.current_thread().name, threading.current_thread().ident))
 		for pv in MOTOR_PVS:
 			epicspv = getattr(self,pv)
 			try:
@@ -123,8 +127,10 @@ class motor(QtCore.QObject):
 			raise MotorException("Connection error. Could not read motor position.")
 
 	def write(self,value,mode='absolute'):
+		logging.critical("In write... COnnection status: {}".format(self._connectionStatus))
 		if not self._connectionStatus: 
 			raise MotorException("Connection error. Could not write motor position.")
+		logging.critical("Has connection...")
 
 		# Get the current motor position, before any attempt of movement.
 		previousPosition = self.RBV.get()
@@ -135,17 +141,21 @@ class motor(QtCore.QObject):
 		elif mode == 'relative':
 			writeValue = previousPosition + value
 
+		logging.critical("Is it within limits?... {} -> {} ".format(self.withinLimits(writeValue,writeValue)))
 		# Write the value if acceptable.
 		if self.withinLimits(writeValue):
-			# If the value is within the limits, write it.
+			logging.warning("Writing value to motor {}".format(selv.pvBase))
+			# Emit the move started signal.
+			self.moveStarted.emit(float(previousPosition),float(writeValue))
+			# If the value is within the limits, write it. Wait for it to be completed.
 			self.VAL.put(
 				writeValue,
-				wait=True,
+				# wait=True
 				callback=self._checkMovement,
 				callback_data=[previousPosition,writeValue]
 			)
-			# Emit the move started signal.
-			self.moveStarted.emit(float(previousPosition),float(writeValue))
+			# Run the callback ourselves.
+			# self._checkMovement(data=[previousPosition,writeValue])
 		else:
 			# It is outside the limits.
 			raise MotorLimitException("Value {} exceeds motor limits.".format(writeValue))
@@ -154,20 +164,30 @@ class motor(QtCore.QObject):
 		return (value <= self.HLM.get() and value >= self.LLM.get())
 
 	def _checkMovement(self,*args,**kwargs):
+		logging.info("In callback _checkMovement")
+		# To avoid a race condition.
+		for i in range(50):
+			epics.ca.poll()
+		# Wait until we have stopped moving.
+		while(True):
+			# Update events.
+			epics.ca.poll()
+			# Tell when to break and recheck.
+			if self.DMOV.get() and not self.MOVN.get():
+				break
+			else:
+				print(self.DMOV.get(), not self.MOVN.get())
+
 		# If we are done moving... get the previous and new positions.
 		previousPosition, expectedPosition = kwargs['data']
 		# # Get the current position.
 		currentPosition = self.RBV.get()
 
-		if self.pvBase == 'SR08ID01ROB01:MOTOR_Z':
-			print("Previous Position: {:.5f}".format(previousPosition))
-			print("Current Position: {:.5f}".format(currentPosition))
-			print("Expected Position: {:.5f}".format(expectedPosition))
-			print("DMOV: {}".format(self.DMOV.get()))
-
 		if float(abs(expectedPosition - currentPosition)) > (10**(-float(self.PREC.get()))+float(self.BDST.get())):
 			# We are outside our precision range and backlash distance.
-			raise MotorException("The motor did not stop at the expected position of {:.3f}.".format(expectedPosition))
+			# raise MotorException("The motor did not stop at the expected position of {:.3f}.".format(expectedPosition))
+			logging.warning("The motor did not stop at the expected position of {:.3f}.".format(expectedPosition))
+			self.error.emit()
 		else:
 			# Else we are successfull.
 			self.moveFinished.emit()
@@ -182,6 +202,8 @@ WORKPOINT_PVS = [
 	'READ_TCP',
 	'SET_TCP',
 	'ZERO_TOOL',
+	'ZERO_BASE',
+	'MXA_STATUS',
 ]
 
 class workpoint(QtCore.QObject):

@@ -136,7 +136,7 @@ class detector(QtCore.QObject):
 			# Run Acquire.
 			self.Acquire.put(1,wait=True)
 			# To aovid a race condition, wait until the motor has started moving before we continue. This ensures epics has had time to process the command.
-			time.sleep(0.1)
+			time.sleep(1)
 			# Once finished grab the frame and return it.
 			image = self.ArrayData.get()
 			logging.debug("This is set to ArraySize0 and ArraySize1... should this not be X and Y? Is there something wrong with the IOC?")
