@@ -67,6 +67,7 @@ class motor(QtCore.QObject):
 		# Signals.
 		self._controller.connected.connect(self.connected.emit)
 		self._controller.disconnected.connect(self.disconnected.emit)
+		self._controller.error.connect(self.error.emit)
 		self._controller.position.connect(self.position.emit)
 		self._controller.moveStarted.connect(self.moveStarted.emit)
 		self._controller.moveFinished.connect(self.moveFinished.emit)

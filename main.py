@@ -11,6 +11,8 @@ import numpy as np
 from PyQt5.QtCore import pyqtSlot as Slot
 from PyQt5 import QtCore, QtGui, QtWidgets, uic
 
+import threading
+
 # Forcing a fix for MPL?
 import matplotlib as mpl
 mpl.use('Qt5Agg')
@@ -51,9 +53,14 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		"""
 		Epics.
 		"""
+		# Run in parallel.
+		# self.backendControlThread = None
 		# Put epics on it's own thread.
 		self.backendControlThread = QtCore.QThread()
 		self.backendControlThread.start()
+		logging.critical("Main Thread: {}".format(QtCore.QThread().currentThread()))
+		logging.critical("Backend Thread: {}".format(self.backendControlThread.currentThread()))
+		logging.critical('%-25s: %s, %s,' % (self, threading.current_thread().name, threading.current_thread().ident))
 		# Create the monitor and move it to the epics thread.
 		# self.epicsMonitor = systems.control.backend.epics.EpicsMonitor()
 		# self.epicsMonitor.moveToThread(self.backendControlThread)
