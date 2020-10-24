@@ -10,7 +10,7 @@ the connection state of the pv's/device etc.
 Therefore, we implement all that functionality ourselves.
 """
 
-__all__ = ['motor','workpoint']
+__all__ = ['motor']
 
 MOTOR_PVS = [
 	'VAL', 'DESC', 'RBV', 'PREC', 'DMOV',
@@ -104,9 +104,6 @@ class motor(QtCore.QObject):
 		return self._connectionStatus
 
 	def reconnect(self):
-		import threading
-		logging.critical("Current Thread: {}".format(QtCore.QThread().currentThread()))
-		logging.critical('%-25s: %s, %s,' % (self, threading.current_thread().name, threading.current_thread().ident))
 		for pv in MOTOR_PVS:
 			epicspv = getattr(self,pv)
 			try:
@@ -191,87 +188,3 @@ class motor(QtCore.QObject):
 		else:
 			# Else we are successfull.
 			self.moveFinished.emit()
-
-
-WORKPOINT_PVS = [
-	'TCPAXIS1',
-	'TCPAXIS2',
-	'TCPAXIS3',
-	'TOOL_NO',
-	'TOOL_NO_RBV',
-	'READ_TCP',
-	'SET_TCP',
-	'ZERO_TOOL',
-	'ZERO_BASE',
-	'MXA_STATUS',
-]
-
-class workpoint(QtCore.QObject):
-	"""
-	This class allows us to set a workpoint on our device.
-	Typically, this is used with robots and the workpoint = TCP.
-	"""
-	connected = QtCore.pyqtSignal()
-	disconnected = QtCore.pyqtSignal()
-	moveStarted = QtCore.pyqtSignal(float,float)
-	position = QtCore.pyqtSignal(float)
-	moveFinished = QtCore.pyqtSignal()
-
-	def __init__(self,pvName):
-		super().__init__()
-		# Flag for init completion. Without this, callbacks will run before we've finished setting up and it will crash.
-		self._initComplete = False
-		# Save the pv base.
-		self.pvBase = pvName
-		# Initialisation vars.
-		self._connectionStatus = True
-		# Add all the pv's.
-		self.pv = {}
-		for pv in WORKPOINT_PVS:
-			setattr(self,pv,epics.PV("{}.{}".format(self.pvBase,pv),
-				auto_monitor=True,
-				connection_callback=self._connectionMonitor
-				)
-			)
-		# Add callback for positioning monitoring.
-		# self.RBV.add_callback(self._positionMonitor)
-		# Flag for init completion.
-		self._initComplete = True
-
-	def _connectionMonitor(self,*args,**kwargs):
-		"""
-		Update the device connection status.
-		All PV's must be connected in order for the device to be considered connected.
-		If any PV in the device is disconnected, the whole device is demmed disconnected.
-		"""
-		if not self._initComplete:
-			# We haven't finished setting up the motor yet, don't do anything.
-			return
-
-		if ('pvname' in kwargs) and ('conn' in kwargs):
-			# Update the device connection state (by testing all the devices pv's connection states).
-			teststate = [kwargs['conn']]
-			# N.B. Epics hasn't actually updated the pv.connected state of the motor sent to this function yet.
-			# So instead, get status of every motor except the one sent to this function.
-			for pv in [x for x in WORKPOINT_PVS if x!=kwargs['pvname'][kwargs['pvname'].find('.')+1:]]:
-				testpv = getattr(self,pv)
-				teststate.append(testpv.connected)
-			self._connectionStatus = all(teststate)
-
-		# Send out an appropriate signal.
-		if self._connectionStatus:
-			self.connected.emit()
-		else:
-			self.disconnected.emit()
-
-	def isConnected(self):
-		# Return if we are connected or not.
-		return self._connectionStatus
-
-	def reconnect(self):
-		for pv in WORKPOINT_PVS:
-			epicspv = getattr(self,pv)
-			try:
-				epicspv.reconnect()
-			except:
-				raise MotorException("Failed to force {} to reconnect.".format(pv))

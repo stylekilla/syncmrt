@@ -126,4 +126,7 @@ class motor(QtCore.QObject):
 			self._workPoint = workpoint
 
 	def reconnectControls(self):
-		self._controller.reconnect()
+		try:
+			self._controller.reconnect()
+		except:
+			self.error.emit()
