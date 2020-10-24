@@ -100,7 +100,7 @@ class Brain(QtCore.QObject):
 	def setPatientSupportMonitor(self,monitor):
 		# The monitor should have functions to connect to singals and update the positions from.
 		self.patientSupport.newSupportSelected.connect(monitor.newMotors)
-		self.patientSupport.motorMoving.connect(monitor.updateMotor)
+		self.patientSupport.moving.connect(monitor.updateMotor)
 		# If a support has already been selected, add that.
 		if self.patientSupport.currentDevice is not None:
 			monitor.newMotors(self.patientSupport.currentDevice,self.patientSupport.currentMotors)

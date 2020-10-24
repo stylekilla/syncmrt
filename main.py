@@ -40,7 +40,7 @@ MAIN CLASS: Application starts here.
 """
 
 class main(QtWidgets.QMainWindow, Ui_MainWindow):
-	def __init__(self):
+	def __init__(self,threading=None):
 		# Inititate UI.
 		QtWidgets.QMainWindow.__init__(self)
 		Ui_MainWindow.__init__(self)
@@ -53,14 +53,14 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		"""
 		Epics.
 		"""
-		# Run in parallel.
-		# self.backendControlThread = None
-		# Put epics on it's own thread.
-		self.backendControlThread = QtCore.QThread()
-		self.backendControlThread.start()
-		logging.critical("Main Thread: {}".format(QtCore.QThread().currentThread()))
-		logging.critical("Backend Thread: {}".format(self.backendControlThread.currentThread()))
-		logging.critical('%-25s: %s, %s,' % (self, threading.current_thread().name, threading.current_thread().ident))
+		if threading:
+			logging.info("Putting EPICS on it's own thread.")
+			# Put epics on it's own thread.
+			self.backendControlThread = QtCore.QThread()
+			self.backendControlThread.start()
+		else:
+			# Run in parallel.
+			self.backendControlThread = None
 		# Create the monitor and move it to the epics thread.
 		# self.epicsMonitor = systems.control.backend.epics.EpicsMonitor()
 		# self.epicsMonitor.moveToThread(self.backendControlThread)
@@ -674,7 +674,7 @@ if __name__ == "__main__":
 	# QApp 
 	app = QtWidgets.QApplication(sys.argv)
 	# QWidget (MainWindow).
-	window = main()
+	window = main(threading=True)
 	window.show()
 	# App wide event filter.
 	app.installEventFilter(window)

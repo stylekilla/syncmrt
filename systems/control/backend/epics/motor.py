@@ -10,7 +10,7 @@ the connection state of the pv's/device etc.
 Therefore, we implement all that functionality ourselves.
 """
 
-__all__ = ['motor','workpoint']
+__all__ = ['motor']
 
 MOTOR_PVS = [
 	'VAL', 'DESC', 'RBV', 'PREC', 'DMOV',
@@ -104,9 +104,6 @@ class motor(QtCore.QObject):
 		return self._connectionStatus
 
 	def reconnect(self):
-		import threading
-		logging.critical("Current Thread: {}".format(QtCore.QThread().currentThread()))
-		logging.critical('%-25s: %s, %s,' % (self, threading.current_thread().name, threading.current_thread().ident))
 		for pv in MOTOR_PVS:
 			epicspv = getattr(self,pv)
 			try:

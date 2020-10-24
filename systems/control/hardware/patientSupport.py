@@ -1,4 +1,5 @@
-from systems.control.hardware.motor import motor
+# from systems.control.hardware.motor import motor
+from systems.control import hardware
 from PyQt5 import QtCore, QtWidgets
 import numpy as np
 from functools import partial
@@ -10,7 +11,7 @@ class patientSupport(QtCore.QObject):
 	moving = QtCore.pyqtSignal()
 	finishedMove = QtCore.pyqtSignal(str)
 	error = QtCore.pyqtSignal()
-	motorMoving = QtCore.pyqtSignal(str,float)
+	moving = QtCore.pyqtSignal(str,float)
 
 	def __init__(self,database,ui=None,backendThread=None):
 		super().__init__()
@@ -34,8 +35,8 @@ class patientSupport(QtCore.QObject):
 		self._connectionStatus = False
 		# Save the backend thread (if any).
 		self.backendThread = backendThread
-		# Does this device have a settable work point?
-		self._workPoint = False
+		# A settable work point for the patient support.
+		self.workPoint = None
 
 		"""
 		Load the CSV dataset.
@@ -71,7 +72,7 @@ class patientSupport(QtCore.QObject):
 				# Does the motor match the name?
 				if support['PatientSupport'] == name:
 					# Define the new motor.
-					newMotor = motor(
+					newMotor = hardware.motor(
 							support['Description'],
 							int(support['Axis']),
 							int(support['Order']),
@@ -82,14 +83,18 @@ class patientSupport(QtCore.QObject):
 					# Signals and slots.
 					newMotor.connected.connect(self._connectionMonitor)
 					newMotor.disconnected.connect(self._connectionMonitor)
-					newMotor.position.connect(partial(self.motorMoving.emit,newMotor.name))
+					newMotor.position.connect(partial(self.moving.emit,newMotor.name))
 					newMotor.moveFinished.connect(self._finished)
 					newMotor.error.connect(self.error.emit)
 
 					# Append the motor to the list.
 					self.currentMotors.append(newMotor)
-					# Update our status as to whether we have a settable work-point.
-					self._workPoint = bool(support['Order'])
+
+			logging.critical("Hard coding LAPS TCP stuff...")
+			self.workPoint = hardware.workPoint(
+					"SR08ID01ROB01",
+					backendThread = self.backendThread
+				)
 
 			# Set the order of the list from 0-i.
 			self.currentMotors = sorted(self.currentMotors, key=lambda k: k._order)
@@ -131,6 +136,10 @@ class patientSupport(QtCore.QObject):
 		# This is a relative position change.
 		# Set the uid.
 		self.uid = str(uid)
+		# Set the work point if required.
+		if self.workPoint is not None:
+			logging.info("Setting the workpoint to {}".format(position[:3]))
+			self.workPoint.offset(position[:3])
 		# Iterate through available motors.
 		for motor in self.currentMotors:
 			# Get position to move to for that motor.
@@ -145,6 +154,10 @@ class patientSupport(QtCore.QObject):
 		# This is a direct position change.
 		# Set the uid.
 		self.uid = str(uid)
+		# Set the work point if required.
+		if self.workPoint is not None:
+			logging.info("Setting the workpoint to {}".format(position[:3]))
+			self.workPoint.offset(position[:3])
 		# Iterate through available motors.
 		for motor in self.currentMotors:
 			# Get position to move to for that motor.
