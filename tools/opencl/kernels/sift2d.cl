@@ -35,7 +35,6 @@ __kernel void Gaussian2D(
 			}
 			if (nx >= szx) {
 				nx = szx + (szx - nx - 1);
-				// printf("(x,y)=%i,%i   (szx,szy)=%i,%i \n",x,y,szx,szy);
 			}
 			if (ny >= szy) {
 				ny = szy + (szy - ny - 1);
@@ -45,7 +44,7 @@ __kernel void Gaussian2D(
 		}
 	}
 	// Need to keep as float until final writing. Convert to short.
-	gScaleImage[idx] += convert_short(value);
+	gScaleImage[idx] = convert_short(value);
 } // End Gaussian2D
 
 
@@ -202,6 +201,10 @@ __kernel void LocateStableFeatures(
 	int i2 = 0;
 	int i3 = 0;
 	int i4 = 0;
+	int i5 = 0;
+	int i6 = 0;
+	int i7 = 0;
+	int i8 = 0;
 	int s0 = 0;
 	int s1 = 0;
 	int s2 = 0;
@@ -211,11 +214,8 @@ __kernel void LocateStableFeatures(
 	float Hxx = 0.0f;
 	float Hxy = 0.0f;
 	float Hxs = 0.0f;
-	float Hyx = 0.0f;
 	float Hyy = 0.0f;
 	float Hys = 0.0f;
-	float Hsx = 0.0f;
-	float Hsy = 0.0f;
 	float Hss = 0.0f;
 	float determinant = 0.0f;
 	float Hixx = 0.0f;
@@ -231,56 +231,99 @@ __kernel void LocateStableFeatures(
 
 	bool success = false;
 	for (int i=0; i<4; i++) {
-		// Grab the (x,y,sigma) feature point.
+		// Grab the (x,y,sigma) feature point; sigma must be reduced by one to let indexing begin at zero (it is saved as n+1).
 		x = gFeatures[3*idx + 0];
 		y = gFeatures[3*idx + 1];
-		s = gFeatures[3*idx + 2];
+		s = gFeatures[3*idx + 2] - 1;
 		// Calculate second order Taylor series for vector, v(x,y,sigma).
-		i0 = convert_int(y + size.y*x);
-		i1 = convert_int(y + size.y*(x+1));
-		i2 = convert_int(y + size.y*(x-1));
-		i3 = convert_int((y+1) + size.y*x);
-		i4 = convert_int((y-1) + size.y*x);
-		s0 = convert_int(s);
-		s1 = convert_int(s+1);
-		s2 = convert_int(s-1);
+		// First get all the indices for accessing data around our current (x,y) point.
+		i0 = convert_int( (y+1) + size.y*(x-1) );
+		i1 = convert_int( (y+1) + size.y*(x+0) );
+		i2 = convert_int( (y+1) + size.y*(x+1) );
+		i3 = convert_int( (y+0) + size.y*(x-1) );
+		i4 = convert_int( (y+0) + size.y*(x+0) );
+		i5 = convert_int( (y+0) + size.y*(x+1) );
+		i6 = convert_int( (y-1) + size.y*(x-1) );
+		i7 = convert_int( (y-1) + size.y*(x+0) );
+		i8 = convert_int( (y-1) + size.y*(x+1) );
+		// Scale indices.
+		s0 = convert_int(rint( s-1	));
+		s1 = convert_int(rint( s	));
+		s2 = convert_int(rint( s+1	));
 		// Calcualte the derivatives.
-		dx = (ptr[s0][i1] - ptr[s0][i2])/2.0f;
-		dy = (ptr[s0][i3] - ptr[s0][i4])/2.0f;
-		ds = (ptr[s1][i0] - ptr[s2][i0])/2.0f;
-		// Calculate the >3D Hessian matrix.
-		// https://math.stackexchange.com/questions/302160/correct-way-to-calculate-numeric-derivative-in-discrete-time
-		Hxx = ( ptr[s0][i1] - 2*ptr[s0][i0] + ptr[s0][i2] )/4.0f;
-		Hxy = dx*dy;
-		Hxs = dx*ds;
-		Hyx = dy*dx;
-		Hyy = ( ptr[s0][i3] - 2*ptr[s0][i0] + ptr[s0][i4] )/4.0f;
-		Hys = dy*ds;
-		Hsx = ds*dx;
-		Hsy = ds*dy;
-		Hss = ( ptr[s1][i0] - 2*ptr[s0][i0] + ptr[s2][i0] )/4.0f;
+		dx = (ptr[s1][i5] - ptr[s1][i3])/2.0f;
+		dy = (ptr[s1][i1] - ptr[s1][i7])/2.0f;
+		ds = (ptr[s2][i4] - ptr[s0][i4])/2.0f;
+		// Calculate the 3D Hessian matrix.
+		// We use the finite difference method to approximate the Hessian.
+		// Each approximation is centred on i (so we use a template [-1 0 1]).
+		// We only need to calculate half the Hessian as Hxy == Hyx.
+		// https://www.ipol.im/pub/art/2014/82/article_lr.pdf
+		// http://web.mit.edu/16.90/BackUp/www/pdfs/Chapter12.pdf
+		// https://www.mathematik.uni-dortmund.de/~kuzmin/cfdintro/lecture4.pdf
+		Hxx = ( ptr[s1][i5] + ptr[s1][i3] - 2*ptr[s1][i4] )/4.0f;
+		Hxy = ( ptr[s1][i2] - ptr[s1][i0] - ptr[s1][i8] + ptr[s1][i6] ) /4.0f;
+		Hxs = ( ptr[s2][i5] - ptr[s2][i3] - ptr[s0][i5] + ptr[s0][i3] ) /4.0f;
+		Hyy = ( ptr[s1][i1] + ptr[s1][i7] - 2*ptr[s1][i4] )/4.0f;
+		Hys = ( ptr[s2][i1] - ptr[s2][i7] - ptr[s0][i1] + ptr[s0][i7] ) /4.0f;
+		Hss = ( ptr[s2][i4] + ptr[s0][i4] - 2*ptr[s1][i4] )/4.0f;
+
+		// Now we want to use the second order taylor series to find the local extremum of the points.
+		// We take the derivative of the second order taylor series, and equate it to zero to get the stationary point.
+		// The Hessian matrix describes the second order derivatives.
+		// Now we use the Hessian and the first order derivatives to solve for the true point.
+
 		// Calculate Hessian Inverse.
-		determinant = Hxx*Hyy*Hss + Hyx*Hsy*Hxs + Hsx*Hxy*Hys - Hxx*Hsy*Hys - Hsx*Hyy*Hxs - Hyx*Hxy*Hss;
-		Hixx = determinant*( Hyy*Hss - Hys*Hsy );
-		Hixy = determinant*( Hxs*Hsy - Hxy*Hss );
+		determinant = Hxx*Hyy*Hss + Hxy*Hys*Hxs + Hxs*Hxy*Hys - Hxx*Hys*Hys - Hxs*Hyy*Hxs - Hxy*Hxy*Hss;
+		Hixx = determinant*( Hyy*Hss - Hys*Hys );
+		Hixy = determinant*( Hxs*Hys - Hxy*Hss );
 		Hixs = determinant*( Hxy*Hys - Hxs*Hyy );
-		Hiyx = determinant*( Hys*Hsx - Hyx*Hss );
-		Hiyy = determinant*( Hxx*Hss - Hxs*Hsx );
-		Hiys = determinant*( Hxs*Hyx - Hxx*Hys );
-		Hisx = determinant*( Hyx*Hsy - Hyy*Hsx );
-		Hisy = determinant*( Hxy*Hsx - Hxx*Hsy );
-		Hiss = determinant*( Hxx*Hyy - Hxy*Hyx );
+		Hiyx = determinant*( Hys*Hxs - Hxy*Hss );
+		Hiyy = determinant*( Hxx*Hss - Hxs*Hxs );
+		Hiys = determinant*( Hxs*Hxy - Hxx*Hys );
+		Hisx = determinant*( Hxy*Hys - Hyy*Hxs );
+		Hisy = determinant*( Hxy*Hxs - Hxx*Hys );
+		Hiss = determinant*( Hxx*Hyy - Hxy*Hxy );
+
 		// Calculate offset (x,y,sigma).
-		offset.x = Hixx*x + Hixy*y + Hixs;
-		offset.y = Hiyx*x + Hiyy*y + Hiys;
-		offset.z = Hisx*x + Hisy*y + Hiss;
+		offset.x = -(Hixx*dx + Hixy*dy + Hixs*ds);
+		offset.y = -(Hiyx*dx + Hiyy*dy + Hiys*ds);
+		offset.z = -(Hisx*dx + Hisy*dy + Hiss*ds);
+
+		if (idx==129) {
+			printf("(x,y,s): (%f, %f, %f) on iteration %i\n",x,y,s,i);
+			printf("Derivatives: %f, %f, %f\n",dx,dy,ds);
+			printf("8 Points in original scale: \n %d, %d, %d | %d, %d, %d | %d, %d, %d \n %d, %d, %d | %d, %d, %d | %d, %d, %d \n %d, %d, %d | %d, %d, %d | %d, %d, %d \n",
+				ptr[s0][i0],ptr[s0][i1],ptr[s0][i2],  ptr[s1][i0],ptr[s1][i1],ptr[s1][i2],  ptr[s2][i0],ptr[s2][i1],ptr[s2][i2],
+				ptr[s0][i3],ptr[s0][i4],ptr[s0][i5],  ptr[s1][i3],ptr[s1][i4],ptr[s1][i5],  ptr[s2][i3],ptr[s2][i4],ptr[s2][i5],
+				ptr[s0][i6],ptr[s0][i7],ptr[s0][i8],  ptr[s1][i6],ptr[s1][i7],ptr[s1][i8],  ptr[s2][i6],ptr[s2][i7],ptr[s2][i8]
+			);
+			printf("Hessian Matrix: \n %f, %f, %f\n %f, %f, %f\n %f, %f, %f\n",
+				Hxx,Hxy,Hxs,
+				Hxy,Hyy,Hys,
+				Hxs,Hys,Hss
+			);
+			printf("Determinant: %f\n",determinant);
+			printf("Hessian Matrix Inverse: \n %f, %f, %f\n %f, %f, %f\n %f, %f, %f\n",
+				Hixx,Hixy,Hixs,
+				Hiyx,Hiyy,Hiys,
+				Hisx,Hisy,Hiss
+			);
+			printf("Offset: %f, %f, %f\n",offset.x,offset.y,offset.z);
+		}
+
 		// Check to see if the offset is greater than 0.5 in any direction.
-		if (fabs(offset.x) >= 0.5 || fabs(offset.y) >= 0.5 || fabs(offset.z) >= 0.5) {
+		if (fabs(offset.x) > 0.5 || fabs(offset.y) > 0.5 || fabs(offset.z) > 0.5) {
 			// If it is, add a step in those directions to the coordinates (x,y,sigma).
 			gFeatures[3*idx + 0] += round(offset.x);
 			gFeatures[3*idx + 1] += round(offset.y);
 			gFeatures[3*idx + 2] += round(offset.z);
-			// It was changed, keep changing it.
+			// Check that our updates don't push the point outside our valid range.
+			if ((gFeatures[3*idx + 0] >= size.x) || (gFeatures[3*idx + 1] >= size.y) || (gFeatures[3*idx + 2] < 1) || (gFeatures[3*idx + 2] > 5)) {
+				// If they do, scrap the point.
+				break;
+			}
+			// The point was changed, keep changing it.
 			continue;
 		}
 		else {
@@ -304,16 +347,48 @@ __kernel void LocateStableFeatures(
 		// Grab the (x,y,sigma) feature point.
 		x = gFeatures[3*idx + 0];
 		y = gFeatures[3*idx + 1];
-		s = gFeatures[3*idx + 2];
+		s = gFeatures[3*idx + 2] - 1;
 
 		// Calculate value at refined position.
-		int s0 = convert_int(s);
-		float value = ptr[s0][idx] + 0.5f*( dx*offset.x + dy*offset.y + ds+offset.z );
+		int sint = convert_int(rint( s ));
+		int iint = convert_int(rint(y) + size.y*rint(x));
+		// The interpolated value is the original value plus half of the offset times the gradient.
+		float value = ptr[sint][iint] + 0.5f*( dx*offset.x + dy*offset.y + ds+offset.z );
+
+		if (idx==129) {
+			printf("Refined point: (x,y,s) (%f, %f, %f)\n",x,y,s);
+			printf("Original value: %d \n",ptr[sint][iint]);
+			printf("Refined value: %f \n",value);
+			// printf("Derivatives: %f, %f, %f\n",dx,dy,ds);
+			// printf("8 Points: \n %d, %d, %d \n %d, %d, %d \n %d, %d, %d \n",
+			// 	ptr[s1][i0],ptr[s1][i1],ptr[s1][i2],
+			// 	ptr[s1][i3],ptr[s1][i4],ptr[s1][i5],
+			// 	ptr[s1][i6],ptr[s1][i7],ptr[s1][i8]
+			// );
+			// printf("Hessian Matrix: \n %f, %f, %f\n %f, %f, %f\n %f, %f, %f\n",
+			// 	Hxx,Hxy,Hxs,
+			// 	Hxy,Hyy,Hys,
+			// 	Hxs,Hys,Hss
+			// );
+			// printf("Determinant: %f\n",determinant);
+			// printf("Hessian Matrix Inverse: \n %f, %f, %f\n %f, %f, %f\n %f, %f, %f\n",
+			// 	Hixx,Hixy,Hixs,
+			// 	Hiyx,Hiyy,Hiys,
+			// 	Hisx,Hisy,Hiss
+			// );
+			// printf("Offset: %f, %f, %f\n",offset.x,offset.y,offset.z);
+		}
+
 		// Contrast check.
 		if (fabs(value) < contrastLowerLimit) {
 			gFeatures[3*idx + 0] = 0;
 			gFeatures[3*idx + 1] = 0;
 			gFeatures[3*idx + 2] = 0;
+			// printf("Dropping point (%f,%f:%f) because contrast %f < %f.\n",
+			// 	x,y,s,
+			// 	value,
+			// 	contrastLowerLimit
+			// );
 			return;
 		}
 		// Trace and determinant of the 2D Hessian.
@@ -326,6 +401,12 @@ __kernel void LocateStableFeatures(
 			gFeatures[3*idx + 0] = 0;
 			gFeatures[3*idx + 1] = 0;
 			gFeatures[3*idx + 2] = 0;
+			// printf("Dropping point (%f,%f:%f) because curvature %f > 12.1 with trace = %f and det = %f \n",
+			// 	x,y,s,
+			// 	pow(trace,2)/determinant,
+			// 	trace,
+			// 	determinant
+			// 	);
 			return;
 		}
 	}
@@ -367,42 +448,66 @@ __kernel void GenerateGradientMap(
 
 __kernel void GenerateDescriptors(
 	__global float *gDescriptors,
-	__global const float *gImageSize,
-	__global const short *gScale1,
-	__global const short *gScale2,
-	__global const short *gScale3,
-	__global const short *gScale4,
-	__global const short *gScale5,
-	__global const short *gScale6,
-	__global const short *gGradient1,
-	__global const short *gGradient2,
-	__global const short *gGradient3,
-	__global const short *gGradient4,
-	__global const short *gGradient5,
-	__global const short *gGradient6
+	__global const int *gImageSize,
+	__global const float *gGradient1,
+	__global const float *gGradient2,
+	__global const float *gGradient3,
+	__global const float *gGradient4,
+	__global const float *gGradient5,
+	__global const float *gGradient6
 	)
 {
 	// Get global XY indices.
 	int idx = get_global_id(0);
 	// Grab image size.
 	int2 size = vload2(0,gImageSize);
-	// Pick arrays based on s.
-	__global const short *ptr[6] = { gScale1,gScale2,gScale3,gScale4,gScale5,gScale6 };
+	// Pick arrays based on nearest scale.
+	__global const float *gradient[6] = { gGradient1,gGradient2,gGradient3,gGradient4,gGradient5,gGradient6 };
 	// Image x,y position (rounded to nearest integer).
-	float x = convert_int( round(gDescriptors[3*idx + 0]) );
-	float y = convert_int( round(gDescriptors[3*idx + 1]) );
+	int x = convert_int( round(gDescriptors[3*idx + 0]) );
+	int y = convert_int( round(gDescriptors[3*idx + 1]) );
 	// Round scale to nearest integer.
-	float s = convert_int( round(gDescriptors[3*idx + 2]) );
+	int s = convert_int( round(gDescriptors[3*idx + 2]) );
 
-	// Calculate the gradient and angle for a 16x16 area around the point.
-	// OpenCL can only take up to float16
-	for (int i=0; i<8; i++) {
-		for (int j=0; j<8; j++) {
-			// Calculate gradient.
-			float nest = pow(ptr[s][y + szy*(x+1)] - ptr[s][y + szy*(x-1)],2) + pow(ptr[s][(y+1) + szy*x] - ptr[s][(y-1) + szy*x] ,2);
-			float gradient = sqrt(nest);
-			// Calculate angle.
-			nest = (ptr[s][(y+1) + szy*x] - ptr[s][(y-1) + szy*x])/(ptr[s][y + szy*(x+1)] - ptr[s][y + szy*(x-1)]);
-			float theta = atan(nest);
+	// Create a Gaussian Weighting function of size (16,16).
+	float gaussianKernel[256] = { 0 };
+	for (int i=0; i<16; i++) {
+		for (int j=0; j<16; j++) {
+			// Calcaulte the offset point of the Gaussian Window.
+			float2 index = (float2)(i-7.5,j-7.5);
+			// Save the value of the kernel.
+			gaussianKernel[j + 16*i] = exp( -(pow(index.x,2) + pow(index.y,2))/(2*pow(1.5*s,2)) )/( 2*M_PI_F * pow(1.5*s,2) );
+		}
 	}
+
+	// Iterate over the (16,16) area surrounding the point.
+	// p,q: Manages the quadrant (sub-area) we are looking at.
+	for (int p=0; p<4; p++) {
+		for (int q=0; q<4; q++) {
+			// i,j: Manage the x,y position in that quadrant.
+			for (int i=0; i<4; i++) {
+				for (int j=0; j<4; j++) {
+					// Calculate index of quadrant point within the scale array. WRONG I THINK...
+					int gradIdx = y + size.y*x;
+					// Get gradient index.
+					int guassIdx = (4*q+j) + 16*(4*p+i);
+					// Get gradient map details.
+					float2 grad = { gradient[s][gradIdx], gradient[s][gradIdx+1] };
+					// Multiply the magnitude by the gaussian weighting function.
+					float value = grad.x*gaussianKernel[guassIdx];
+					// Calculate which bin it belongs in (via theta).
+					int bin = convert_int( floor(grad.y/(M_PI_F/2)) );
+					// Calculate distance of point from bin centre.
+					// float d = 
+					// Add value to correct bin.
+					// idx*130		Descriptor: idx (all 130 elements each).
+					// +2			First two elements are (x,y) position.
+					// q+8*p 		This is the quadrant we are in (row,col).
+					// bin 			This is the bin we are assigning the value to.
+					// gDescriptors[idx*130 + 2 + q+8*p + bin] = gDescriptors[idx*130 + 2 + q+8*p + bin] + value*(1 − d);
+					gDescriptors[idx*130 + 2 + q+8*p + bin] = gDescriptors[idx*130 + 2 + q+8*p + bin] + value;
+				}
+			} // i,j
+		}
+	} // p,q
 } // End GenerateDescriptors
