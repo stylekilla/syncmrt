@@ -493,14 +493,6 @@ __kernel void KeypointOrientations(
 	int y = convert_int(rint( gKeypoints[stride*idx + 1] ));
 	int s = convert_int(rint( gKeypoints[stride*idx + 2] ));
 
-	// if (idx == 0){
-	// 	printf("Filter width %i \n",gGaussianWidths[s]);
-	// 	// printf("x,y (%i,%i), i,j, (%i,%i), gradient %f, angle %f, gaussian %f, value %f, bin %i \n",
-	// 		// x,y,i,j,
-	// 		// grad.x,grad.y,gaussian[s][guassIdx],value,bin
-	// 	// );
-	// }
-
 	// Make a temporary histogram. Bins go from [-pi,pi] in 10 degree steps.
 	float histogram[36] = { 0.0f };
 	// Bin the gaussian weighted magnitudes by the orientation values.
@@ -516,7 +508,7 @@ __kernel void KeypointOrientations(
 			// Multiply the magnitude by the gaussian weighting function.
 			float value = grad.x*gaussian[s][guassIdx];
 			// Calculate which bin it belongs in (via theta).
-			int bin = convert_int( floor(grad.y/(2*M_PI_F/36)) );
+			int bin = convert_int(floor( 18 + (grad.y/(M_PI_F/18)) ));
 			// Add the value to the correct bin.
 			histogram[bin] = histogram[bin] + value;
 		}
@@ -585,4 +577,136 @@ __kernel void KeypointOrientations(
 			offset++;
 		}
 	}
+	// if (offset > 4) {
+	// 	printf("Keypoint (%f,%f,%f) at %i has orientations [%f, %f, %f, %f, %f] \n",
+	// 		gKeypoints[stride*idx + 0],gKeypoints[stride*idx + 1],gKeypoints[stride*idx + 2],idx,
+	// 		gKeypoints[stride*idx + 3],gKeypoints[stride*idx + 4],gKeypoints[stride*idx + 5],gKeypoints[stride*idx + 6],gKeypoints[stride*idx + 7]
+	// 	);
+	// }
 } // End KeypointOrientations
+
+
+__kernel void KeypointDescriptors(
+	__global float *gDescriptors,
+	__global const int *gImageSize,
+	__global const float *gGaussianKernel,
+	__global const float *gGradient1,
+	__global const float *gGradient2,
+	__global const float *gGradient3,
+	__global const float *gGradient4,
+	__global const float *gGradient5,
+	__global const float *gGradient6
+	)
+{
+	// Get global XY indices.
+	int idx = get_global_id(0);
+	// Setup keypoints stride.
+	int stride = 130;
+	// Grab image size.
+	int2 size = vload2(0,gImageSize);
+	// Pick arrays based on nearest scale.
+	__global const float *gradient[6] = { gGradient1,gGradient2,gGradient3,gGradient4,gGradient5,gGradient6 };
+
+	// Image x,y position (floats), scale (rounded to nearest integer) and orientation (float).
+	float x = gDescriptors[stride*idx + 0];
+	float y = gDescriptors[stride*idx + 1];
+	int scale = convert_int(rint( gDescriptors[stride*idx + 2] ));
+	float theta = gDescriptors[stride*idx + 3];
+	// Calculate sin and cos of the orientation. Saves repeated computation later.
+	float s = sin(theta);
+	float c = cos(theta);
+
+	// Create reusable points.
+	// New offset points.
+	float nx = 0.0f;
+	float ny = 0.0f;
+	// Rotated points.
+	float rx = 0.0f;
+	float ry = 0.0f;
+
+	// Calculate index of quadrant point within the scale array.
+	// int gradIdx = 2*y + 2*size.y*x;
+	// Get gradient index.
+	// int guassIdx = j + gGaussianWidths[s]*i;
+
+	// Iterate over the (16,16) area surrounding the point.
+	// p,q: Manages the quadrant (sub-area) we are looking at: (-2,-1,0,1).
+	for (int p=-2; p<2; p++) {
+		for (int q=-2; q<2; q++) {
+			// Create a temporary histogram for the 4x4 block.
+			// Bins go from [-pi,pi] in 45 degree steps.
+			// float histogram[8] = { 0.0f };
+			float8 histogram = { 0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f };
+
+			// i,j: Manage the x,y position in that quadrant.
+			for (int i=0; i<4; i++) {
+				for (int j=0; j<4; j++) {
+					// Calculate our grid position.
+					nx = p*4 + i + 0.5f;
+					ny = q*4 + j + 0.5f;
+					// Now rotate our point to be in line with the keypoint orientation. This ensures orientation independence.
+					// Rotate our grid (this is centred about our point) to achieve rotation invariance.
+					rx = nx*c - ny*s;
+					ry = nx*s + ny*c;
+					// Calculate our new grid point, rotated and offset.
+					nx = x + rx;
+					ny = y + ry;
+
+					// Bilinear interpolation of gradient[s] at (rx,ry)...
+					// Get the difference between p0 and p (the distance of the point to the next smallest integer). Assume square voxels.
+					float2 delta = { nx-floor(nx), ny-floor(ny) };
+					// Get the source indices of the voxels surrounding the sample point.
+					int i00 = 2*floor(ny)	+ 2*size.y*floor(nx);
+					int i10 = 2*floor(ny)	+ 2*size.y*ceil(nx);
+					int i01 = 2*ceil(ny)	+ 2*size.y*floor(nx);
+					int i11 = 2*ceil(ny)	+ 2*size.y*ceil(nx);
+					// Get first round of interpolated points in x (m,theta).
+					float m0 = gradient[scale][i00]*(1-delta.x) + gradient[scale][i10]*delta.x;
+					float m1 = gradient[scale][i01]*(1-delta.x) + gradient[scale][i11]*delta.x;
+					float t0 = gradient[scale][i00+1]*(1-delta.x) + gradient[scale][i10+1]*delta.x;
+					float t1 = gradient[scale][i01+1]*(1-delta.x) + gradient[scale][i11+1]*delta.x;
+					// Interpolate in y. This is our interpolated value of (m,theta).
+					float m = m0*(delta.y-1) + m1*delta.y;
+					float t = t0*(delta.y-1) + t1*delta.y;
+
+					// Multiply gradient (m) by gaussian weighting.
+					// m = m*gGaussianKernel[j+(q+2)*4 + 4*(i+(p+2)*4)];
+					// Offset theta by keypoint orientation.
+					t = t-theta;
+					// Make sure theta is between [-pi,pi]. This assumes it can only be within 2*pi of our [-pi,pi] window.
+					if (t < -M_PI_F) {
+						t = t + 2*M_PI_F;
+					}
+					else if (t > M_PI_F) {
+						t = t - 2*M_PI_F;
+					}
+					// Calculate which bin it belongs in (via theta).
+					int bin = convert_int(floor( 4 + (t/(M_PI_F/4)) ));
+					// Add the gaussian weighted value to the correct bin.
+					histogram[bin] = histogram[bin] + m*gGaussianKernel[j+(q+2)*4 + 4*(i+(p+2)*4)];;
+				}
+			} // i,j
+			// Assign the histogram to the appropriate descriptor position.
+			vstore8(
+				histogram,
+				idx*stride + 2 + (q+2)+8*(p+2),
+				gDescriptors
+			);
+		}
+	} // p,q
+
+	// Find the maximum and make sure each value is no greater than 0.2.
+	float maximum = 0.0f;
+	for (int i=2; i<stride; i++) {
+		// If greater than 0.2, make it equal to 0.2.
+		if (gDescriptors[idx*stride + i] > 0.2f) {
+			gDescriptors[idx*stride + i] = 0.2f;
+		}
+		// Update the maximum value (to normalise to later).
+		maximum = fmax(maximum,gDescriptors[idx*stride + i]);
+	}
+	// Normalise the 128 element feature vector.
+	for (int i=2; i<stride; i++) {
+		gDescriptors[idx*stride + i] = gDescriptors[idx*stride + i]/maximum;
+	}
+} // End KeypointDescriptors

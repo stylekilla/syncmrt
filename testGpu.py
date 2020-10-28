@@ -342,6 +342,28 @@ class gpu:
 			# Bring back our list of stable features.
 			cl.enqueue_copy(self.queue_gpu, keypoints, gKeypoints)
 
+			# New keypoints.
+			newKeypoints = []
+			# Grab all the keypoints with multiple orientations.
+			for keypoint in keypoints:
+				orientations = keypoint[3:][keypoint[3:]>0]
+				if len(orientations) > 1:
+					for i in range(len(orientations)):
+						newKeypoints.append( np.hstack([keypoint[:3],orientations[i]]) )
+						# print("Making {} from {}".format(np.hstack([keypoint[:3],orientations[i]]),orientations))
+			# Combine them.
+			allKeypoints = np.vstack([keypoints[:,:4],newKeypoints])
+			# Find out how many features we now have.
+			nFeatures = len(allKeypoints)
+
+			logging.info("Created {} stable keypoints.".format(nFeatures))
+
+			# Make a descriptor array that is (nKeypoints, 2 + {8*4*4}). That is (x,y,8x4x4 descriptor array).
+			descriptors = np.zeros((nFeatures,130),dtype=cl.cltypes.float)
+			# Fill the keypoint values (x,y,sigma,theta. The memory at (sigma,theta) will get reused in the kernel for the descriptor.
+			descriptors[:,:4] = allKeypoints
+
+
 			# print(keypoints[0])
 			# tempArray = np.zeros(616*1216*2,dtype=cl.cltypes.float)
 			# cl.enqueue_copy(self.queue_gpu, tempArray, gradientMaps[int(kepoints[0][2])])
@@ -352,32 +374,25 @@ class gpu:
 			# ax.bar(np.arange(0,360,10),keypoints[0][3:])
 			# plt.show()
 
-			exit()
-
-
-
-			# Make a descriptors array that is (n,2 + {8*4*4}). That is (x,y,8x4x4 descriptor array).
-			descriptors = np.zeros((nFeatures,130),dtype=cl.cltypes.float)
-			# Assign the known information to the descriptors (x,y,sigma).
-			descriptors[:,:3] = featureList
 			# Copy it to the gpu.
 			gDescriptors = cl.Buffer(self.ctx_gpu, mf.READ_WRITE | mf.COPY_HOST_PTR, hostbuf=descriptors)
 
 			# Create a Gaussian weighting function unique to the scale level...?
 			# Choose a filter width (16 x 16 window).
-			# filterWidth = cl.cltypes.int(8)
-			# Calculate an offset for the filter so that it is centred about zero (i.e. so it goes from -1,0,+1 instead of 0,1,2...).
-			# filterOffset = (filterWidth-1)/2
+			filterWidth = cl.cltypes.int(16)
 			# Calculate xy values for filter (centred on zero, as described above).
-			# x,y = np.indices((filterWidth,filterWidth))-filterOffset
+			x,y = np.indices((filterWidth,filterWidth)) - filterWidth/2 + 0.5
+			# Sigma should be one half of the filter width.
+			sigma = filterWidth/2
 			# Generate gaussian kernel.
-			# gaussianKernel = np.array(np.exp( -(x**2 + y**2)/(2*(k*sigma)**2) )/( 2*np.pi * (k*sigma)**2 ),dtype=cl.cltypes.float)
+			gaussianKernel = np.array(np.exp( -(x**2 + y**2)/(2*(sigma**2)) )/( 2*np.pi * (sigma**2) ),dtype=cl.cltypes.float)
 			# Allocate the gaussian kernel to GPU memory.
-			# gGaussianKernel = cl.Buffer(self.ctx_gpu, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=gaussianKernel)
+			gGaussianKernel = cl.Buffer(self.ctx_gpu, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=gaussianKernel)
 			# To generate descriptors, we need the features and the scale.
 			args = (
 				gDescriptors,
 				gImageSize,
+				gGaussianKernel,
 				gradientMaps[0],
 				gradientMaps[1],
 				gradientMaps[2],
@@ -386,12 +401,12 @@ class gpu:
 				gradientMaps[5]
 			)
 			# Generate the descriptors for the stable features.
-			program.KeypointOrientations(self.queue_gpu,(nFeatures,),None,*(args))
+			program.KeypointDescriptors(self.queue_gpu,(nFeatures,),None,*(args))
 
 			cl.enqueue_copy(self.queue_gpu, descriptors, gDescriptors)
 			descriptors = descriptors.reshape(nFeatures,130)
 			# for n in range(nFeatures):
-			print(descriptors[0][:10])
+			print(descriptors[0])
 			exit()
 			# # START PLOT DEBUGING
 			# fig, ax = plt.subplots(1,1)
@@ -401,26 +416,6 @@ class gpu:
 			# exit()
 			# # END PLOT DEBUGING
 
-			# Make a descriptors array that is (n,2 + {8*4*4}). That is (x,y,8x4x4 descriptor array).
-			descriptors = np.zeros((nFeatures,130),dtype=cl.cltypes.float)
-			# Assign the known information to the descriptors (x,y,sigma).
-			descriptors[:,:3] = featureList
-			# Copy it to the gpu.
-			gDescriptors = cl.Buffer(self.ctx_gpu, mf.READ_WRITE | mf.COPY_HOST_PTR, hostbuf=descriptors)
-
-			# To generate descriptors, we need the features and the scale.
-			args = (
-				gDescriptors,
-				gImageSize,
-				gradientMaps[0],
-				gradientMaps[1],
-				gradientMaps[2],
-				gradientMaps[3],
-				gradientMaps[4],
-				gradientMaps[5]
-			)
-			# Generate the descriptors for the stable features.
-			program.GenerateDescriptors(self.queue_gpu,(nFeatures,),None,*(args))
 
 
 		"""
