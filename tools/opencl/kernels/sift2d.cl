@@ -87,6 +87,40 @@ __kernel void Difference(
 } // End Difference
 
 
+__kernel void GenerateGradientMap(
+	__global const short *gScale,
+	__global float *gGradientMap
+	)
+{
+	// Get global XY indices.
+	int x = get_global_id(0);
+	int y = get_global_id(1);
+	// Get input sizes.
+	int szx = get_global_size(0);
+	int szy = get_global_size(1);
+	// Get the ID number of the thread.
+	int idx = y + szy*x;
+	// Create a datapoint.
+	float2 gradient = { 0.0f, 0.0f };
+
+	// Skip the border pixels.
+	if (x>0 && y>0 && x<szx-1 && y<szy-1) {
+		// Calculate gradient.
+		float nest = pow((float)(gScale[y + szy*(x+1)] - gScale[y + szy*(x-1)]),2.0f) + pow((float)(gScale[(y+1) + szy*x] - gScale[(y-1) + szy*x]),2.0f);
+		gradient.x = sqrt(nest);
+		// Calculate angle.
+		// nest = (gScale[(y+1) + szy*x] - gScale[(y-1) + szy*x])/(gScale[y + szy*(x+1)] - gScale[y + szy*(x-1)]);
+		gradient.y = atan2(
+			(float)(gScale[(y+1) + szy*x] - gScale[(y-1) + szy*x]),
+			(float)(gScale[y + szy*(x+1)] - gScale[y + szy*(x-1)])
+		);
+	}
+
+	vstore2(gradient,idx,gGradientMap);
+
+} // End GenerateGradientMap
+
+
 __kernel void FindLocalMinima(
 	__global const short *gDog1,
 	__global const short *gDog2,
@@ -176,7 +210,7 @@ __kernel void FindLocalMaxima(
 
 
 __kernel void LocateStableFeatures(
-	__global float *gFeatures,
+	__global float *gKeypoints,
 	__global int *gImageSize,
 	const float contrastLowerLimit,
 	__global const short *gDog1,
@@ -188,6 +222,8 @@ __kernel void LocateStableFeatures(
 {
 	// Get global indice.
 	int idx = get_global_id(0);
+	// Setup keypoints stride.
+	int stride = 3;
 	// Grab image size.
 	int2 size = vload2(0,gImageSize);
 	// Pick arrays based on s.
@@ -231,10 +267,10 @@ __kernel void LocateStableFeatures(
 
 	bool success = false;
 	for (int i=0; i<4; i++) {
-		// Grab the (x,y,sigma) feature point; sigma must be reduced by one to let indexing begin at zero (it is saved as n+1).
-		x = gFeatures[3*idx + 0];
-		y = gFeatures[3*idx + 1];
-		s = gFeatures[3*idx + 2] - 1;
+		// Grab the (x,y,sigma) feature point.
+		x = rint( gKeypoints[stride*idx + 0] );
+		y = rint( gKeypoints[stride*idx + 1] );
+		s = rint( gKeypoints[stride*idx + 2] );
 		// Calculate second order Taylor series for vector, v(x,y,sigma).
 		// First get all the indices for accessing data around our current (x,y) point.
 		i0 = convert_int( (y+1) + size.y*(x-1) );
@@ -247,9 +283,9 @@ __kernel void LocateStableFeatures(
 		i7 = convert_int( (y-1) + size.y*(x+0) );
 		i8 = convert_int( (y-1) + size.y*(x+1) );
 		// Scale indices.
-		s0 = convert_int(rint( s-1	));
-		s1 = convert_int(rint( s	));
-		s2 = convert_int(rint( s+1	));
+		s0 = convert_int( s-1 );
+		s1 = convert_int( s	  );
+		s2 = convert_int( s+1 );
 		// Calcualte the derivatives.
 		dx = (ptr[s1][i5] - ptr[s1][i3])/2.0f;
 		dy = (ptr[s1][i1] - ptr[s1][i7])/2.0f;
@@ -290,64 +326,62 @@ __kernel void LocateStableFeatures(
 		offset.y = -(Hiyx*dx + Hiyy*dy + Hiys*ds);
 		offset.z = -(Hisx*dx + Hisy*dy + Hiss*ds);
 
-		if (idx==129) {
-			printf("(x,y,s): (%f, %f, %f) on iteration %i\n",x,y,s,i);
-			printf("Derivatives: %f, %f, %f\n",dx,dy,ds);
-			printf("8 Points in original scale: \n %d, %d, %d | %d, %d, %d | %d, %d, %d \n %d, %d, %d | %d, %d, %d | %d, %d, %d \n %d, %d, %d | %d, %d, %d | %d, %d, %d \n",
-				ptr[s0][i0],ptr[s0][i1],ptr[s0][i2],  ptr[s1][i0],ptr[s1][i1],ptr[s1][i2],  ptr[s2][i0],ptr[s2][i1],ptr[s2][i2],
-				ptr[s0][i3],ptr[s0][i4],ptr[s0][i5],  ptr[s1][i3],ptr[s1][i4],ptr[s1][i5],  ptr[s2][i3],ptr[s2][i4],ptr[s2][i5],
-				ptr[s0][i6],ptr[s0][i7],ptr[s0][i8],  ptr[s1][i6],ptr[s1][i7],ptr[s1][i8],  ptr[s2][i6],ptr[s2][i7],ptr[s2][i8]
-			);
-			printf("Hessian Matrix: \n %f, %f, %f\n %f, %f, %f\n %f, %f, %f\n",
-				Hxx,Hxy,Hxs,
-				Hxy,Hyy,Hys,
-				Hxs,Hys,Hss
-			);
-			printf("Determinant: %f\n",determinant);
-			printf("Hessian Matrix Inverse: \n %f, %f, %f\n %f, %f, %f\n %f, %f, %f\n",
-				Hixx,Hixy,Hixs,
-				Hiyx,Hiyy,Hiys,
-				Hisx,Hisy,Hiss
-			);
-			printf("Offset: %f, %f, %f\n",offset.x,offset.y,offset.z);
-		}
+		// Add the offset.
+		gKeypoints[stride*idx + 0] += offset.x;
+		gKeypoints[stride*idx + 1] += offset.y;
+		gKeypoints[stride*idx + 2] += offset.z;
+
+		// if (idx==129) {
+		// 	printf("(x,y,s): (%f, %f, %f) on iteration %i\n",x,y,s,i);
+		// 	printf("Derivatives: %f, %f, %f\n",dx,dy,ds);
+		// 	printf("8 Points in original scale: \n %d, %d, %d | %d, %d, %d | %d, %d, %d \n %d, %d, %d | %d, %d, %d | %d, %d, %d \n %d, %d, %d | %d, %d, %d | %d, %d, %d \n",
+		// 		ptr[s0][i0],ptr[s0][i1],ptr[s0][i2],  ptr[s1][i0],ptr[s1][i1],ptr[s1][i2],  ptr[s2][i0],ptr[s2][i1],ptr[s2][i2],
+		// 		ptr[s0][i3],ptr[s0][i4],ptr[s0][i5],  ptr[s1][i3],ptr[s1][i4],ptr[s1][i5],  ptr[s2][i3],ptr[s2][i4],ptr[s2][i5],
+		// 		ptr[s0][i6],ptr[s0][i7],ptr[s0][i8],  ptr[s1][i6],ptr[s1][i7],ptr[s1][i8],  ptr[s2][i6],ptr[s2][i7],ptr[s2][i8]
+		// 	);
+		// 	printf("Hessian Matrix: \n %f, %f, %f\n %f, %f, %f\n %f, %f, %f\n",
+		// 		Hxx,Hxy,Hxs,
+		// 		Hxy,Hyy,Hys,
+		// 		Hxs,Hys,Hss
+		// 	);
+		// 	printf("Determinant: %f\n",determinant);
+		// 	printf("Hessian Matrix Inverse: \n %f, %f, %f\n %f, %f, %f\n %f, %f, %f\n",
+		// 		Hixx,Hixy,Hixs,
+		// 		Hiyx,Hiyy,Hiys,
+		// 		Hisx,Hisy,Hiss
+		// 	);
+		// 	printf("Offset: %f, %f, %f\n",offset.x,offset.y,offset.z);
+		// }
 
 		// Check to see if the offset is greater than 0.5 in any direction.
 		if (fabs(offset.x) > 0.5 || fabs(offset.y) > 0.5 || fabs(offset.z) > 0.5) {
-			// If it is, add a step in those directions to the coordinates (x,y,sigma).
-			gFeatures[3*idx + 0] += round(offset.x);
-			gFeatures[3*idx + 1] += round(offset.y);
-			gFeatures[3*idx + 2] += round(offset.z);
-			// Check that our updates don't push the point outside our valid range.
-			if ((gFeatures[3*idx + 0] >= size.x) || (gFeatures[3*idx + 1] >= size.y) || (gFeatures[3*idx + 2] < 1) || (gFeatures[3*idx + 2] > 5)) {
+			// Check that our new offset points don't push the point outside our valid range.
+			if ((gKeypoints[stride*idx + 0] >= size.x) || (gKeypoints[stride*idx + 1] >= size.y) || (gKeypoints[stride*idx + 2] < 0) || (gKeypoints[stride*idx + 2] > 4)) {
 				// If they do, scrap the point.
 				break;
 			}
-			// The point was changed, keep changing it.
+			// Otherwise, keep iterating.
 			continue;
 		}
 		else {
-			// It doesn't need changing. Stop.
-			gFeatures[3*idx + 0] += offset.x;
-			gFeatures[3*idx + 1] += offset.y;
-			gFeatures[3*idx + 2] += offset.z;
+			// It doesn't need changing. Stop with success.
 			success = true;
 			break;
 		}
 	}
-	// Now that we have finished the loop, if it's last state was changed, consider the point unstable.
+	// Now that we have finished the loop, check whether we succeeded in localising the point.
 	if (!success) {
 		// Scrap it. Set everything to zero?
-		gFeatures[3*idx + 0] = 0;
-		gFeatures[3*idx + 1] = 0;
-		gFeatures[3*idx + 2] = 0;
+		gKeypoints[stride*idx + 0] = 0;
+		gKeypoints[stride*idx + 1] = 0;
+		gKeypoints[stride*idx + 2] = 0;
 		return;
 	}
 	else {
 		// Grab the (x,y,sigma) feature point.
-		x = gFeatures[3*idx + 0];
-		y = gFeatures[3*idx + 1];
-		s = gFeatures[3*idx + 2] - 1;
+		x = gKeypoints[stride*idx + 0];
+		y = gKeypoints[stride*idx + 1];
+		s = gKeypoints[stride*idx + 2];
 
 		// Calculate value at refined position.
 		int sint = convert_int(rint( s ));
@@ -355,159 +389,200 @@ __kernel void LocateStableFeatures(
 		// The interpolated value is the original value plus half of the offset times the gradient.
 		float value = ptr[sint][iint] + 0.5f*( dx*offset.x + dy*offset.y + ds+offset.z );
 
-		if (idx==129) {
-			printf("Refined point: (x,y,s) (%f, %f, %f)\n",x,y,s);
-			printf("Original value: %d \n",ptr[sint][iint]);
-			printf("Refined value: %f \n",value);
-			// printf("Derivatives: %f, %f, %f\n",dx,dy,ds);
-			// printf("8 Points: \n %d, %d, %d \n %d, %d, %d \n %d, %d, %d \n",
-			// 	ptr[s1][i0],ptr[s1][i1],ptr[s1][i2],
-			// 	ptr[s1][i3],ptr[s1][i4],ptr[s1][i5],
-			// 	ptr[s1][i6],ptr[s1][i7],ptr[s1][i8]
-			// );
-			// printf("Hessian Matrix: \n %f, %f, %f\n %f, %f, %f\n %f, %f, %f\n",
-			// 	Hxx,Hxy,Hxs,
-			// 	Hxy,Hyy,Hys,
-			// 	Hxs,Hys,Hss
-			// );
-			// printf("Determinant: %f\n",determinant);
-			// printf("Hessian Matrix Inverse: \n %f, %f, %f\n %f, %f, %f\n %f, %f, %f\n",
-			// 	Hixx,Hixy,Hixs,
-			// 	Hiyx,Hiyy,Hiys,
-			// 	Hisx,Hisy,Hiss
-			// );
-			// printf("Offset: %f, %f, %f\n",offset.x,offset.y,offset.z);
-		}
+		// if (idx==1798) {
+		// 	printf("Refined point: (x,y,s) (%f, %f, %f)\n",x,y,s);
+		// 	printf("Original value: %d \n",ptr[sint][iint]);
+		// 	printf("Refined value: %f \n",value);
+		// 	printf("Contrast Lower Limit: %f \n",contrastLowerLimit);
+		// 	printf("Derivatives: %f, %f, %f\n",dx,dy,ds);
+		// 	printf("8 Points: \n %d, %d, %d \n %d, %d, %d \n %d, %d, %d \n",
+		// 		ptr[s1][i0],ptr[s1][i1],ptr[s1][i2],
+		// 		ptr[s1][i3],ptr[s1][i4],ptr[s1][i5],
+		// 		ptr[s1][i6],ptr[s1][i7],ptr[s1][i8]
+		// 	);
+		// 	printf("Hessian Matrix: \n %f, %f, %f\n %f, %f, %f\n %f, %f, %f\n",
+		// 		Hxx,Hxy,Hxs,
+		// 		Hxy,Hyy,Hys,
+		// 		Hxs,Hys,Hss
+		// 	);
+		// 	printf("Determinant: %f\n",determinant);
+		// 	printf("Hessian Matrix Inverse: \n %f, %f, %f\n %f, %f, %f\n %f, %f, %f\n",
+		// 		Hixx,Hixy,Hixs,
+		// 		Hiyx,Hiyy,Hiys,
+		// 		Hisx,Hisy,Hiss
+		// 	);
+		// 	printf("Offset: %f, %f, %f\n",offset.x,offset.y,offset.z);
+		// 	// printf("%i: (x,y,s) = (%f,%f,%f)",idx,x,y,s);
+		// }
 
 		// Contrast check.
 		if (fabs(value) < contrastLowerLimit) {
-			gFeatures[3*idx + 0] = 0;
-			gFeatures[3*idx + 1] = 0;
-			gFeatures[3*idx + 2] = 0;
-			// printf("Dropping point (%f,%f:%f) because contrast %f < %f.\n",
-			// 	x,y,s,
-			// 	value,
-			// 	contrastLowerLimit
-			// );
+			gKeypoints[stride*idx + 0] = 0;
+			gKeypoints[stride*idx + 1] = 0;
+			gKeypoints[stride*idx + 2] = 0;
 			return;
 		}
 		// Trace and determinant of the 2D Hessian.
 		float trace = Hxx+Hyy;
 		determinant = Hxx*Hyy - Hxy*Hxy;
 		// Ratio between eigenvalues.
-		float ratio = 10;
+		float ratio = 10.0f;
 		// Curvature/edge check.
 		if (pow(trace,2)/determinant > pow(ratio+1,2)/ratio) {
-			gFeatures[3*idx + 0] = 0;
-			gFeatures[3*idx + 1] = 0;
-			gFeatures[3*idx + 2] = 0;
-			// printf("Dropping point (%f,%f:%f) because curvature %f > 12.1 with trace = %f and det = %f \n",
-			// 	x,y,s,
-			// 	pow(trace,2)/determinant,
-			// 	trace,
-			// 	determinant
-			// 	);
+			gKeypoints[stride*idx + 0] = 0;
+			gKeypoints[stride*idx + 1] = 0;
+			gKeypoints[stride*idx + 2] = 0;
 			return;
 		}
 	}
-} // End of SubPixelLocalization
+} // End of LocateStableFeatures
 
 
-__kernel void GenerateGradientMap(
-	__global const short *gScale,
-	__global float *gGradientMap
+float interpolateOrientationPeak(
+	const float x1,
+	const float x2,
+	const float x3,
+	const float y1,
+	const float y2,
+	const float y3
 	)
 {
-	// Get global XY indices.
-	int x = get_global_id(0);
-	int y = get_global_id(1);
-	// Get input sizes.
-	int szx = get_global_size(0);
-	int szy = get_global_size(1);
-	// Get the ID number of the thread.
-	int idx = y + szy*x;
-	// Create a datapoint.
-	float2 gradient = { 0.0f, 0.0f };
-	// Skip the border pixels.
-	if (x>1 && y>1 && x<szx-1 && y<szx-1) {
-		// Calculate gradient.
-		float nest = pow((float)(gScale[y + szy*(x+1)] - gScale[y + szy*(x-1)]),2.0f) + pow((float)(gScale[(y+1) + szy*x] - gScale[(y-1) + szy*x]),2.0f);
-		gradient.x = sqrt(nest);
-		// Calculate angle.
-		nest = (gScale[(y+1) + szy*x] - gScale[(y-1) + szy*x])/(gScale[y + szy*(x+1)] - gScale[y + szy*(x-1)]);
-		gradient.y = atan(nest);
-		// Store them.
-		vstore2(gradient,idx,gGradientMap);
-	}
-	else {
-		// Set them to zeroes.
-		vstore2(gradient,idx,gGradientMap);
-	}
-} // End GenerateGradientMap
+	// Calculate the parabola constants.
+	float denom = (x1-x2) * (x1-x3) * (x2-x3);
+	float a 	= (x3 * (y2-y1) + x2 * (y1-y3) + x1 * (y3-y2)) / denom;
+	float b 	= (x3*x3 * (y1-y2) + x2*x2 * (y3-y1) + x1*x1 * (y2-y3)) / denom;
+	// float c 	= (x2 * x3 * (x2-x3) * y1+x3 * x1 * (x3-x1) * y2+x1 * x2 * (x1-x2) * y3) / denom;
+	// Solve for local extrema.
+	float nx = -b/(2*a);
+	// float ny = a*nx*nx + b*nx * c;
+	// float2 newPoint = { nx, ny };
+	return nx;
+}
 
 
-__kernel void GenerateDescriptors(
-	__global float *gDescriptors,
+__kernel void KeypointOrientations(
+	__global float *gKeypoints,
 	__global const int *gImageSize,
+	__global const int *gGaussianWidths,
 	__global const float *gGradient1,
 	__global const float *gGradient2,
 	__global const float *gGradient3,
 	__global const float *gGradient4,
 	__global const float *gGradient5,
-	__global const float *gGradient6
+	__global const float *gGradient6,
+	__global const float *gGaussian1,
+	__global const float *gGaussian2,
+	__global const float *gGaussian3,
+	__global const float *gGaussian4,
+	__global const float *gGaussian5,
+	__global const float *gGaussian6
 	)
 {
 	// Get global XY indices.
 	int idx = get_global_id(0);
+	// Setup keypoints stride.
+	int stride = 39;
 	// Grab image size.
 	int2 size = vload2(0,gImageSize);
 	// Pick arrays based on nearest scale.
 	__global const float *gradient[6] = { gGradient1,gGradient2,gGradient3,gGradient4,gGradient5,gGradient6 };
-	// Image x,y position (rounded to nearest integer).
-	int x = convert_int( round(gDescriptors[3*idx + 0]) );
-	int y = convert_int( round(gDescriptors[3*idx + 1]) );
-	// Round scale to nearest integer.
-	int s = convert_int( round(gDescriptors[3*idx + 2]) );
+	__global const float *gaussian[6] = { gGaussian1,gGaussian2,gGaussian3,gGaussian4,gGaussian5,gGaussian6 };
 
-	// Create a Gaussian Weighting function of size (16,16).
-	float gaussianKernel[256] = { 0 };
-	for (int i=0; i<16; i++) {
-		for (int j=0; j<16; j++) {
-			// Calcaulte the offset point of the Gaussian Window.
-			float2 index = (float2)(i-7.5,j-7.5);
-			// Save the value of the kernel.
-			gaussianKernel[j + 16*i] = exp( -(pow(index.x,2) + pow(index.y,2))/(2*pow(1.5*s,2)) )/( 2*M_PI_F * pow(1.5*s,2) );
+	// Image x,y position and scale (rounded to nearest integer).
+	int x = convert_int(rint( gKeypoints[stride*idx + 0] ));
+	int y = convert_int(rint( gKeypoints[stride*idx + 1] ));
+	int s = convert_int(rint( gKeypoints[stride*idx + 2] ));
+
+	// if (idx == 0){
+	// 	printf("Filter width %i \n",gGaussianWidths[s]);
+	// 	// printf("x,y (%i,%i), i,j, (%i,%i), gradient %f, angle %f, gaussian %f, value %f, bin %i \n",
+	// 		// x,y,i,j,
+	// 		// grad.x,grad.y,gaussian[s][guassIdx],value,bin
+	// 	// );
+	// }
+
+	// Make a temporary histogram. Bins go from [-pi,pi] in 10 degree steps.
+	float histogram[36] = { 0.0f };
+	// Bin the gaussian weighted magnitudes by the orientation values.
+	// Iterate over the area surrounding the point. Assumes an odd width gaussian window.
+	for (int i=-(gGaussianWidths[s]-1)/2; i<(gGaussianWidths[s]+1)/2; i++) {
+		for (int j=-(gGaussianWidths[s]-1)/2; j<(gGaussianWidths[s]+1)/2; j++) {
+			// Calculate index of quadrant point within the scale array.
+			int gradIdx = 2*(y+j) + 2*size.y*(x+i);
+			// Get gradient index.
+			int guassIdx = j + gGaussianWidths[s]*i;
+			// Get gradient map details. Had problems with vload2, so not using that.
+			float2 grad = { gradient[s][gradIdx], gradient[s][gradIdx+1] };
+			// Multiply the magnitude by the gaussian weighting function.
+			float value = grad.x*gaussian[s][guassIdx];
+			// Calculate which bin it belongs in (via theta).
+			int bin = convert_int( floor(grad.y/(2*M_PI_F/36)) );
+			// Add the value to the correct bin.
+			histogram[bin] = histogram[bin] + value;
 		}
 	}
 
-	// Iterate over the (16,16) area surrounding the point.
-	// p,q: Manages the quadrant (sub-area) we are looking at.
-	for (int p=0; p<4; p++) {
-		for (int q=0; q<4; q++) {
-			// i,j: Manage the x,y position in that quadrant.
-			for (int i=0; i<4; i++) {
-				for (int j=0; j<4; j++) {
-					// Calculate index of quadrant point within the scale array. WRONG I THINK...
-					int gradIdx = y + size.y*x;
-					// Get gradient index.
-					int guassIdx = (4*q+j) + 16*(4*p+i);
-					// Get gradient map details.
-					float2 grad = { gradient[s][gradIdx], gradient[s][gradIdx+1] };
-					// Multiply the magnitude by the gaussian weighting function.
-					float value = grad.x*gaussianKernel[guassIdx];
-					// Calculate which bin it belongs in (via theta).
-					int bin = convert_int( floor(grad.y/(M_PI_F/2)) );
-					// Calculate distance of point from bin centre.
-					// float d = 
-					// Add value to correct bin.
-					// idx*130		Descriptor: idx (all 130 elements each).
-					// +2			First two elements are (x,y) position.
-					// q+8*p 		This is the quadrant we are in (row,col).
-					// bin 			This is the bin we are assigning the value to.
-					// gDescriptors[idx*130 + 2 + q+8*p + bin] = gDescriptors[idx*130 + 2 + q+8*p + bin] + value*(1 − d);
-					gDescriptors[idx*130 + 2 + q+8*p + bin] = gDescriptors[idx*130 + 2 + q+8*p + bin] + value;
-				}
-			} // i,j
+	// Normalise the orientation histogram.
+	// Find the maximum.
+	float maximum = 0.0f;
+	for (int i=0; i<36; i++) {
+		if (histogram[i] > maximum) {
+			maximum = histogram[i];
 		}
-	} // p,q
-} // End GenerateDescriptors
+	}
+	// Normalise the points.
+	for (int i=0; i<36; i++) {
+		histogram[i] = histogram[i]/maximum;
+	}
+	// Identify peaks within 80% of norm.
+	float peak = 0.0f;
+	int offset = 3;
+	float x0 = 0;
+	float x1 = 0;
+	float x2 = 0;
+	float y0 = 0;
+	float y1 = 0;
+	float y2 = 0;
+	// Normalise the points.
+	for (int i=0; i<36; i++) {
+		if (histogram[i] >= 0.8) {
+			// Set the x positions to be the centre of the bins.
+			x0 = -M_PI_F + (i-1+0.5)*(M_PI_F/18);
+			x1 = -M_PI_F + (i  +0.5)*(M_PI_F/18);
+			x2 = -M_PI_F + (i+1+0.5)*(M_PI_F/18);
+			// Handle histogram under/overflow conditions.
+			if (i==0) {
+				y0 = histogram[35];
+				y1 = histogram[0];
+				y2 = histogram[1];
+			}
+			else if (i==35) {
+				y0 = histogram[34];
+				y1 = histogram[35];
+				y2 = histogram[0];
+			}
+			else {
+				y0 = histogram[i-1];
+				y1 = histogram[i];
+				y2 = histogram[i+1];
+			}
+
+			// Continue as normal.
+			peak = interpolateOrientationPeak(
+					x0,x1,x2,
+					y0,y1,y2
+				);
+
+			// printf("[%f,%f,%f] with [%f,%f,%f] centred at %i interpolated to %f \n",
+			// 	x0,x1,x2,
+			// 	y0,y1,y2,
+			// 	i,peak
+			// );
+
+			// Add the orientation to the keypoint.
+			gKeypoints[idx*stride + offset] = peak;
+			// Increase the offset.
+			offset++;
+		}
+	}
+} // End KeypointOrientations

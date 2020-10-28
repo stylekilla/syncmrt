@@ -66,8 +66,9 @@ class gpu:
 		sigma = np.sqrt(2)/2
 		lowerDataThreshold = 0.0
 		# Use 8-bit for now... can up to 16-bit images later.
-		# The test rat images are in 8-bit so that is what we will use.
-		contrastRejectionThreshold = 0.03*256
+		bits = 8
+		# Our rejection threshold is 3% of half the available bit space.
+		contrastRejectionThreshold = 0.03*(2**bits)/2
 
 		# Fixed inputs:
 		# Number of octaves = 3
@@ -125,6 +126,10 @@ class gpu:
 			else:
 				# Otherwise, just pass the original data on.
 				imageArray = gArray
+
+			"""
+			STEP 1.1: SCALE IMAGES (GAUSSIAN BLUR).
+			"""
 			# Calculate scale images.
 			for i in range(nScaleLevels):
 				# We are now on a per-buffer level within an octave.
@@ -154,100 +159,26 @@ class gpu:
 				# Run the program
 				program.Gaussian2D(self.queue_gpu,kernelShape,None,*(args))
 
+
+			"""
+			STEP 1.2: DIFFERENCE OF GAUSSIAN.
+			"""
 			# Calculate Difference of Gaussian.
 			for i,j in zip(range(0,nScaleLevels-1),range(1,nScaleLevels)):
 				logging.info("Calculating Difference of Gaussian between scale images {} and {}.".format(i+1,j+1))
 				# Grab pairs of octaves and a dog image to fill in.
 				args = (
-					scaleImage[j],
 					scaleImage[i],
+					scaleImage[j],
 					dogImage[i]
 				)
 				program.Difference(self.queue_gpu,kernelShape,None,*(args))
 
 			"""
-			STEP 2: FIND KEYPOINTS
-			"""
-			# Create features map.
-			features = np.zeros(array.shape,dtype=cl.cltypes.int)
-			gFeatures = cl.Buffer(self.ctx_gpu, mf.READ_WRITE | mf.COPY_HOST_PTR, hostbuf=features)
-			# For each Dog map, find the local minima and maxima.
-			for i in range(1,nScaleLevels-2):
-				logging.info("Finding local extrema in DoG Images {} to {}.".format(i,i+2))
-				gDog1 = dogImage[i-1]
-				gDog2 = dogImage[i]
-				gDog3 = dogImage[i+1]
-				# Program args.
-				args = (
-					gDog1,
-					gDog2,
-					gDog3,
-					cl.cltypes.int(i+1),
-					gFeatures
-				)
-				# These will write the scale factor, s, at the xy position in which the extrema was found.
-				program.FindLocalMinima(self.queue_gpu,kernelShape,None,*(args))
-				program.FindLocalMaxima(self.queue_gpu,kernelShape,None,*(args))
-			# Bring back our list of features.
-			cl.enqueue_copy(self.queue_gpu, features, gFeatures)
-
-			# Find out how many features there were.
-			x,y = np.nonzero(features)
-			scale = features[tuple([x,y])]
-			# Now make a new array to house those features as (x,y,sigma) coordinates.
-			featureList = np.array(list(zip(x,y,scale)),dtype=cl.cltypes.float)
-			# Find out how many features there are.
-			nFeatures = len(x)
-			logging.info("Found {} initial keypoints.".format(nFeatures))
-			featureList_localExtrema = np.array(featureList)
-
-			# Assign gpu memory for the featurelist. This will be the main call of our kernel.
-			gFeatureList = cl.Buffer(self.ctx_gpu, mf.READ_WRITE | mf.COPY_HOST_PTR, hostbuf=featureList)
-			# We also need to pass the kernel information on how big the images are. For each octave this has been previously described as kernelShape.
-			imageSize = np.array(kernelShape,dtype=cl.cltypes.int)
-			gImageSize = cl.Buffer(self.ctx_gpu, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=imageSize)
-			# Now we want to refine the local positions with sub-pixel accuracy and identify the stable features.
-			args = (
-				gFeatureList,
-				gImageSize,
-				cl.cltypes.float(contrastRejectionThreshold),
-				dogImage[0],
-				dogImage[1],
-				dogImage[2],
-				dogImage[3],
-				dogImage[4]
-			)
-			program.LocateStableFeatures(self.queue_gpu,(nFeatures,),None,*(args))
-			# Bring back our list of stable features.
-			cl.enqueue_copy(self.queue_gpu, featureList, gFeatureList)
-			# Reshape it into a (n,3) array.
-			featureList = featureList.reshape(nFeatures,3)
-			# Reduce the feature list into valid components. Remove everything set to (0,0,0).
-			mask = np.all(featureList>0,axis=1)
-			featureList = featureList[mask]
-			featureList_stable = np.array(featureList)
-
-			exit()
-			# START PLOT DEBUGING
-			# tempArray = np.zeros(array.shape,dtype=cl.cltypes.short)
-			# tempArray = np.zeros(array.shape,dtype=cl.cltypes.short)
-			# cl.enqueue_copy(self.queue_gpu, tempArray, dogImage[3])
-			# tempArray = tempArray.reshape(array.shape)
-			fig, (ax1,ax2) = plt.subplots(1,2)
-			ax1.imshow(array)
-			ax1.scatter(featureList_localExtrema[:,1],featureList_localExtrema[:,0],marker='x',c='r')
-			ax2.imshow(array)
-			ax2.scatter(featureList_stable[:,1],featureList_stable[:,0],marker='x',c='r')
-			plt.show()
-			exit()
-			# END PLOT DEBUGING		
-
-
-			"""
-			STEP 3: ORIENTATION ASSIGNMENT
+			STEP 1.3: GENERATE GRADIENT MAPS.
 			"""
 			# Gradient maps are an (m,n,2) array). Their size is the shape product times the cl datatype.
-			nbytes = np.prod(kernelShape) * np.dtype(cl.cltypes.float2).itemsize
+			nbytes = np.prod(kernelShape) * np.dtype(cl.cltypes.float).itemsize * 2
 			gradientMaps = self._generateDeviceMemoryObjects(self.ctx_gpu,nbytes,nScaleLevels)
 			# Create one gradient map for each scale image.
 			for idx in range(nScaleLevels):
@@ -257,22 +188,173 @@ class gpu:
 				)
 				program.GenerateGradientMap(self.queue_gpu,kernelShape,None,*(args))
 
+			# # START PLOT DEBUGING
+			# tempArray = np.zeros(616*1216*2,dtype=cl.cltypes.float)
+			# cl.enqueue_copy(self.queue_gpu, tempArray, gradientMaps[5])
+			# tempArray = tempArray.reshape(616,1216,2)
+			# # print(tempArray[:10])
+			# # tempArray = tempArray.reshape(array.shape)
+			# fig, (ax1,ax2) = plt.subplots(1,2)
+			# # ax1.imshow(array)
+			# ax1.imshow(tempArray[:,:,0])
+			# ax2.imshow(tempArray[:,:,1])
+			# plt.show()
+			# exit()
+			# # END PLOT DEBUGING		
+
+
+
 			"""
-			STEP 4: GENERATE KEYPOINT DESCRIPTORS
+			STEP 2.1: FIND KEYPOINTS
 			"""
-			# Find out how many features there are in the stable feature list.
-			nFeatures = len(featureList)
-			logging.info("Found {} stable keypoints.".format(nFeatures))
+			# Create features map.
+			features = np.zeros(array.shape,dtype=cl.cltypes.int)
+			gFeatures = cl.Buffer(self.ctx_gpu, mf.READ_WRITE | mf.COPY_HOST_PTR, hostbuf=features)
+			# For each Dog map, find the local minima and maxima.
+			for i in range(1,len(dogImage)-1):
+				logging.info("Finding local extrema in DoG Images {} to {}.".format(i,i+2))
+				gDog1 = dogImage[i-1]
+				gDog2 = dogImage[i]
+				gDog3 = dogImage[i+1]
+				# Program args.
+				args = (
+					gDog1,
+					gDog2,
+					gDog3,
+					cl.cltypes.int(i),
+					gFeatures
+				)
+				# These will write the scale factor, s, at the xy position in which the extrema was found.
+				program.FindLocalMinima(self.queue_gpu,kernelShape,None,*(args))
+				program.FindLocalMaxima(self.queue_gpu,kernelShape,None,*(args))
+			# Bring back our list of features.
+			cl.enqueue_copy(self.queue_gpu, features, gFeatures)
+			# Features array is no longer required.
+			gFeatures.release()
+
+			"""
+			STEP 2.2: FIND STABLE KEYPOINTS
+			"""
+			# Find out how many features there were. The function np.nonzero() searches the array for all non zero values and returns their positions.
+			x,y = np.nonzero(features)
+			# This grabs the scale values at those non-zero positions.
+			scale = features[tuple([x,y])]
+			# Now we know how many features we have identified in this octave.
+			nFeatures = len(x)
+			# Create a keypoint tracker that allows for (x,y,sigma,36-bin orientation histogram).
+			keypoints = np.zeros((nFeatures,3),dtype=cl.cltypes.float)
+			# Assign (x,y,scale) to each keypoint.
+			keypoints[:,0] = x
+			keypoints[:,1] = y
+			keypoints[:,2] = scale
+
+			logging.info("Found {} initial keypoints.".format(nFeatures))
+
+			# Assign gpu memory for the featurelist. This will be the main call of our kernel.
+			gKeypoints = cl.Buffer(self.ctx_gpu, mf.READ_WRITE | mf.COPY_HOST_PTR, hostbuf=keypoints)
+			# We also need to pass the kernel information on how big the images are. For each octave this has been previously described as kernelShape.
+			imageSize = np.array(kernelShape,dtype=cl.cltypes.int)
+			gImageSize = cl.Buffer(self.ctx_gpu, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=imageSize)
+			# Now we want to refine the local positions with sub-pixel accuracy and identify the stable features.
+			args = (
+				gKeypoints,
+				gImageSize,
+				cl.cltypes.float(contrastRejectionThreshold),
+				dogImage[0],
+				dogImage[1],
+				dogImage[2],
+				dogImage[3],
+				dogImage[4]
+			)
+			program.LocateStableFeatures(self.queue_gpu,(nFeatures,),None,*(args))
+
+			# Bring back our list of stable features.
+			cl.enqueue_copy(self.queue_gpu, keypoints, gKeypoints)
+			gKeypoints.release()
 
 			# START PLOT DEBUGING
-			fig, (ax1,ax2) = plt.subplots(1,2)
-			ax1.imshow(array)
-			ax1.scatter(featureList_localExtrema[:,1],featureList_localExtrema[:,0],c='k',marker='x')
-			ax2.imshow(array)
-			ax2.scatter(featureList_stable[:,1],featureList_stable[:,0],c='k',marker='x')
-			plt.show()
-			exit()
+			# fig, ax = plt.subplots(1,1)
+			# ax.imshow(array)
+			# ax.scatter(featureList[:,1],featureList[:,0],c='k',marker='x')
+			# plt.show()
+			# exit()
 			# END PLOT DEBUGING
+
+			"""
+			STEP 2.3: ASSIGN OREITNATION TO KEYPOINTS.
+			"""
+			# Reduce the feature list into valid components. Remove everything set to (0,0,0).
+			mask = np.all(keypoints>0,axis=1)
+			temp = keypoints[mask]
+			nFeatures = len(temp)
+
+			logging.info("Identified {} stable keypoints.".format(nFeatures))
+
+			# Create a keypoint tracker that allows for (x,y,sigma,36-bin orientation histogram).
+			keypoints = np.zeros((nFeatures,39),dtype=cl.cltypes.float)
+			keypoints[:,:3] = temp
+			# Re-assign GPU space.
+			gKeypoints = cl.Buffer(self.ctx_gpu, mf.READ_WRITE | mf.COPY_HOST_PTR, hostbuf=keypoints)
+
+			# Gaussian kernels for each scale level.
+			gaussianKernels = []
+			kernelSizes = []
+			for i in range(nScaleLevels):
+				# Calculate the Gaussian kernels...
+				k = np.sqrt(2)**i
+				sig = 1.5*sigma*subSamplingFactor*k
+				filterWidth = int(3*sig + (3*(sig)+1)%2)
+				filterOffset = (filterWidth-1)/2
+				x,y = np.indices((filterWidth,filterWidth))-filterOffset
+				kernel = np.array(np.exp( -(x**2 + y**2)/(2*(sig)**2) )/( 2*np.pi * (sig)**2 ),dtype=cl.cltypes.float)
+				# Save the kernel and it's width.
+				gaussianKernels.append(kernel)
+				kernelSizes.append(filterWidth)
+
+			gaussianKernelBuffers = []
+			for kernel in gaussianKernels:
+				gaussianKernelBuffers.append(cl.Buffer(self.ctx_gpu, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=kernel))
+
+			kernelSizes = np.array(kernelSizes, dtype=cl.cltypes.int)
+			gGaussianWidths = cl.Buffer(self.ctx_gpu, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=kernelSizes)
+
+			# To create orientation histograms, we need the features and the gradient maps.
+			args = (
+				gKeypoints,
+				gImageSize,
+				gGaussianWidths,
+				gradientMaps[0],
+				gradientMaps[1],
+				gradientMaps[2],
+				gradientMaps[3],
+				gradientMaps[4],
+				gradientMaps[5],
+				gaussianKernelBuffers[0],
+				gaussianKernelBuffers[1],
+				gaussianKernelBuffers[2],
+				gaussianKernelBuffers[3],
+				gaussianKernelBuffers[4],
+				gaussianKernelBuffers[5]
+			)
+			# Generate the descriptors for the stable features.
+			program.KeypointOrientations(self.queue_gpu,(nFeatures,),None,*(args))
+
+			# Bring back our list of stable features.
+			cl.enqueue_copy(self.queue_gpu, keypoints, gKeypoints)
+
+			# print(keypoints[0])
+			# tempArray = np.zeros(616*1216*2,dtype=cl.cltypes.float)
+			# cl.enqueue_copy(self.queue_gpu, tempArray, gradientMaps[int(kepoints[0][2])])
+			# tempArray = tempArray.reshape(616,1216,2)
+			# print(tempArray[16:25,465:474,0])
+			# print(tempArray[16:25,465:474,1])
+			# fig, ax = plt.subplots(1,1)
+			# ax.bar(np.arange(0,360,10),keypoints[0][3:])
+			# plt.show()
+
+			exit()
+
+
 
 			# Make a descriptors array that is (n,2 + {8*4*4}). That is (x,y,8x4x4 descriptor array).
 			descriptors = np.zeros((nFeatures,130),dtype=cl.cltypes.float)
@@ -283,15 +365,49 @@ class gpu:
 
 			# Create a Gaussian weighting function unique to the scale level...?
 			# Choose a filter width (16 x 16 window).
-			filterWidth = cl.cltypes.int(8)
+			# filterWidth = cl.cltypes.int(8)
 			# Calculate an offset for the filter so that it is centred about zero (i.e. so it goes from -1,0,+1 instead of 0,1,2...).
-			filterOffset = (filterWidth-1)/2
+			# filterOffset = (filterWidth-1)/2
 			# Calculate xy values for filter (centred on zero, as described above).
-			x,y = np.indices((filterWidth,filterWidth))-filterOffset
+			# x,y = np.indices((filterWidth,filterWidth))-filterOffset
 			# Generate gaussian kernel.
-			gaussianKernel = np.array(np.exp( -(x**2 + y**2)/(2*(k*sigma)**2) )/( 2*np.pi * (k*sigma)**2 ),dtype=cl.cltypes.float)
+			# gaussianKernel = np.array(np.exp( -(x**2 + y**2)/(2*(k*sigma)**2) )/( 2*np.pi * (k*sigma)**2 ),dtype=cl.cltypes.float)
 			# Allocate the gaussian kernel to GPU memory.
-			gGaussianKernel = cl.Buffer(self.ctx_gpu, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=gaussianKernel)
+			# gGaussianKernel = cl.Buffer(self.ctx_gpu, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=gaussianKernel)
+			# To generate descriptors, we need the features and the scale.
+			args = (
+				gDescriptors,
+				gImageSize,
+				gradientMaps[0],
+				gradientMaps[1],
+				gradientMaps[2],
+				gradientMaps[3],
+				gradientMaps[4],
+				gradientMaps[5]
+			)
+			# Generate the descriptors for the stable features.
+			program.KeypointOrientations(self.queue_gpu,(nFeatures,),None,*(args))
+
+			cl.enqueue_copy(self.queue_gpu, descriptors, gDescriptors)
+			descriptors = descriptors.reshape(nFeatures,130)
+			# for n in range(nFeatures):
+			print(descriptors[0][:10])
+			exit()
+			# # START PLOT DEBUGING
+			# fig, ax = plt.subplots(1,1)
+			# ax.imshow(array)
+			# ax.scatter(featureList[:,1],featureList[:,0],c='k',marker='x')
+			# plt.show()
+			# exit()
+			# # END PLOT DEBUGING
+
+			# Make a descriptors array that is (n,2 + {8*4*4}). That is (x,y,8x4x4 descriptor array).
+			descriptors = np.zeros((nFeatures,130),dtype=cl.cltypes.float)
+			# Assign the known information to the descriptors (x,y,sigma).
+			descriptors[:,:3] = featureList
+			# Copy it to the gpu.
+			gDescriptors = cl.Buffer(self.ctx_gpu, mf.READ_WRITE | mf.COPY_HOST_PTR, hostbuf=descriptors)
+
 			# To generate descriptors, we need the features and the scale.
 			args = (
 				gDescriptors,
@@ -306,18 +422,6 @@ class gpu:
 			# Generate the descriptors for the stable features.
 			program.GenerateDescriptors(self.queue_gpu,(nFeatures,),None,*(args))
 
-			# cl.enqueue_copy(self.queue_gpu, descriptors, gDescriptors)
-			# descriptors = descriptors.reshape(nFeatures,130)
-			# for n in range(nFeatures):
-			# 	print(descriptors[n][:10])
-			exit()
-			# # START PLOT DEBUGING
-			# fig, ax = plt.subplots(1,1)
-			# ax.imshow(array)
-			# ax.scatter(featureList[:,1],featureList[:,0],c='k',marker='x')
-			# plt.show()
-			# exit()
-			# # END PLOT DEBUGING
 
 		"""
 		Comments
