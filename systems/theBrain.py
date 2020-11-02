@@ -168,12 +168,12 @@ class Brain(QtCore.QObject):
 			self._routine.preImagingPosition = self.patientSupport.position()
 			# Calculate how many steps are required per image.
 			# self._routine.stepCounterLimit = np.ceil(np.absolute(trans[1]-trans[0])/self._routine.dz)
-			m = np.ceil(np.absolute(trans[0])/self._routine.dz - 0.5)
-			n = np.ceil(np.absolute(trans[1])/self._routine.dz - 0.5)
+			logging.info("Imaging region: {}.".format(trans))
+			m = np.ceil(np.absolute(trans[0])/self._routine.dz - 0.5)*np.sign(trans[0])
+			n = np.ceil(np.absolute(trans[1])/self._routine.dz - 0.5)*np.sign(trans[1])
 			s = self._routine.preImagingPosition[2]
-			self._routine.tz = [s-m*self._routine.dz,s+n*self._routine.dz]
-			self._routine.stepCounterLimit = m+n+1
-			print(self._routine.tz,self._routine.stepCounterLimit)
+			self._routine.tz = [s+m*self._routine.dz,s+n*self._routine.dz]
+			self._routine.stepCounterLimit = np.absolute(m)+np.absolute(n)+1
 			# Signals and slots: Connections.
 			logging.info("Connecting patient support and detector signals to imaging routine.")
 			self.patientSupport.finishedMove.connect(partial(self._continueScan,'imaging'))
@@ -189,7 +189,7 @@ class Brain(QtCore.QObject):
 		if self._routine.imageCounter < self._routine.imageCounterLimit:
 			logging.info("Starting scan {}/{} at {}deg.".format(self._routine.imageCounter+1,self._routine.imageCounterLimit,self._routine.theta[self._routine.imageCounter]))
 			# Calculate image position and set patient to that position.
-			position = np.array(self._routine.preImagingPosition) + np.array([0,0,self._routine.tz[0],0,0,self._routine.theta[self._routine.imageCounter]])
+			position = np.array([0,0,self._routine.tz[0],0,0,self._routine.theta[self._routine.imageCounter]])
 			self.patientSupport.setPosition(position)
 		else:
 			# We are done. 
