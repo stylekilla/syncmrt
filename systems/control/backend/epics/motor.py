@@ -1,7 +1,6 @@
 import epics
 import numpy as np
 import logging
-import time
 from PyQt5 import QtCore
 
 """
@@ -56,6 +55,9 @@ class motor(QtCore.QObject):
 		super().__init__()
 		# Flag for init completion. Without this, callbacks will run before we've finished setting up and it will crash.
 		self._initComplete = False
+		# Triggers for movement. Movement set means we have told the motor to move from within this class.
+		self._movementSet = False
+		self._movementStarted = False
 		# Save the pv base.
 		self.pvBase = pvName
 		# Initialisation vars.
@@ -70,6 +72,9 @@ class motor(QtCore.QObject):
 			)
 		# Add callback for positioning monitoring.
 		self.RBV.add_callback(self._positionMonitor)
+		# Add a callback for motion monitoring.
+		self.MOVN.add_callback(self._movingMonitor)
+		self.DMOV.add_callback(self._doneMovingMonitor)
 		# Flag for init completion.
 		self._initComplete = True
 
@@ -99,6 +104,25 @@ class motor(QtCore.QObject):
 		else:
 			self.disconnected.emit()
 
+	def _positionMonitor(self,*args,**kwargs):
+		# Update the device's position.
+		if ('pvname' in kwargs) and ('value' in kwargs):
+			self.position.emit(float(kwargs['value']))
+
+	def _movingMonitor(self,*args,**kwargs):
+		""" MOVN watch dog. """
+		if bool(kwargs['value']): self._movementStarted = True
+
+	def _doneMovingMonitor(self,*args,**kwargs):
+		""" A watchdog for movement. This callback is triggered by DMOV. """
+		# If we have set a movement, have started the movement, and have finished it...
+		if bool(kwargs['value']) and self._movementSet and self._movementStarted:
+			# We are done moving...
+			self._checkMovement()
+			# Reset the flags.
+			self._movementSet = False
+			self._movementStarted = False
+
 	def isConnected(self):
 		# Return if we are connected or not.
 		return self._connectionStatus
@@ -111,11 +135,6 @@ class motor(QtCore.QObject):
 			except:
 				raise MotorException("Failed to force {} to reconnect.".format(pv))
 
-	def _positionMonitor(self,*args,**kwargs):
-		# Update the device's position.
-		if ('pvname' in kwargs) and ('value' in kwargs):
-			self.position.emit(float(kwargs['value']))
-
 	def read(self):
 		# Return position of motor.
 		if self._connectionStatus:
@@ -124,67 +143,46 @@ class motor(QtCore.QObject):
 			raise MotorException("Connection error. Could not read motor position.")
 
 	def write(self,value,mode='absolute'):
-		logging.critical("In write... COnnection status: {}".format(self._connectionStatus))
 		if not self._connectionStatus: 
 			raise MotorException("Connection error. Could not write motor position.")
-		logging.critical("Has connection...")
-
 		# Get the current motor position, before any attempt of movement.
 		previousPosition = self.RBV.get()
-
 		# Calculate the writevalue.
 		if mode == 'absolute':
 			writeValue = value
 		elif mode == 'relative':
 			writeValue = previousPosition + value
-
-		logging.critical("Is it within limits?... {} -> {} ".format(self.withinLimits(writeValue,writeValue)))
 		# Write the value if acceptable.
 		if self.withinLimits(writeValue):
-			logging.warning("Writing value to motor {}".format(selv.pvBase))
+			# If the value is within the limits, write it.
+			self.VAL.put(writeValue)
+			# Say we have set the move.
+			self._movementSet = True
 			# Emit the move started signal.
 			self.moveStarted.emit(float(previousPosition),float(writeValue))
-			# If the value is within the limits, write it. Wait for it to be completed.
-			self.VAL.put(
-				writeValue,
-				# wait=True
-				callback=self._checkMovement,
-				callback_data=[previousPosition,writeValue]
-			)
-			# Run the callback ourselves.
-			# self._checkMovement(data=[previousPosition,writeValue])
 		else:
 			# It is outside the limits.
-			raise MotorLimitException("Value {} exceeds motor limits.".format(writeValue))
+			raise MotorLimitException("Value {} exceeds motor limits.".format(self.pvBase,writeValue))
 
 	def withinLimits(self,value):
 		return (value <= self.HLM.get() and value >= self.LLM.get())
 
 	def _checkMovement(self,*args,**kwargs):
-		logging.info("In callback _checkMovement")
-		# To avoid a race condition.
-		for i in range(50):
-			epics.ca.poll()
-		# Wait until we have stopped moving.
-		while(True):
-			# Update events.
-			epics.ca.poll()
-			# Tell when to break and recheck.
-			if self.DMOV.get() and not self.MOVN.get():
-				break
-			else:
-				print(self.DMOV.get(), not self.MOVN.get())
+		# If we are done moving... get the write value and current positions.
+		# previousPosition, expectedPosition = kwargs['data']
 
-		# If we are done moving... get the previous and new positions.
-		previousPosition, expectedPosition = kwargs['data']
-		# # Get the current position.
+		# Clear the DMOV callbacks.
+		# self.DMOV.clear_callbacks()
+		# Get the expected and current positions.
+		expectedPosition = self.VAL.get()
 		currentPosition = self.RBV.get()
 
 		if float(abs(expectedPosition - currentPosition)) > (10**(-float(self.PREC.get()))+float(self.BDST.get())):
 			# We are outside our precision range and backlash distance.
 			# raise MotorException("The motor did not stop at the expected position of {:.3f}.".format(expectedPosition))
-			logging.warning("The motor did not stop at the expected position of {:.3f}.".format(expectedPosition))
+			logging.warning("{} did not stop at the expected position of {:.3f}. Instead stopped at {:.3f}.".format(self.pvBase,expectedPosition,currentPosition))
 			self.error.emit()
 		else:
 			# Else we are successfull.
+			logging.info("{} finished successfully.".format(self.pvBase))
 			self.moveFinished.emit()

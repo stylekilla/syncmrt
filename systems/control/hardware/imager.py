@@ -148,7 +148,8 @@ class Imager(QtCore.QObject):
 			logging.warning("Cannot acquire x-rays when there is no HDF5 file.")
 			return None
 		# Get the image and update the metadata.
-		_data = self.detector.acquire(continuous)
+		# _data = self.detector.acquire(continuous)
+		_data = self.detector.acquire()
 		metadata.update(_data[1])
 		image = _data[0]
 		# Calculate the extent.

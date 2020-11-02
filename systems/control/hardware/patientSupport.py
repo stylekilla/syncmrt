@@ -131,15 +131,15 @@ class patientSupport(QtCore.QObject):
 			if motor._stage == 0:
 				self._size = np.add(self._size,motor._size)
 
-	def shiftPosition(self,position,uid=None):
+	def shiftPosition(self,position,uid=None,workpoint=None):
 		logging.info("Shifting position to {}".format(position))
 		# This is a relative position change.
 		# Set the uid.
 		self.uid = str(uid)
 		# Set the work point if required.
-		if self.workPoint is not None:
-			logging.info("Setting the workpoint to {}".format(position[:3]))
-			self.workPoint.offset(position[:3])
+		if (workpoint is not None) and (self.workPoint is not None):
+			logging.info("Setting the workpoint to {}".format(workpoint))
+			self.workPoint.offset(workpoint)
 		# Iterate through available motors.
 		for motor in self.currentMotors:
 			# Get position to move to for that motor.
@@ -149,15 +149,15 @@ class patientSupport(QtCore.QObject):
 			# Set position variable to 0 (if motor was successful).
 			position[(motor._axis + (3*motor._type))] = 0
 
-	def setPosition(self,position,uid=None):
+	def setPosition(self,position,uid=None,workpoint=None):
 		logging.info("Setting position to {}".format(position))
 		# This is a direct position change.
 		# Set the uid.
 		self.uid = str(uid)
 		# Set the work point if required.
-		if self.workPoint is not None:
-			logging.info("Setting the workpoint to {}".format(position[:3]))
-			self.workPoint.offset(position[:3])
+		if (workpoint is not None) and (self.workPoint is not None):
+			logging.info("Setting the workpoint to {}".format(workpoint))
+			self.workPoint.offset(workpoint)
 		# Iterate through available motors.
 		for motor in self.currentMotors:
 			# Get position to move to for that motor.
@@ -170,13 +170,13 @@ class patientSupport(QtCore.QObject):
 	def _finished(self):
 		# Increment the counter.
 		self._counter += 1
-		logging.debug("Motor {} of {} finished movement.".format(self._counter,len(self.currentMotors)))
+		logging.info("Motor {} of {} finished movement.".format(self._counter,len(self.currentMotors)))
 		# If counter finished, emit finished signal.
 		if self._counter == len(self.currentMotors):
 			# Reset the counter.
 			self._counter = 0
 			# Send signal.
-			logging.debug("Emitting finished move.")
+			logging.info("Emitting finished move.")
 			# Set the uid to none before sending out the signal.
 			uid = str(self.uid)
 			self.uid = None
