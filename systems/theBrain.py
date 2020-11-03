@@ -127,12 +127,13 @@ class Brain(QtCore.QObject):
 		""" Tell the patientSupport to apply the calculated/prepared motion. """		# Create a new uuid.
 		uid = uuid1()
 		# Send the signal saying we have a new move.
-		self.newMove.emit(str(uid))
 		self._moveList[str(uid)] = self.patientSupport._motion
+		self.newMove.emit(str(uid))
 		# Tell the patient support to move.
-		self.patientSupport.applyMotion()
+		logging.warning("Applying calculated alignment with setWorkpoint = True.")
+		self.patientSupport.applyMotion(setWorkpoint=True,uid=str(uid))
 
-	def movePatient(self,amount,motionType):
+	def movePatient(self,amount,motionType,):
 		""" All patient movement must be done through this function, as it sets a UUID for the motion. """
 		if self.isConnected():
 			# Create a new uuid.
@@ -168,12 +169,17 @@ class Brain(QtCore.QObject):
 			self._routine.preImagingPosition = self.patientSupport.position()
 			# Calculate how many steps are required per image.
 			# self._routine.stepCounterLimit = np.ceil(np.absolute(trans[1]-trans[0])/self._routine.dz)
-			logging.info("Imaging region: {}.".format(trans))
-			m = np.ceil(np.absolute(trans[0])/self._routine.dz - 0.5)*np.sign(trans[0])
-			n = np.ceil(np.absolute(trans[1])/self._routine.dz - 0.5)*np.sign(trans[1])
+			# Calculate how many steps below our current position we need to go.
+			m = np.ceil(np.absolute(trans[0])/self._routine.dz - 0.5)
+			# Calculate how many steps above our current position we need to go.
+			n = np.ceil(np.absolute(trans[1])/self._routine.dz - 0.5)
+			# Grab the starting Z position.
 			s = self._routine.preImagingPosition[2]
-			self._routine.tz = [s+m*self._routine.dz,s+n*self._routine.dz]
-			self._routine.stepCounterLimit = np.absolute(m)+np.absolute(n)+1
+			# Calculate the start and end translation points (relative to current position).
+			self._routine.tz = [np.sign(trans[0])*m*self._routine.dz,np.sign(trans[1])*n*self._routine.dz]
+			# Calculate our step counter limit.
+			self._routine.stepCounterLimit = m+n+1
+
 			# Signals and slots: Connections.
 			logging.info("Connecting patient support and detector signals to imaging routine.")
 			self.patientSupport.finishedMove.connect(partial(self._continueScan,'imaging'))
@@ -184,12 +190,11 @@ class Brain(QtCore.QObject):
 		else:
 			logging.warning("Cannot move as not all systems are connected.")
 
-
 	def _startScan(self):
 		if self._routine.imageCounter < self._routine.imageCounterLimit:
 			logging.info("Starting scan {}/{} at {}deg.".format(self._routine.imageCounter+1,self._routine.imageCounterLimit,self._routine.theta[self._routine.imageCounter]))
-			# Calculate image position and set patient to that position.
-			position = np.array([0,0,self._routine.tz[0],0,0,self._routine.theta[self._routine.imageCounter]])
+			# Calculate image start position and set patient to that position.
+			position = self._routine.preImagingPosition + np.array([0,0,self._routine.tz[0],0,0,self._routine.theta[self._routine.imageCounter]])
 			self.patientSupport.setPosition(position)
 		else:
 			# We are done. 

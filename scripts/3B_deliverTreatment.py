@@ -3,9 +3,9 @@ import logging
 
 
 def treat(
-	startposition=[0,0,0,0,0,0],
-	velocity = 0.0,
-	acceleration = 0.0
+	startposition=[0,0,13.0,0,0,0],
+	velocity = 3.0,
+	acceleration = 40.0
 	):
 	"""
 	treat: A function in which we can pass basic parameters to perform a dynamic treatment delivery in 3B on LAPS.
