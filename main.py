@@ -163,6 +163,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		self._menuBar['load_ct'].triggered.connect(partial(self.openFiles,'ct'))
 		self._menuBar['load_rtplan'].triggered.connect(partial(self.openFiles,'rtp'))
 		# self._menuBar['load_folder'].triggered.connect(partial(self.openFiles,'folder'))
+		logging.warning("Have overriden load folder to just run the test function.")
 		self._menuBar['load_folder'].triggered.connect(self.test)
 
 		# Switches.
@@ -194,7 +195,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		# Add a monitor to the pps.
 		self.system.setPatientSupportMonitor(self.ppsMonitor)
 		# Get signal for a new patient support move.
-		self.system.newMove.connect(self.showMovement)
+		# self.system.newMove.connect(self.showMovement)
 
 		"""
 		More GUI linking from System and Patient.

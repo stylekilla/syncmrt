@@ -206,20 +206,14 @@ class patientSupport(QtCore.QObject):
 		if self._i > 10: 
 			return
 		# Create a transform for this stage, S.
-		print('\n'*3)
-		logging.info('Stage Name: {}'.format(self.currentDevice))
-		logging.info('Variables: {}'.format(variables))
 		S = np.identity(4)
 		Si = np.identity(4)
 		# Position of motor in stack (in mm).
 		stackPos = np.array([0,0,0])
-		# NICE PRINTING!!!!!!!!!NICE PRINTING!!!!!!!!!NICE PRINTING!!!!!!!!!NICE PRINTING!!!!!!!!!NICE PRINTING!!!!!!!!!
-		np.set_printoptions(formatter={'float': lambda x: "{0:0.2f}".format(x)})
 		# Make a copy so original stays intact.
 		calcVars = np.array(variables)
 		# Iterate over each motor in order.
 		for motor in self.currentMotors:
-			logging.info('Motor Name: {}'.format(motor.name))
 			# Get the x y z translation or rotation value.
 			value = calcVars[(motor._axis + (3*motor._type))]
 			# Take as much of this as you can if it fits within the limits of the motor!!
@@ -242,25 +236,12 @@ class patientSupport(QtCore.QObject):
 			elif motor._type == 1:
 				T, Ti = motor.transform(value)
 			# Multiply the transform into the overall transform.
-			# print('****** MOTOR NUMBER ',motor._order,':')
-			# print('====== T:')
-			# print(T)
 			S = S@T
-			Si = Si@Ti 
-			# print('=== S:')
-			# print(S)
+			Si = Si@Ti
 		# Take out all unecessary shit. (Undo maths for translations on rotations.)
 		St = S@Si
 		# Now we have S, a 4x4 transform that encompases all motors.
-		print('****** RESULTS:')
-		print('====== Global:')
-		print(G)
-		print('====== Stage:')
-		print(St)
 		remainder = np.linalg.inv(St)@G
-		print('====== Remainder:')
-		# remainder[:3,3] = G[:3,3]+S[:3,3]
-		print(remainder)
 		t = np.array(St[:3,3]).reshape(3,)
 		r = np.array(St[:3,:3]).reshape(3,3)
 
@@ -268,30 +249,9 @@ class patientSupport(QtCore.QObject):
 		success = True
 
 		# Update variables to match stage movements.
-		logging.info('a: {}'.format(np.sum(remainder[:3,3])))
-		print(np.isclose( np.sum(np.absolute(remainder[:3,3])) ,0, atol=1e-02))
 		if np.isclose( np.sum(np.absolute(remainder[:3,3])) ,0, atol=1e-02) == False:
 			# Check to see if remainder is within less than 1 micron tolerance.
-			# If the translations aren't 0 then subtract the updates to the vars.
-			# print('variables before additions: ',variables[:3])
-			# print('remainder: ',remainder[:3,3])
-			print("WAS FALSE....")
-			
-			logging.info('variables: {}'.format(variables))
-			logging.info('stage pos: {}'.format(S))
-			# May have to rejig this for other stages where it goes through the actual process?
-			# variables[:3] += S[:3,:3]@remainder[:3,3]
 			variables[:3] = np.linalg.inv(S[:3,:3])@G[:3,3]
-			logging.info('variables changed: {}'.format(variables))
-			# variables[:3] += remainder[:3,3]@S[:3,:3]
-			# variables[:3] -= remainder[:3,3]@S[:3,:3]
-
-			# variables[:3] -= np.array(S[:3,3]@remainder[:3,3]).reshape(3,)
-			# print('S: ',S[:3,3])
-			# print('S: ',S[:3,3])
-			# print('combined: ',S[:3,3] - remainder[:3,3])
-			# variables[:3] = S[:3,3] - remainder[:3,3]
-			# print('variables after additions: ',variables[:3])
 			success = False
 
 		# Extract any extra angles or just report back whats missing. This involves extracting angles.
@@ -304,30 +264,41 @@ class patientSupport(QtCore.QObject):
 		elif success is True:
 			# Exit the function.
 			self._motion = variables
-			logging.critical('Self Motion on success: {}'.format(self._motion))
 			return self._motion
 
-	def applyMotion(self,variables=None):
-		# If no motion is passed, then apply the preloaded motion.
+	def applyMotion(self,variables=None,setWorkpoint=False,uid=None):
+		# If no motion is passed, then apply the stored motion.
 		if variables == None:
 			variables = self._motion
 			logging.info('inside apply motion, vars are now motion: {}'.format(variables))
-		logging.critical("Applying motion: {}".format(variables))
-		# Iterate over each motor in order.
-		for motor in self.currentMotors:
-			# Understand the motors function.
-			index = motor._axis + (3*motor._type)
-			# Get the x y z translation or rotation value.
-			value = variables[index]
-			# Apply the value.
-			motor.shiftPosition(value)
-			logging.info('Moving {}: {}'.format(motor.name,value))
-			# Set the taken variable to 0. This stops any future motor from taking this value.
-			variables[index] = 0
-			# Connect to finished method.
-			motor.finished.connect(self._finished)
-		QtWidgets.QMessageBox.warning(None,"Patient Alignment","Movement finished.")
-		return
+
+		# Carry out a shift movement. Workpoint is set to negative the shift as we want the workpoint to be at the point of interest, not where it ends up.
+		if setWorkpoint:
+			self.shiftPosition(variables,uid=uid,workpoint=-variables[:3])
+		else:
+			self.shiftPosition(variables,uid=uid,workpoint=None)
+
+		# logging.critical("Applying motion: {}".format(variables))
+
+		# # Set the work point if required.
+		# if setWorkpoint and (self.workPoint is not None):
+		# 	logging.info("Setting the workpoint to {}".format(variables[:3]))
+		# 	self.workPoint.offset(variables[:3])
+		# # Iterate over each motor in order.
+		# for motor in self.currentMotors:
+		# 	# Understand the motors function.
+		# 	index = motor._axis + (3*motor._type)
+		# 	# Get the x y z translation or rotation value.
+		# 	value = variables[index]
+		# 	# Apply the value.
+		# 	motor.shiftPosition(value)
+		# 	logging.info('Moving {}: {}'.format(motor.name,value))
+		# 	# Set the taken variable to 0. This stops any future motor from taking this value.
+		# 	variables[index] = 0
+		# 	# Connect to finished method.
+		# 	# motor.finished.connect(self._finished)
+		# QtWidgets.QMessageBox.warning(None,"Patient Alignment","Movement finished.")
+		# return
 
 		'''
 		Start with removing the rotations.

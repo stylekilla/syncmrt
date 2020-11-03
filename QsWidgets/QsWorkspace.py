@@ -166,7 +166,10 @@ class QPlotEnvironment(QtWidgets.QSplitter):
 			iso0 = [iso[0],iso[1]]
 			iso1 = [iso[2],iso[1]]
 			theta0 = -self.plotView[0]
-			theta1 = -self.plotView[1]
+			if self.plotView[1] == None:
+				theta1 = theta0 + 90
+			else:
+				theta1 = -self.plotView[1]
 			# Reconcile the two datasets.
 			isocenter = nonOrthogonalImaging.calculate(iso0,iso1,theta0,theta1)
 

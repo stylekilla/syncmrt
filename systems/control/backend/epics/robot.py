@@ -13,9 +13,12 @@ Therefore, we implement all that functionality ourselves.
 __all__ = ['tcp']
 
 TCP_PVS = [
-	'TCPAXIS1',
-	'TCPAXIS2',
-	'TCPAXIS3',
+	'TCP_AXIS1',
+	'TCP_AXIS2',
+	'TCP_AXIS3',
+	'TCP_AXIS_RBV1',
+	'TCP_AXIS_RBV2',
+	'TCP_AXIS_RBV3',
 	'TOOL_NO',
 	'TOOL_NO_RBV',
 	'READ_TCP',
@@ -99,13 +102,14 @@ class tcp(QtCore.QObject):
 			except:
 				raise RobotException("Failed to force {} to reconnect.".format(pv))
 
-	def read(Self):
+	def read(self):
 		""" Read the current TCP settings on the robot. """
 		# Just use whatever tool is selected on the robot.
 		self.READ_TCP.put(1,wait=True)
+		# Create a quick loop.
+		for i in range(1000): pass
 		# Return the new values of the TCP axes.
-		logging.warning("Should these be TCPAXIS# or TCPAXIS#_RBV ?")
-		return np.array([self.TCPAXIS1.get(),self.TCPAXIS2.get(),self.TCPAXIS3.get()])
+		return np.array([self.TCP_AXIS_RBV1.get(),self.TCP_AXIS_RBV2.get(),self.TCP_AXIS_RBV3.get()])
 
 	def offset(self,offset):
 		""" Offset the TCP of the robot such that all movement now happens about that point. """
@@ -114,20 +118,31 @@ class tcp(QtCore.QObject):
 		# Calculate the new tcp positions.
 		tcp_new = tcp_old + offset
 		# Set them.
-		self.TCPAXIS1.put(tcp_new[0],wait=True)
-		self.TCPAXIS2.put(tcp_new[1],wait=True)
-		self.TCPAXIS3.put(tcp_new[2],wait=True)
+		self.TCP_AXIS1.put(tcp_new[0],wait=True)
+		self.TCP_AXIS2.put(tcp_new[1],wait=True)
+		self.TCP_AXIS3.put(tcp_new[2],wait=True)
 		# Write it to the robot.
 		self.SET_TCP.put(1,wait=True)
+		for i in range(20): time.sleep(0.1)
+		# Read it back... unecessary but whatevs.
+		self.READ_TCP.put(1,wait=True)
+		for i in range(20): time.sleep(0.1)
+		# Stop the robot to force it to reset it's positions. This brings it into line with the updated coordinate system.
+		logging.info("Running motor stop.")
+		epics.caput("SR08ID01ROB01:MOTOR_X:STOP",1)
+		for i in range(20): time.sleep(0.1)
 
 	def set(self,position):
 		""" Offset the TCP of the robot such that all movement now happens about that point. """
 		# Set them.
-		self.TCPAXIS1.put(position[0],wait=True)
-		self.TCPAXIS2.put(position[1],wait=True)
-		self.TCPAXIS3.put(position[2],wait=True)
+		self.TCP_AXIS1.put(position[0],wait=True)
+		self.TCP_AXIS2.put(position[1],wait=True)
+		self.TCP_AXIS3.put(position[2],wait=True)
 		# Write it to the robot.
 		self.SET_TCP.put(1,wait=True)
+		# Create a quick loop.
+		for i in range(20): time.sleep(0.1)
+		self.READ_TCP.put(1,wait=True)
 
 # WORKPOINT_PVS = [
 # 	'TCPAXIS1',

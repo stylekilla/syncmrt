@@ -111,13 +111,14 @@ class motor(QtCore.QObject):
 
 	def _movingMonitor(self,*args,**kwargs):
 		""" MOVN watch dog. """
-		if bool(kwargs['value']): self._movementStarted = True
+		# If it is moving and we have a move set, then we can say we have started the move.
+		if bool(kwargs['value']) and self._movementSet: self._movementStarted = True
 
 	def _doneMovingMonitor(self,*args,**kwargs):
 		""" A watchdog for movement. This callback is triggered by DMOV. """
 		# If we have set a movement, have started the movement, and have finished it...
 		if bool(kwargs['value']) and self._movementSet and self._movementStarted:
-			# We are done moving...
+			# We are done moving... check it.
 			self._checkMovement()
 			# Reset the flags.
 			self._movementSet = False
@@ -147,6 +148,7 @@ class motor(QtCore.QObject):
 			raise MotorException("Connection error. Could not write motor position.")
 		# Get the current motor position, before any attempt of movement.
 		previousPosition = self.RBV.get()
+		logging.info("[{}] Previous position = {:.3f}".format(self.pvBase,previousPosition))
 		# Calculate the writevalue.
 		if mode == 'absolute':
 			writeValue = value
@@ -154,6 +156,7 @@ class motor(QtCore.QObject):
 			writeValue = previousPosition + value
 		# Write the value if acceptable.
 		if self.withinLimits(writeValue):
+			logging.info("[{}] Moving to {:.3f}".format(self.pvBase,writeValue))
 			# If the value is within the limits, write it.
 			self.VAL.put(writeValue)
 			# Say we have set the move.
