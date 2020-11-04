@@ -140,6 +140,7 @@ class detector(QtCore.QObject):
 			# Once finished grab the frame and return it.
 			image = self.ArrayData.get()
 			logging.debug("This is set to ArraySize0 and ArraySize1... should this not be X and Y? Is there something wrong with the IOC?")
-			return image.reshape(self.ArraySize1.get(),self.ArraySize0.get())
+			image =  np.flipud(image.reshape(self.ArraySize1.get(),self.ArraySize0.get()))
+			return image[300:2034,:]
 		else:
 			raise DetectorException("Detector not connected. Cannot acquired image.")
