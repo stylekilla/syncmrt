@@ -1,5 +1,6 @@
 import numpy as np
 from matplotlib import pyplot as plt
+from matplotlib.patches import ConnectionPatch
 import imageio
 import pydicom as dicom
 import logging
@@ -14,9 +15,13 @@ import testGpu
 # import testPlot
 
 # Test file.
-fn = '/Users/barnesmicah/Documents/dumpingGround/CT_Xray_pair_for_Micah/A2_01-1.jpg'
+fn1 = '/Users/barnesmicah/Documents/dumpingGround/CT_Xray_pair_for_Micah/A2_01-1.jpg'
+fn2 = '/Users/barnesmicah/Documents/dumpingGround/CT_Xray_pair_for_Micah/A2_02-1.jpg'
+image1 = imageio.imread(fn1,as_gray=True)
+image2 = imageio.imread(fn2,as_gray=True)
+# fn1 = '/Users/barnesmicah/Documents/dumpingGround/SIFTtestImages/image1.jpg'
+# fn2 = '/Users/barnesmicah/Documents/dumpingGround/SIFTtestImages/image2.jpg'
 # Read the image.
-image = imageio.imread(fn)
 
 # image = image[:70,:70]
 
@@ -34,64 +39,46 @@ image = imageio.imread(fn)
 # Start the gpu.
 gpu = testGpu.gpu()
 # Find the features of the image.
-gpu.findFeaturesSIFT(image)
-print("COMPLETE!")
+descriptors1 = gpu.findFeaturesSIFT(image1) # [100:400,500:650]
+descriptors2 = gpu.findFeaturesSIFT(image2) # [100:400,500:650]
 
-"""
-# Read a sub portion of the image.
-# HEAD...
-# image = image[130:260,480:680]
+print("{} - {}".format(len(descriptors1),len(descriptors2)))
 
-# DIFFERENCE OF GAUSSIAN
-# http://fourier.eng.hmc.edu/e161/lectures/gradient/node9.html
-# The bigger the difference in sigma, the fatter the regions it finds.
-from scipy.ndimage import gaussian_filter
-image_g1 = gaussian_filter(image, sigma=1)
-image_g2 = gaussian_filter(image, sigma=2)
-dog = image_g1-image_g2
+# matches = []
+# for key in descriptors1:
+# 	# Calculate distance between the keypoint and the descriptor database.
+# 	distance = np.linalg.norm(descriptors2[:,2:]-key[2:],axis=1)
+# 	# Find two closest points.
+# 	d1,d2 = np.argpartition(distance,1)[:2]
+# 	# Reject if distance ratio is too large.
+# 	if distance[d1]/distance[d2] > 0.8:
+# 		# No good match found.
+# 		continue
+# 	else:
+# 		# Good match, save it.
+# 		matches.append([key,descriptors2[d1]])
 
-# Find local minima and maxima (in 2D).
-# Take the 8 neighbours of a pixel and check whether that pixel is the lowest or highest value.
-minima = []
-maxima = []
-# Scan rows.
-for i in range(1,image.shape[0]-1):
-	# Scan columns.
-	for j in range(1,image.shape[1]-1):
-		# Grab the centre pixel and the 8 surrounding pixels.
-		i0 = image[i  , j  ]
-		i1 = image[i-1, j-1]
-		i2 = image[i-1, j  ]
-		i3 = image[i-1, j+1]
-		i4 = image[i  , j-1]
-		i5 = image[i  , j+1]
-		i6 = image[i+1, j-1]
-		i7 = image[i+1, j  ]
-		i8 = image[i+1, j+1]
-		# If it is less than all the values, it is a local minima.
-		if all(i0 < [i1,i2,i3,i4,i5,i6,i7,i8]):
-			minima.append([i,j])
-		# If it is less than all the values, it is a local minima.
-		elif all(i0 > [i1,i2,i3,i4,i5,i6,i7,i8]):
-			maxima.append([i,j])
-# Numpy arrays for ease of use.
-minima = np.array(minima)
-maxima = np.array(maxima)
+# matches = np.array(matches)
 
-# Plotting.
-fig = plt.figure()
-ax1 = fig.add_subplot(2,2,1)
-ax2 = fig.add_subplot(2,2,2)
-ax3 = fig.add_subplot(2,2,3)
-ax4 = fig.add_subplot(2,2,4)
-# Images.
-ax1.imshow(image)
-ax2.imshow(dog)
-ax3.imshow(image_g1)
-ax4.imshow(image_g2)
-# Local minima and maxima.
-ax2.scatter(minima[:,1],minima[:,0],c='g')
-ax2.scatter(maxima[:,1],maxima[:,0],c='r')
-# Show plot.
+
+# print(matches[:,0,:2])
+# print(matches[:,1][:2])
+
+
+
+
+fig,ax=plt.subplots(1,2)
+ax = ax.ravel()
+ax[0].imshow(image1)
+ax[1].imshow(image2)
+# ax[0].scatter(matches[:,0,1],matches[:,0,0],c='k',marker='o')
+# ax[1].scatter(matches[:,1,1],matches[:,1,0],c='k',marker='o')
+ax[0].scatter(descriptors1[:,1],descriptors1[:,0],c='k',marker='o')
+ax[1].scatter(descriptors2[:,1],descriptors2[:,0],c='k',marker='o')
+
+
+# for i in range(0,len(matches),int(len(matches)/25)):
+	# con = ConnectionPatch(xyA=[matches[i,1,1],matches[i,1,0]], xyB=[matches[i,0,1],matches[i,0,0]], coordsA="data", coordsB="data",axesA=ax[1], axesB=ax[0], color="red")
+	# ax[1].add_artist(con)
+
 plt.show()
-"""
