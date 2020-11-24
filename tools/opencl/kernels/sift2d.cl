@@ -140,13 +140,13 @@ __kernel void FindLocalMinima(
 	int szy = get_global_size(1);
 	// Get the ID number of the thread.
 	int idx = y + szy*x;
-	// We will not search for anything <= 3 elements of the edge of the array. This is because when we generate descriptors, we must have 3 elements of information in each direction.
-	if (x > 3 && x < (szx-3) && y > 3 && y < (szy-3)) {
+	// We will not search for anything <= 16 elements of the edge of the array. This is because when we generate descriptors, we must have 16 elements of information in each direction.
+	if (x > 16 && x < (szx-16) && y > 16 && y < (szy-16)) {
 		// Get the value to compare to.
 		short value = gDog2[idx];
 		// Look at all 26 neighbours.
-		for (int i=-1; i <= 1; i++) {
-			for (int j=-1; j <= 1; j++) {
+		for (int i=-1; i < 2; i++) {
+			for (int j=-1; j < 2; j++) {
 				// Create a test index, offset by 1 in each direction.
 				int testIdx = (y+j) + szy*(x+i);
 				if (testIdx == idx) {
@@ -184,13 +184,13 @@ __kernel void FindLocalMaxima(
 	int szy = get_global_size(1);
 	// Get the ID number of the thread.
 	int idx = y + szy*x;
-	// We will not search for anything <= 3 elements of the edge of the array. This is because when we generate descriptors, we must have 3 elements of information in each direction.
-	if (x > 3 && x < (szx-3) && y > 3 && y < (szy-3)) {
+	// We will not search for anything <= 16 elements of the edge of the array. This is because when we generate descriptors, we must have 16 elements of information in each direction.
+	if (x > 16 && x < (szx-16) && y > 16 && y < (szy-16)) {
 		// Get the value to compare to.
 		short value = gDog2[idx];
 		// Look at all 26 neighbours.
-		for (int i=-1; i <= 1; i++) {
-			for (int j=-1; j <= 1; j++) {
+		for (int i=-1; i < 2; i++) {
+			for (int j=-1; j < 2; j++) {
 				// Create a test index, offset by 1 in each direction.
 				int testIdx = (y+j) + szy*(x+i);
 				if (testIdx == idx) {
@@ -219,7 +219,8 @@ __kernel void LocateStableFeatures(
 	__global const short *gDog1,
 	__global const short *gDog2,
 	__global const short *gDog3,
-	__global const short *gDog4
+	__global const short *gDog4,
+	__global const short *gDog5
 	)
 {
 	// Get global indice.
@@ -229,7 +230,7 @@ __kernel void LocateStableFeatures(
 	// Grab image size.
 	int2 size = vload2(0,gImageSize);
 	// Pick arrays based on s.
-	__global const short *ptr[4] = { gDog1,gDog2,gDog3,gDog4 };
+	__global const short *ptr[5] = { gDog1,gDog2,gDog3,gDog4,gDog5 };
 	// Data initilization.
 	float x = 0.0f;
 	float y = 0.0f;
@@ -336,7 +337,7 @@ __kernel void LocateStableFeatures(
 		// Check to see if the offset is greater than 0.5 in any direction.
 		if (fabs(offset.x) > 0.5 || fabs(offset.y) > 0.5 || fabs(offset.z) > 0.5) {
 			// Check that our new offset points don't push the point outside our valid range.
-			if ((gKeypoints[stride*idx + 0] >= size.x) || (gKeypoints[stride*idx + 1] >= size.y) || (gKeypoints[stride*idx + 2] < 1) || (gKeypoints[stride*idx + 2] > 2)) {
+			if ((gKeypoints[stride*idx + 0] >= size.x) || (gKeypoints[stride*idx + 1] >= size.y) || (gKeypoints[stride*idx + 2] < 1) || (gKeypoints[stride*idx + 2] > 3)) {
 				// If they do, scrap the point.
 				break;
 			}
@@ -481,7 +482,7 @@ __kernel void KeypointOrientations(
 	}
 
 	// Identify peaks within 80% of norm.
-	float peak = 0.0f;
+	float orientation = 0.0f;
 	int offset = 3;
 	float x0 = 0;
 	float x1 = 0;
@@ -517,13 +518,13 @@ __kernel void KeypointOrientations(
 			}
 
 			// Continue as normal.
-			peak = interpolateOrientationPeak(
+			orientation = interpolateOrientationPeak(
 					x0,x1,x2,
 					y0,y1,y2
 				);
 
 			// Add the orientation to the keypoint.
-			gKeypoints[idx*stride + offset] = peak;
+			gKeypoints[idx*stride + offset] = orientation;
 			// Increase the offset.
 			offset++;
 		}

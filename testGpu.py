@@ -66,21 +66,22 @@ class gpu:
 		"""
 		logging.info("Starting SIFT 2D algorithm on GPU.")
 		# Variable inputs:
-		sigma = np.sqrt(2)/2
-		# sigma = 1.1
+		# sigma = np.sqrt(2)/2
+		sigma = 1.6
 
 		# lowerDataThreshold = 0.0
 
 		# Short: A signed two’s complement 16-bit integer.
 		bits = 16
 		# Our rejection threshold is 3% of the available bit space.
-		contrastRejectionThreshold = 0.05*(2**bits)
+		contrastRejectionThreshold = 0.03*(2**bits)
+		# contrastRejectionThreshold = 0.036*(2**bits)
 
-		# The number of octaves is flexible.
+		# (!) Changing nOctaves will require changes to the OpenCL kernel.
+		# The number of octaves is fixed.
 		nOctaves = 3
-		# The number of scale levels is fixed. 
-		# (!) Changing nScaleLevels will require changes to the OpenCL kernel.
-		nScaleLevels = 5
+		# The number of scale levels is tied to the number of octave levels. 
+		nScaleLevels = nOctaves+3
 
 		# Ideally, here we would filter out HU values that are not useful to us.
 		# if lowerDataThreshold != 0:
@@ -124,8 +125,13 @@ class gpu:
 
 		# Iterate over all octaves and scales.
 		for scaleImages,dogImages,octaveShape,subSamplingFactor in zip(octaveScaleImageSets,octaveDogImageSets,octaveShapes,subSamplingFactors):
-			logging.info("Starting calculations for Octave {}.".format(subSamplingFactors.index(subSamplingFactor)+1))
+			# Save the octave number (same as enumerate).
+			octaveNumber = subSamplingFactors.index(subSamplingFactor)
+			logging.info("Starting calculations for Octave {}.".format(octaveNumber+1))
 			# We are now on a per-octave level.
+			# Calculate k cosntant for the octave.
+			# k = 2**(1/(octaveNumber+3))
+			k = 2**(1/(nOctaves+3))
 			# If our octave requires resampling, do it.
 			if subSamplingFactor > 1:
 				logging.info("Subsampling array at {} intervals.".format(subSamplingFactor))
@@ -146,27 +152,29 @@ class gpu:
 			logging.info("Octave Image Shape: {}".format(octaveShape))
 
 			# TESTING.
-			# testArray = np.zeros(octaveShape,dtype=cl.cltypes.short)
-			# cl.enqueue_copy(self.queue, testArray, imageArray)
-			# fig,ax = plt.subplots(1,1)
-			# ax.imshow(testArray)
+			testArray = np.zeros(octaveShape,dtype=cl.cltypes.short)
+			cl.enqueue_copy(self.queue, testArray, imageArray)
+			fig,ax = plt.subplots(2,7,sharex=True,sharey=True)
+			ax[0,0].imshow(testArray)
+			ax[0,0].set_title("Octave Image")
 			# plt.show()
+			# exit()
 
 			"""
 			STEP 1.1: SCALE IMAGES (GAUSSIAN BLUR).
 			"""
-			# testImages = []
+			testImages = []
 			# Calculate scale images.
 			for i in range(nScaleLevels):
 				# We are now on a per-buffer level within an octave.
 				gScaleImage = scaleImages[i]
-				# k, our factor in which we scale sigma by.
-				k = np.sqrt(2)**i
 				# Our sigma for this image.
-				sig = sigma*subSamplingFactor*k
+				sig = sigma*(k**i)
 				logging.info("Calculating Scale Image {} with sigma {}.".format(i+1,sig))
 				# Choose a filter width that is rounded up to the next odd integer.
-				filterWidth = cl.cltypes.int( int(3*sig + (3*(sig)+1)%2) )
+				# filterWidth = cl.cltypes.int( int(3*sig + (3*(sig)+1)%2) )
+				# Filter width should be 5 times the standard deviation.
+				filterWidth = cl.cltypes.int( int(5*sig + (5*(sig)+1)%2) )
 				# Calculate an offset for the filter so that it is centred about zero (i.e. so it goes from -1,0,+1 instead of 0,1,2...).
 				filterOffset = (filterWidth-1)/2
 				# Calculate xy values for filter (centred on zero, as described above).
@@ -184,20 +192,24 @@ class gpu:
 				)
 				# Run the program
 				program.Gaussian2D(self.queue,octaveShape,None,*(args))
-			# 	# TESTING.
-			# 	testArray = np.zeros(octaveShape,dtype=cl.cltypes.short)
-			# 	cl.enqueue_copy(self.queue, testArray, gScaleImage)
-			# 	testImages.append(testArray)
+				# TESTING.
+				testArray = np.zeros(octaveShape,dtype=cl.cltypes.short)
+				cl.enqueue_copy(self.queue, testArray, gScaleImage)
+				testImages.append(testArray)
 
 			# fig,ax = plt.subplots(1,nScaleLevels)
 			# ax = ax.ravel()
-			# for i in range(nScaleLevels):
-			# 	ax[i].imshow(testImages[i])
+			for i in range(nScaleLevels):
+				# ax[i].imshow(testImages[i])
+				ax[0,i+1].imshow(testImages[i])
+				ax[0,i+1].set_title("Scale Image {}".format(i+1))
 			# plt.show()
+			# exit()
 
 			"""
 			STEP 1.2: DIFFERENCE OF GAUSSIAN.
 			"""
+			testImages = []
 			# Calculate Difference of Gaussian.
 			for i,j in zip(range(0,nScaleLevels-1),range(1,nScaleLevels)):
 				logging.info("Calculating Difference of Gaussian between scale images {} and {}.".format(i+1,j+1))
@@ -210,14 +222,16 @@ class gpu:
 				program.Difference(self.queue,octaveShape,None,*(args))
 
 				# TESTING.
-				# testArray = np.zeros(octaveShape,dtype=cl.cltypes.short)
-				# cl.enqueue_copy(self.queue, testArray, dogImages[i])
-				# testImages.append(testArray)
+				testArray = np.zeros(octaveShape,dtype=cl.cltypes.short)
+				cl.enqueue_copy(self.queue, testArray, dogImages[i])
+				testImages.append(testArray)
 
 			# fig,ax = plt.subplots(1,nScaleLevels-1)
 			# ax = ax.ravel()
-			# for i in range(nScaleLevels-1):
-			# 	ax[i].imshow(testImages[i])
+			for i in range(nScaleLevels-1):
+				# ax[i].imshow(testImages[i])
+				ax[1,i].imshow(testImages[i])
+				ax[1,i].set_title("DoG Image {}".format(i+1))
 			# plt.show()
 			# exit()
 
@@ -237,23 +251,25 @@ class gpu:
 				program.GenerateGradientMap(self.queue,octaveShape,None,*(args))
 
 			# START PLOT DEBUGING
-			# testImageShape = tuple(list(octaveShape)+[2])
-			# tempArray = np.zeros(testImageShape,dtype=cl.cltypes.float)
-			# cl.enqueue_copy(self.queue, tempArray, gradientMaps[1])
+			testImageShape = tuple(list(octaveShape)+[2])
+			tempArray = np.zeros(testImageShape,dtype=cl.cltypes.float)
+			cl.enqueue_copy(self.queue, tempArray, gradientMaps[1])
 			# fig, (ax1,ax2) = plt.subplots(1,2)
 			# ax1.imshow(tempArray[:,:,0])
 			# ax2.imshow(tempArray[:,:,1])
+			ax[1,5].imshow(tempArray[:,:,0])
+			ax[1,6].imshow(tempArray[:,:,1])
+			ax[1,5].set_title("Gradient")
+			ax[1,6].set_title("Theta")
 			# plt.show()
 			# exit()
-			# END PLOT DEBUGING		
-
-
+			# END PLOT DEBUGING
 
 			"""
 			STEP 2.1: FIND KEYPOINTS
 			"""
 			# Create features map.
-			features = np.zeros(array.shape,dtype=cl.cltypes.int)
+			features = np.zeros(octaveShape,dtype=cl.cltypes.int)
 			gFeatures = cl.Buffer(self.ctx, mf.READ_WRITE | mf.COPY_HOST_PTR, hostbuf=features)
 			# For each Dog map, find the local minima and maxima.
 			for i in range(1,len(dogImages)-1):
@@ -272,20 +288,18 @@ class gpu:
 				# These will write the scale factor, s, at the xy position in which the extrema was found.
 				program.FindLocalMinima(self.queue,octaveShape,None,*(args))
 				program.FindLocalMaxima(self.queue,octaveShape,None,*(args))
+
 			# Bring back our list of features.
 			cl.enqueue_copy(self.queue, features, gFeatures)
 			# Features array is no longer required.
 			gFeatures.release()
 
-			"""
-			STEP 2.2: FIND STABLE KEYPOINTS
-			"""
 			# Find out how many features there were. The function np.nonzero() searches the array for all non zero values and returns their positions.
 			x,y = np.nonzero(features)
 			# Now we know how many features we have identified in this octave.
 			nFeatures = len(x)
 			if nFeatures == 0: 
-				logging.warning("No image features found in Octave {}.".format(subSamplingFactors.index(subSamplingFactor)+1))
+				logging.warning("No image features found in Octave {}.".format(octaveNumber+1))
 				continue
 			# This grabs the scale values at those non-zero positions.
 			scale = features[tuple([x,y])]
@@ -296,21 +310,30 @@ class gpu:
 			keypoints[:,1] = y
 			keypoints[:,2] = scale
 
+			logging.info("Found {} initial keypoints.".format(nFeatures))
+
 			# START PLOT DEBUGING
 			# fig, ax = plt.subplots(1,1)
 			# ax.imshow(array)
-			# ax.scatter(y,x,c='k',marker='x')
-			# plt.show()
+			for index,kp in enumerate(keypoints):
+				if index%100 != 0: continue
+				x,y,s = kp
+				ax[1,int(s)].scatter(y,x,c='k',marker='x')
+			plt.tight_layout()
+			plt.show()
 			# exit()
+			kepointsOriginal = np.array(keypoints)
 			# END PLOT DEBUGING
 
-			logging.info("Found {} initial keypoints.".format(nFeatures))
-
+			"""
+			STEP 2.2: FIND STABLE KEYPOINTS
+			"""
 			# Assign gpu memory for the featurelist. This will be the main call of our kernel.
 			gKeypoints = cl.Buffer(self.ctx, mf.READ_WRITE | mf.COPY_HOST_PTR, hostbuf=keypoints)
 			# We also need to pass the kernel information on how big the images are. For each octave this has been previously described as octaveShape.
 			imageSize = np.array(octaveShape,dtype=cl.cltypes.int)
 			gImageSize = cl.Buffer(self.ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=imageSize)
+
 			# Now we want to refine the local positions with sub-pixel accuracy and identify the stable features.
 			args = (
 				gKeypoints,
@@ -319,7 +342,8 @@ class gpu:
 				dogImages[0],
 				dogImages[1],
 				dogImages[2],
-				dogImages[3]
+				dogImages[3],
+				dogImages[4]
 			)
 			program.LocateStableFeatures(self.queue,(nFeatures,),None,*(args))
 
@@ -327,10 +351,23 @@ class gpu:
 			cl.enqueue_copy(self.queue, keypoints, gKeypoints)
 			gKeypoints.release()
 
+			# Reduce the feature list into valid components. Remove everything set to (0,0,0).
+			mask = np.all(keypoints>0,axis=1)
+			temp = keypoints[mask]
+			nFeatures = len(temp)
+			if nFeatures == 0: 
+				logging.warning("No image features found in Octave {}.".format(octaveNumber+1))
+				continue
+
+			logging.info("Identified {} stable keypoints.".format(nFeatures))
+
 			# START PLOT DEBUGING
-			# fig, ax = plt.subplots(1,1)
-			# ax.imshow(array)
-			# ax.scatter(keypoints[:,1],keypoints[:,0],c='k',marker='x')
+			# fig, ax = plt.subplots(1,2)
+			# ax[0].imshow(array)
+			# ax[1].imshow(array)
+			# ax[0].scatter(kepointsOriginal[:,1],kepointsOriginal[:,0],c='k',marker='x')
+			# ax[1].scatter(keypoints[mask][:,1],keypoints[mask][:,0],c='k',marker='x')
+			# fig.suptitle("{}".format(contrastRejectionThreshold))
 			# plt.show()
 			# exit()
 			# END PLOT DEBUGING
@@ -338,16 +375,6 @@ class gpu:
 			"""
 			STEP 2.3: ASSIGN OREITNATION TO KEYPOINTS.
 			"""
-			# Reduce the feature list into valid components. Remove everything set to (0,0,0).
-			mask = np.all(keypoints>0,axis=1)
-			temp = keypoints[mask]
-			nFeatures = len(temp)
-			if nFeatures == 0: 
-				logging.warning("No image features found in Octave {}.".format(subSamplingFactors.index(subSamplingFactor)+1))
-				continue
-
-			logging.info("Identified {} stable keypoints.".format(nFeatures))
-
 			# Create a keypoint tracker that allows for (x,y,sigma, and up to 5 orientations).
 			# (!) Changing this requires changes the to the OpenCL kernel.
 			keypoints = np.zeros((nFeatures,8),dtype=cl.cltypes.float)
@@ -417,17 +444,12 @@ class gpu:
 			# Find out how many features we now have.
 			nFeatures = len(allKeypoints)
 			if nFeatures == 0: 
-				logging.warning("No image features found in Octave {}.".format(subSamplingFactors.index(subSamplingFactor)+1))
+				logging.warning("No image features found in Octave {}.".format(octaveNumber+1))
 				continue
 			logging.info("Created {} uniquely orientated keypoints.".format(nFeatures))
 
 			"""
-			STEP 2.4: GROUP KEYPOINTS TO REMOVE USELESS ONES (HOUGH TRANSFORM)?
-			"""
-
-
-			"""
-			STEP 2.5: GENERATE 128 ELEMENT DESCRIPTORS FOR KEYPOINTS.
+			STEP 2.4: GENERATE 128 ELEMENT DESCRIPTORS FOR KEYPOINTS.
 			"""
 			# Make a descriptor array that is (nKeypoints, {x,y,scale,orientation,8*4*4 descriptor array}).
 			descriptors = np.zeros((nFeatures,132),dtype=cl.cltypes.float)
@@ -464,6 +486,8 @@ class gpu:
 			# Copy the descriptors back.
 			cl.enqueue_copy(self.queue, descriptors, gDescriptors)
 			descriptors = descriptors.reshape(nFeatures,132)
+			# Make them scale correctly to the original image.
+			if subSamplingFactor > 1: descriptors[:,:2] *= subSamplingFactor
 			# Save them to the global descriptors.
 			arrayDescriptors.append(descriptors)
 
