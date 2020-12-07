@@ -18,34 +18,39 @@ __kernel void Gaussian2D(
 	int idx = y + szy*x;
 	// Temporary value storage.
 	float value = 0;
+
+	// if (x<filterWidth/2 || y<filterWidth/2 || x>szx - filterWidth/2 || y>szy - filterWidth/2) {
+	// 	gScaleImage[idx] = convert_short( rint(value) );
+	// 	return;
+	// }
+
 	// Iterate over the entire filter, boundary conditions are handled within.
 	for (int i=0; i<filterWidth; i++) {
 		for (int j=0; j<filterWidth; j++) {
-			// Calculate the offsets.
-			int dx = -((filterWidth-1)/2)+i;
-			int dy = -((filterWidth-1)/2)+j;
 			// Calculate new x and y (with offset).
-			int nx = x+dx;
-			int ny = y+dy;
+			int nx = x - (filterWidth-1)/2 + i;
+			int ny = y - (filterWidth-1)/2 + j;
 			// If we are past the boundaries, reflect.
+			// X conditions.
 			if (nx < 0) {
 				nx = -nx;
 			}
+			else if (nx >= szx) {
+				nx = -(szx-nx);
+			}
+			// Y conditions.
 			if (ny < 0) {
 				ny = -ny;
 			}
-			if (nx >= szx) {
-				nx = szx + (szx - nx - 1);
-			}
-			if (ny >= szy) {
-				ny = szy + (szy - ny - 1);
+			else if (ny >= szy) {
+				ny = -(szy-ny);
 			}
 			// Add the result.
 			value += gArray[ny + szy*nx] * gGaussianKernel[j + filterWidth*i];
 		}
 	}
 	// Need to keep as float until final writing. Convert to short.
-	gScaleImage[idx] = convert_short(value);
+	gScaleImage[idx] = convert_short( rint(value) );
 } // End Gaussian2D
 
 
@@ -216,6 +221,7 @@ __kernel void LocateStableFeatures(
 	__global float *gKeypoints,
 	__global int *gImageSize,
 	const float contrastLowerLimit,
+	const float curvature,
 	__global const short *gDog1,
 	__global const short *gDog2,
 	__global const short *gDog3,
@@ -381,9 +387,10 @@ __kernel void LocateStableFeatures(
 		float trace = Hxx+Hyy;
 		determinant = Hxx*Hyy - Hxy*Hxy;
 		// Ratio between eigenvalues.
-		float ratio = 10.0f;
+		// float ratio = 10.0f;
 		// Curvature/edge check.
-		if (pow(trace,2)/determinant >= pow(ratio+1,2)/ratio) {
+		if (pow(trace,2)/determinant > pow(curvature+1,2)/curvature) {
+			// Discard if greater than ratio.
 			gKeypoints[stride*idx + 0] = 0;
 			gKeypoints[stride*idx + 1] = 0;
 			gKeypoints[stride*idx + 2] = 0;
