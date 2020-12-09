@@ -40,20 +40,23 @@ kp2,descriptors2 = sift.detectAndCompute(image2,None) # [100:400,500:650]
 print("Keypoints: {} - {}".format(len(descriptors1),len(descriptors2)))
 
 # create BFMatcher object
-bf = cv.BFMatcher()
-# Match descriptors.
-matches = bf.knnMatch(descriptors1,descriptors2,k=2)
-# Apply ratio test
-good = []
-for m,n in matches:
-	if m.distance < 0.8*n.distance:
-		good.append([m])
-print("Matches: {}".format(len(good)))
+# bf = cv.BFMatcher()
+# # Match descriptors.
+# matches = bf.knnMatch(descriptors1,descriptors2,k=2)
+# # Apply ratio test
+# good = []
+# for m,n in matches:
+# 	if m.distance < 0.8*n.distance:
+# 		good.append([m])
+# print("Matches: {}".format(len(good)))
+
+fig,ax = plt.subplots(1,2)
 # Draw first 10 matches.
 # matchImage = cv.drawMatchesKnn(image1,kp1,image2,kp2,good,None,flags=cv.DrawMatchesFlags_NOT_DRAW_SINGLE_POINTS)
-matchImage = cv.drawKeypoints(image1,kp1,image1,flags=cv.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
-# matchImage = cv.drawKeypoints(image2,kp2,image2,flags=cv.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
-plt.imshow(matchImage)
+matchImage1 = cv.drawKeypoints(image1,kp1,image1,flags=cv.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
+matchImage2 = cv.drawKeypoints(image2,kp2,image2,flags=cv.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
+ax[0].imshow(matchImage1)
+ax[1].imshow(matchImage2)
 plt.show()
 
 

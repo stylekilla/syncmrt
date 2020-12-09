@@ -4,14 +4,22 @@ import logging
 import os, inspect
 
 logging.info("Adding MPL support for debugging.")
+import matplotlib as mpl
 from matplotlib import pyplot as plt
 
 # os.environ['PYOPENCL_NO_CACHE'] = '1'
 # os.environ['PYOPENCL_COMPILER_OUTPUT'] = '1'
 
-# Supress pyopencl debugging output. NOT WORKING.
+# Supress other logs.
 ocl_logger = logging.getLogger('cl')
 ocl_logger.setLevel(logging.CRITICAL)
+ocl_logger.propagate = False
+mpl_logger = logging.getLogger('mpl')
+mpl_logger.setLevel(logging.CRITICAL)
+mpl_logger.propagate = False
+plt_logger = logging.getLogger('plt')
+plt_logger.setLevel(logging.CRITICAL)
+plt_logger.propagate = False
 
 class gpu:
 	def __init__(self):
@@ -62,39 +70,41 @@ class gpu:
 			sigma=1.6,
 			contrast=3,
 			curvature=10,
+			upsample=False,
 			plot=False
 		):
 		"""
-		array: 
-			Gets converted into a signed two’s complement 16-bit integer (short: -32,768 to 32,767).
+		Array gets turned into float and rescaled between [0,1].
+		If you want to clamp your array you should do it before calling this method.
+		How to build in a way to choose how many octaves/scales you want?
+			Octaves are easy...
+			Scale levels - not so easy. Requires kernel changes.
 		"""
 		logging.info("Starting SIFT 2D algorithm on GPU.")
 
-		# Array will be signed two's complement 16-bit integer.
-		datatype = cl.cltypes.short
-		bits = 16
-		# Contrast is provided as a percentage of the available bit space. Default rejection threshold is 3% of the available bit space.
-		contrastRejectionThreshold = (contrast/100)*(2**bits)/2
+		# Array will be a float between [0,1].
+		datatype = cl.cltypes.float
+		# Contrast rejection threshold is provided as a percentage, we convert this to be between [0,1].
+		contrastRejectionThreshold = contrast/100
+
+		"""
+		SETUP.
+		"""
 		# (!) Changing nOctaves will require changes to the OpenCL kernel.
 		# The number of octaves is fixed.
 		nOctaves = 3
 		# The number of scale levels is tied to the number of octave levels. 
 		nScaleLevels = nOctaves+3
-		# Calculate k cosntant.
-		# k = 2**(1/(nOctaves+3))
-		# k = 2**(1/(nOctaves))
-		# k = 1.6
-		# Normalise the array to the signed short window.
-		# array = ((2**bits-1)/array.ptp())*array - array.min() - (2**bits/2)
-		array = (((2**bits)/2-1)/array.ptp())*array - array.min()
+		# Normalise the array to be within [0,1].
+		array = (1/array.ptp())*(array-array.min())
 		array = np.ascontiguousarray(array,dtype=datatype)
 		# Descriptors to return.
 		arrayDescriptors = []
 
-		# Memory overhead.
+		# Memory flags.
 		mf = cl.mem_flags
 		# Keep the original array in the CPU RAM.
-		gArray = cl.Buffer(self.ctx, mf.READ_ONLY | mf.USE_HOST_PTR, hostbuf=array)
+		ogArray = cl.Buffer(self.ctx, mf.READ_ONLY | mf.USE_HOST_PTR, hostbuf=array)
 		# Get kernel source.
 		fp = os.path.dirname(inspect.getfile(gpu))
 		kernel = open(fp+"/tools/opencl/kernels/sift2d.cl", "r").read()
@@ -102,53 +112,57 @@ class gpu:
 		program = cl.Program(self.ctx,kernel).build()
 
 		"""
-		STEP 1: Calculate scale images (Gaussian Convolution)
+		MEMORY OVERHEAD.
 		"""
-		# Memory overhead.
 		# Data for first octave.
-		subSamplingFactors = [1]
-		octaveShapes = [array.shape]
-		octaveScaleImageSets = [self._generateDeviceMemoryObjects(self.ctx,int(array.nbytes),nScaleLevels)]
-		octaveDogImageSets = [self._generateDeviceMemoryObjects(self.ctx,int(array.nbytes),nScaleLevels-1)]
-		# Data for ...n octaves.
-		for i in range(1,nOctaves):
-			# Double the last sub sampling factor.
-			subSamplingFactors.append(subSamplingFactors[-1]*2)
+		if upsample:
+			# We want to upscale the first octave.
+			subSamplingFactors = [0.5]
+		else:
+			# We want to skip the upsampling stage (default).
+			subSamplingFactors = [1]
+		# Lists for storing octave data and GPU memory objects.
+		octaveShapes = []
+		octaveScaleImageSets = []
+		octaveDogImageSets = []
+		# Data for n octaves.
+		for i in range(nOctaves):
+			# The subsampling factor for each octave should be double the last.
+			if i > 0: subSamplingFactors.append(subSamplingFactors[-1]*2)
+			# Adjust the image shape for the octave.
 			octaveShapes.append(tuple(np.array(np.array(array.shape)/subSamplingFactors[-1],dtype=int)))
-			# Make new memory objects for this octave.
-			octaveScaleImageSets.append(self._generateDeviceMemoryObjects(self.ctx,int(array.nbytes/subSamplingFactors[-1]),nScaleLevels))
-			octaveDogImageSets.append(self._generateDeviceMemoryObjects(self.ctx,int(array.nbytes/subSamplingFactors[-1]),nScaleLevels-1))
+			# Memory objects for this octave.
+			octaveScaleImageSets.append(self._generateDeviceMemoryObjects(self.ctx,np.dtype(datatype).itemsize*np.product(octaveShapes[-1]),nScaleLevels))
+			octaveDogImageSets.append(self._generateDeviceMemoryObjects(self.ctx,np.dtype(datatype).itemsize*np.product(octaveShapes[-1]),nScaleLevels-1))
 
+		"""
+		PROCESSING: PER OCTAVE.
+		"""
 		# Iterate over all octaves and scales.
 		for scaleImages,dogImages,octaveShape,subSamplingFactor in zip(octaveScaleImageSets,octaveDogImageSets,octaveShapes,subSamplingFactors):
 			# Save the octave number (same as enumerate: [0,n-1]).
 			octaveNumber = subSamplingFactors.index(subSamplingFactor)
 			# Choosing a value of sigma for the octave.
 			octaveSigma = sigma*subSamplingFactor
-			# octaveSigma = sigma
-			# Choosing a value of k for the scale.
-			# k = 2**(1/(octaveNumber+1))
-
 			logging.info("Starting calculations for Octave {}.".format(octaveNumber+1))
-			# We are now on a per-octave level.
+			logging.debug("Octave Image Shape: {}".format(octaveShape))
+
 			# If our octave requires resampling, do it.
-			if subSamplingFactor > 1:
+			if subSamplingFactor != 1:
 				logging.info("Subsampling array at {} intervals.".format(subSamplingFactor))
-				imageArray = cl.Buffer(self.ctx, mf.READ_WRITE, size=int(array.nbytes/subSamplingFactor))
+				imageArray = cl.Buffer(self.ctx, mf.READ_WRITE, size=np.dtype(datatype).itemsize*np.product(octaveShape))
 				# Program args.
 				args = (
-					gArray,
 					imageArray,
-					cl.cltypes.int(subSamplingFactor),
-					cl.cltypes.int(octaveShapes[0][1])
+					cl.cltypes.float(subSamplingFactor),
+					cl.cltypes.int(array.shape[1]),
+					ogArray
 				)
 				# Run the program
-				program.SubSample(self.queue,octaveShape,None,*(args))
+				program.BilinearInterpolation(self.queue,octaveShape,None,*(args))
 			else:
 				# Otherwise, just pass the original data on.
-				imageArray = gArray
-
-			logging.info("Octave Image Shape: {}".format(octaveShape))
+				imageArray = ogArray
 
 			if plot:
 				testArray = np.zeros(octaveShape,dtype=datatype)
@@ -165,11 +179,10 @@ class gpu:
 			# Calculate scale images.
 			for i in range(nScaleLevels):
 				# Our sigma for this image.
-				# _sigma = octaveSigma*(k**i)
 				scaleSigma = octaveSigma*2**(i/nOctaves)
-				logging.info("Calculating Scale Image {} with sigma {}.".format(i+1,scaleSigma))
+				logging.debug("Calculating Scale Image {} with sigma {}.".format(i+1,scaleSigma))
 				# Filter width should be 5 times the standard deviation and rounded up to the next odd integer.
-				filterWidth = cl.cltypes.int( int(6*scaleSigma + (6*(scaleSigma+1)%2)) )
+				filterWidth = cl.cltypes.int( 6*scaleSigma + (6*(scaleSigma+1)%2) )
 				# Calculate an offset for the filter so that it is centred about zero (i.e. so it goes from -1,0,+1 instead of 0,1,2...).
 				filterOffset = (filterWidth-1)/2
 				# Calculate xy values for filter (centred on zero, as described above).
@@ -196,9 +209,7 @@ class gpu:
 					testImages.append(testArray)
 
 			if plot:
-				import imageio
 				for i in range(nScaleLevels):
-					# imageio.imsave('/Users/barnesmicah/Documents/dumpingGround/SIFTcomparison/scale{}.jpg'.format(i+1),testImages[i])
 					ax[0,i+1].imshow(testImages[i],cmap='Greys')
 					ax[0,i+1].set_title("Scale Image {}".format(i+1))
 
@@ -500,3 +511,5 @@ class gpu:
 		logging.warning("Not implemented yet, doing nothing.")
 
 		return None
+
+	# def nnMatch

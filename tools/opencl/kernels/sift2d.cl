@@ -2,10 +2,10 @@
 // This is set up for 5 image scale levels and 4 DoG levels.
 
 __kernel void Gaussian2D(
-	__global const short *gArray,
+	__global const float *gArray,
 	__global const float *gGaussianKernel,
 	const int filterWidth,
-	__global short *gScaleImage
+	__global float *gScaleImage
 	)
 {
 	// Get global XY indices.
@@ -18,12 +18,6 @@ __kernel void Gaussian2D(
 	int idx = y + szy*x;
 	// Temporary value storage.
 	float value = 0;
-
-	// if (x<filterWidth/2 || y<filterWidth/2 || x>szx - filterWidth/2 || y>szy - filterWidth/2) {
-	// 	gScaleImage[idx] = convert_short( rint(value) );
-	// 	return;
-	// }
-
 	// Iterate over the entire filter, boundary conditions are handled within.
 	for (int i=0; i<filterWidth; i++) {
 		for (int j=0; j<filterWidth; j++) {
@@ -49,37 +43,53 @@ __kernel void Gaussian2D(
 			value += gArray[ny + szy*nx] * gGaussianKernel[j + filterWidth*i];
 		}
 	}
-	// Need to keep as float until final writing. Convert to short.
-	gScaleImage[idx] = convert_short( rint(value) );
-} // End Gaussian2D
+	// Need to keep as float until final writing.
+	gScaleImage[idx] = value;
+}; // End Gaussian2D
 
 
-__kernel void SubSample(
-	__global const short *gInputArray,
-	__global short *gOutputArray,
-	const int stride,
-	const int sizey
+__kernel void BilinearInterpolation(
+	__global float *gDestination,
+	const float scaleFactor,
+	const int sourceShape,
+	__global const float *gSource
 	)
 {
-	// Get global XY indices.
+	// Get global xy ID's of the destination array.
 	int x = get_global_id(0);
 	int y = get_global_id(1);
-	// Get input sizes.
-	// int szx = get_global_size(0);
+	// Get destination array size.
+	int szx = get_global_size(0);
 	int szy = get_global_size(1);
 	// Get the ID number of the thread.
-	int idx = y + szy*x;
-	// int idxSample = (y+stride) + szy*stride*(x+stride);
-	int idxSample = (y*stride) + sizey*stride*x;
-	// Copy the sample value across.
-	gOutputArray[idx] = gInputArray[idxSample];
-} // End SubSample
+	int idx = y + (szy * x);
+	// Convert the indices from the destination array to points within the source array.
+	float2 sample = {
+		x*scaleFactor,
+		y*scaleFactor
+	};
+	// Get the difference between p0 and p (the distance of the point to the next smallest integer). Assume square voxels.
+	float2 delta = {
+		sample.x-floor(sample.x),
+		sample.y-floor(sample.y)
+	};
+	// Get the source indices of the voxels surrounding the sample point.
+	int i00 = rint( floor(sample.y) + (sourceShape * floor(sample.x))	);
+	int i10 = rint( floor(sample.y) + (sourceShape * ceil(sample.x))	);
+	int i01 = rint( ceil(sample.y) +  (sourceShape * floor(sample.x))	);
+	int i11 = rint( ceil(sample.y) +  (sourceShape * ceil(sample.x))	);
+	// Get first round of interpolated points in x.
+	float c0 = gSource[i00]*(1-delta.x) + gSource[i10]*delta.x;
+	float c1 = gSource[i01]*(1-delta.x) + gSource[i11]*delta.x;
+	// Write the value.
+	gDestination[idx] = c0*(1-delta.y) + c1*delta.y;
+}; // End BilinearInterpolation
 
 
 __kernel void Difference(
-	__global const short *gArray1,
-	__global const short *gArray2,
-	__global short *gDifference
+	__global const float *gArray1,
+	__global const float *gArray2,
+	__global float *gDifference
 	)
 {
 	// Get global XY indices.
@@ -92,11 +102,11 @@ __kernel void Difference(
 	int idx = y + szy*x;
 	// Save the difference.
 	gDifference[idx] = gArray2[idx] - gArray1[idx];
-} // End Difference
+}; // End Difference
 
 
 __kernel void GenerateGradientMap(
-	__global const short *gScale,
+	__global const float *gScale,
 	__global float *gGradientMap
 	)
 {
@@ -110,29 +120,25 @@ __kernel void GenerateGradientMap(
 	int idx = y + szy*x;
 	// Create a datapoint.
 	float2 gradient = { 0.0f, 0.0f };
-
 	// Skip the border pixels.
 	if (x>0 && y>0 && x<szx-1 && y<szy-1) {
 		// Calculate gradient.
 		float nest = pow((float)(gScale[y + szy*(x+1)] - gScale[y + szy*(x-1)]),2.0f) + pow((float)(gScale[(y+1) + szy*x] - gScale[(y-1) + szy*x]),2.0f);
 		gradient.x = sqrt(nest);
 		// Calculate angle.
-		// nest = (gScale[(y+1) + szy*x] - gScale[(y-1) + szy*x])/(gScale[y + szy*(x+1)] - gScale[y + szy*(x-1)]);
 		gradient.y = atan2(
 			(float)(gScale[(y+1) + szy*x] - gScale[(y-1) + szy*x]),
 			(float)(gScale[y + szy*(x+1)] - gScale[y + szy*(x-1)])
 		);
 	}
-
 	vstore2(gradient,idx,gGradientMap);
-
-} // End GenerateGradientMap
+}; // End GenerateGradientMap
 
 
 __kernel void FindLocalMinima(
-	__global const short *gDog1,
-	__global const short *gDog2,
-	__global const short *gDog3,
+	__global const float *gDog1,
+	__global const float *gDog2,
+	__global const float *gDog3,
 	const int s,
 	__global int *gFeatures
 	)
@@ -148,7 +154,7 @@ __kernel void FindLocalMinima(
 	// We will not search for anything <= 16 elements of the edge of the array. This is because when we generate descriptors, we must have 16 elements of information in each direction.
 	if (x > 16 && x < (szx-16) && y > 16 && y < (szy-16)) {
 		// Get the value to compare to.
-		short value = gDog2[idx];
+		float value = gDog2[idx];
 		// Look at all 26 neighbours.
 		for (int i=-1; i < 2; i++) {
 			for (int j=-1; j < 2; j++) {
@@ -170,13 +176,13 @@ __kernel void FindLocalMinima(
 		// If we make it past all the checks, identify the current point as a local extreme.
 		gFeatures[idx] = s;
 	}
-} // End of FindLocalExtrema
+}; // End of FindLocalExtrema
 
 
 __kernel void FindLocalMaxima(
-	__global const short *gDog1,
-	__global const short *gDog2,
-	__global const short *gDog3,
+	__global const float *gDog1,
+	__global const float *gDog2,
+	__global const float *gDog3,
 	const int s,
 	__global int *gFeatures
 	)
@@ -192,7 +198,7 @@ __kernel void FindLocalMaxima(
 	// We will not search for anything <= 16 elements of the edge of the array. This is because when we generate descriptors, we must have 16 elements of information in each direction.
 	if (x > 16 && x < (szx-16) && y > 16 && y < (szy-16)) {
 		// Get the value to compare to.
-		short value = gDog2[idx];
+		float value = gDog2[idx];
 		// Look at all 26 neighbours.
 		for (int i=-1; i < 2; i++) {
 			for (int j=-1; j < 2; j++) {
@@ -214,7 +220,7 @@ __kernel void FindLocalMaxima(
 		// If we make it past all the checks, identify the current point as a local extreme.
 		gFeatures[idx] = s;
 	}
-} // End of FindLocalMaxima
+}; // End of FindLocalMaxima
 
 
 __kernel void LocateStableFeatures(
@@ -222,11 +228,11 @@ __kernel void LocateStableFeatures(
 	__global int *gImageSize,
 	const float contrastLowerLimit,
 	const float curvature,
-	__global const short *gDog1,
-	__global const short *gDog2,
-	__global const short *gDog3,
-	__global const short *gDog4,
-	__global const short *gDog5
+	__global const float *gDog1,
+	__global const float *gDog2,
+	__global const float *gDog3,
+	__global const float *gDog4,
+	__global const float *gDog5
 	)
 {
 	// Get global indice.
@@ -236,7 +242,7 @@ __kernel void LocateStableFeatures(
 	// Grab image size.
 	int2 size = vload2(0,gImageSize);
 	// Pick arrays based on s.
-	__global const short *ptr[5] = { gDog1,gDog2,gDog3,gDog4,gDog5 };
+	__global const float *ptr[5] = { gDog1,gDog2,gDog3,gDog4,gDog5 };
 	// Data initilization.
 	float x = 0.0f;
 	float y = 0.0f;
@@ -273,7 +279,7 @@ __kernel void LocateStableFeatures(
 	float Hisy = 0.0f;
 	float Hiss = 0.0f;
 	float3 offset = { 0.0f, 0.0f, 0.0f };
-
+	// Begin localisation.
 	bool success = false;
 	for (int i=0; i<4; i++) {
 		// Grab the (x,y,sigma) feature point.
@@ -312,12 +318,10 @@ __kernel void LocateStableFeatures(
 		Hyy = ( ptr[s1][i1] + ptr[s1][i7] - 2*ptr[s1][i4] );
 		Hys = ( ptr[s2][i1] - ptr[s2][i7] - ptr[s0][i1] + ptr[s0][i7] ) /4.0f;
 		Hss = ( ptr[s2][i4] + ptr[s0][i4] - 2*ptr[s1][i4] );
-
 		// Now we want to use the second order taylor series to find the local extremum of the points.
 		// We take the derivative of the second order taylor series, and equate it to zero to get the stationary point.
 		// The Hessian matrix describes the second order derivatives.
 		// Now we use the Hessian and the first order derivatives to solve for the true point.
-
 		// Calculate Hessian Inverse.
 		determinant = (Hxx*Hyy*Hss) + (Hxy*Hys*Hxs) + (Hxs*Hxy*Hys) - (Hxx*Hys*Hys) - (Hxs*Hyy*Hxs) - (Hxy*Hxy*Hss);
 		Hixx = (1/determinant)*( Hyy*Hss - Hys*Hys );
@@ -329,17 +333,14 @@ __kernel void LocateStableFeatures(
 		Hisx = (1/determinant)*( Hxy*Hys - Hyy*Hxs );
 		Hisy = (1/determinant)*( Hxy*Hxs - Hxx*Hys );
 		Hiss = (1/determinant)*( Hxx*Hyy - Hxy*Hxy );
-
 		// Calculate offset (x,y,sigma).
 		offset.x = -(Hixx*dx + Hixy*dy + Hixs*ds);
 		offset.y = -(Hiyx*dx + Hiyy*dy + Hiys*ds);
 		offset.z = -(Hisx*dx + Hisy*dy + Hiss*ds);
-
 		// Add the offset.
 		gKeypoints[stride*idx + 0] += offset.x;
 		gKeypoints[stride*idx + 1] += offset.y;
 		gKeypoints[stride*idx + 2] += offset.z;
-
 		// Check to see if the offset is greater than 0.5 in any direction.
 		if (fabs(offset.x) > 0.5 || fabs(offset.y) > 0.5 || fabs(offset.z) > 0.5) {
 			// Check that our new offset points don't push the point outside our valid range.
@@ -375,7 +376,6 @@ __kernel void LocateStableFeatures(
 		int iint = convert_int(rint(y) + size.y*rint(x));
 		// The interpolated value is the original value plus half of the offset times the gradient.
 		float value = ptr[sint][iint] + 0.5f*( dx*offset.x + dy*offset.y + ds+offset.z );
-
 		// Contrast check.
 		if (fabs(value) < contrastLowerLimit) {
 			gKeypoints[stride*idx + 0] = 0;
@@ -397,7 +397,7 @@ __kernel void LocateStableFeatures(
 			return;
 		}
 	}
-} // End of LocateStableFeatures
+}; // End LocateStableFeatures
 
 
 float interpolateOrientationPeak(
@@ -413,13 +413,9 @@ float interpolateOrientationPeak(
 	float denom = (x1-x2) * (x1-x3) * (x2-x3);
 	float a 	= (x3 * (y2-y1) + x2 * (y1-y3) + x1 * (y3-y2)) / denom;
 	float b 	= (x3*x3 * (y1-y2) + x2*x2 * (y3-y1) + x1*x1 * (y2-y3)) / denom;
-	// float c 	= (x2 * x3 * (x2-x3) * y1+x3 * x1 * (x3-x1) * y2+x1 * x2 * (x1-x2) * y3) / denom;
 	// Solve for local extrema.
-	float nx = -b/(2*a);
-	// float ny = a*nx*nx + b*nx * c;
-	// float2 newPoint = { nx, ny };
-	return nx;
-}
+	return -b/(2*a);
+}; // End interpolateOrientationPeak
 
 
 __kernel void KeypointOrientations(
@@ -447,12 +443,10 @@ __kernel void KeypointOrientations(
 	// Pick arrays based on nearest scale.
 	__global const float *gradient[5] = { gGradient1,gGradient2,gGradient3,gGradient4,gGradient5 };
 	__global const float *gaussian[5] = { gGaussian1,gGaussian2,gGaussian3,gGaussian4,gGaussian5 };
-
 	// Image x,y position and scale (rounded to nearest integer).
 	int x = convert_int(rint( gKeypoints[stride*idx + 0] ));
 	int y = convert_int(rint( gKeypoints[stride*idx + 1] ));
 	int s = convert_int(rint( gKeypoints[stride*idx + 2] ));
-
 	// Make a temporary histogram. Bins go from [-pi,pi] in 10 degree steps.
 	float histogram[36] = { 0.0f };
 	// Bin the gaussian weighted magnitudes by the orientation values.
@@ -471,10 +465,8 @@ __kernel void KeypointOrientations(
 			int bin = convert_int(floor( 18 + (grad.y/(M_PI_F/18)) ));
 			// Add the value to the correct bin.
 			histogram[bin] = histogram[bin] + value;
-
 		}
 	}
-
 	// Normalise the orientation histogram.
 	// Find the maximum.
 	float maximum = 0.0f;
@@ -487,7 +479,6 @@ __kernel void KeypointOrientations(
 	for (int i=0; i<36; i++) {
 		histogram[i] = histogram[i]/maximum;
 	}
-
 	// Identify peaks within 80% of norm.
 	float orientation = 0.0f;
 	int offset = 3;
@@ -523,20 +514,18 @@ __kernel void KeypointOrientations(
 				y1 = histogram[i];
 				y2 = histogram[i+1];
 			}
-
 			// Continue as normal.
 			orientation = interpolateOrientationPeak(
 					x0,x1,x2,
 					y0,y1,y2
 				);
-
 			// Add the orientation to the keypoint.
 			gKeypoints[idx*stride + offset] = orientation;
 			// Increase the offset.
 			offset++;
 		}
 	}
-} // End KeypointOrientations
+}; // End KeypointOrientations
 
 
 __kernel void KeypointDescriptors(
@@ -558,7 +547,6 @@ __kernel void KeypointDescriptors(
 	int2 size = vload2(0,gImageSize);
 	// Pick arrays based on nearest scale.
 	__global const float *gradient[5] = { gGradient1,gGradient2,gGradient3,gGradient4,gGradient5 };
-
 	// Image x,y position (floats), scale (rounded to nearest integer) and orientation (float).
 	float x = gDescriptors[stride*idx + 0];
 	float y = gDescriptors[stride*idx + 1];
@@ -567,7 +555,6 @@ __kernel void KeypointDescriptors(
 	// Calculate sin and cos of the orientation. Saves repeated computation later.
 	float s = sin(orientation);
 	float c = cos(orientation);
-
 	// Create reusable points.
 	// New offset points.
 	float nx = 0.0f;
@@ -581,7 +568,6 @@ __kernel void KeypointDescriptors(
 	int dind = 0;
 	// Offset for descriptor.
 	int offset = 4;
-
 	// Iterate over the (16,16) area surrounding the point.
 	// p,q: Manages the quadrant (sub-area) we are looking at: (-2,-1,0,1).
 	for (int p=-2; p<2; p++) {
@@ -668,4 +654,4 @@ __kernel void KeypointDescriptors(
 		// Now re-normalize it to 1.
 		gDescriptors[idx*stride + i] = gDescriptors[idx*stride + i]/0.2f;
 	}
-} // End KeypointDescriptors
+}; // End KeypointDescriptors

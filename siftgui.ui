@@ -1,0 +1,237 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>MainWindow</class>
+ <widget class="QMainWindow" name="MainWindow">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>1620</width>
+    <height>1000</height>
+   </rect>
+  </property>
+  <property name="minimumSize">
+   <size>
+    <width>1620</width>
+    <height>1000</height>
+   </size>
+  </property>
+  <property name="maximumSize">
+   <size>
+    <width>1620</width>
+    <height>1000</height>
+   </size>
+  </property>
+  <property name="windowTitle">
+   <string>MainWindow</string>
+  </property>
+  <widget class="QWidget" name="centralwidget">
+   <property name="maximumSize">
+    <size>
+     <width>1620</width>
+     <height>1000</height>
+    </size>
+   </property>
+   <widget class="QWidget" name="">
+    <property name="geometry">
+     <rect>
+      <x>0</x>
+      <y>8</y>
+      <width>1602</width>
+      <height>925</height>
+     </rect>
+    </property>
+    <layout class="QVBoxLayout" name="verticalLayout_2">
+     <item>
+      <layout class="QHBoxLayout" name="horizontalLayout">
+       <item>
+        <layout class="QFormLayout" name="formLayout">
+         <item row="0" column="0">
+          <widget class="QLabel" name="label">
+           <property name="text">
+            <string>Image 1</string>
+           </property>
+          </widget>
+         </item>
+         <item row="0" column="1">
+          <widget class="QLineEdit" name="inpImage1">
+           <property name="minimumSize">
+            <size>
+             <width>500</width>
+             <height>0</height>
+            </size>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="0">
+          <widget class="QLabel" name="label_2">
+           <property name="text">
+            <string>Image 2</string>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="1">
+          <widget class="QLineEdit" name="inpImage2">
+           <property name="minimumSize">
+            <size>
+             <width>500</width>
+             <height>0</height>
+            </size>
+           </property>
+          </widget>
+         </item>
+         <item row="2" column="1">
+          <widget class="QPushButton" name="pbLoad">
+           <property name="text">
+            <string>Load</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
+       <item>
+        <layout class="QFormLayout" name="formLayout_2">
+         <item row="0" column="0">
+          <widget class="QLabel" name="label_3">
+           <property name="text">
+            <string>Sigma</string>
+           </property>
+          </widget>
+         </item>
+         <item row="0" column="1">
+          <widget class="QLineEdit" name="inpSigma">
+           <property name="text">
+            <string>1.6</string>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="0">
+          <widget class="QLabel" name="label_4">
+           <property name="text">
+            <string>Contrast</string>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="1">
+          <widget class="QLineEdit" name="inpContrast">
+           <property name="text">
+            <string>3</string>
+           </property>
+          </widget>
+         </item>
+         <item row="2" column="0">
+          <widget class="QLabel" name="label_5">
+           <property name="text">
+            <string>Curvature</string>
+           </property>
+          </widget>
+         </item>
+         <item row="2" column="1">
+          <widget class="QLineEdit" name="inpCurvature">
+           <property name="text">
+            <string>10</string>
+           </property>
+          </widget>
+         </item>
+         <item row="3" column="0">
+          <widget class="QLabel" name="label_6">
+           <property name="text">
+            <string>Upsample</string>
+           </property>
+          </widget>
+         </item>
+         <item row="3" column="1">
+          <widget class="QCheckBox" name="inpUpsample">
+           <property name="text">
+            <string/>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
+       <item>
+        <layout class="QVBoxLayout" name="verticalLayout">
+         <item>
+          <layout class="QHBoxLayout" name="horizontalLayout_2">
+           <item>
+            <widget class="QLabel" name="label_7">
+             <property name="text">
+              <string>Show nKeypoints</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QLineEdit" name="inpNKeypoints">
+             <property name="text">
+              <string>100</string>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </item>
+         <item>
+          <widget class="QPushButton" name="pbCalculateSIFT">
+           <property name="text">
+            <string>SIFT Keypoints</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QPushButton" name="pbClear">
+           <property name="text">
+            <string>Clear</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
+       <item>
+        <spacer name="horizontalSpacer">
+         <property name="orientation">
+          <enum>Qt::Horizontal</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>40</width>
+           <height>20</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+      </layout>
+     </item>
+     <item>
+      <widget class="QStackedWidget" name="wgtPlot">
+       <property name="minimumSize">
+        <size>
+         <width>1600</width>
+         <height>800</height>
+        </size>
+       </property>
+       <property name="maximumSize">
+        <size>
+         <width>1600</width>
+         <height>800</height>
+        </size>
+       </property>
+       <widget class="QWidget" name="page1"/>
+      </widget>
+     </item>
+    </layout>
+   </widget>
+  </widget>
+  <widget class="QMenuBar" name="menubar">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>0</y>
+     <width>1620</width>
+     <height>22</height>
+    </rect>
+   </property>
+  </widget>
+  <widget class="QStatusBar" name="statusbar"/>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>
