@@ -8,7 +8,7 @@ from testguiPlot import QPlot
 # from matplotlib.patches import ConnectionPatch
 # import pydicom as dicom
 import logging
-# import os
+from functools import partial
 import testGpu
 
 # Select Qt5 user interface.
@@ -23,7 +23,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		self.setupUi(self)
 		# Window Attributes.
 		self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
-		self.setWindowTitle('SIFT GUI')
+		self.setWindowTitle('SIFT Algorithm Testing')
 		# Add plot widget.
 		self.plot = QPlot()
 		self.wgtPlot.addWidget(self.plot)
@@ -32,6 +32,8 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		self.pbLoad.clicked.connect(self.loadImages)
 		self.pbCalculateSIFT.clicked.connect(self.calculateSIFT)
 		self.pbClear.clicked.connect(self.clearAxes)
+		self.pbDefaults.clicked.connect(partial(self.setDefaults,0))
+		self.pbDefaults_2.clicked.connect(partial(self.setDefaults,1))
 		# Start the gpu.
 		self._gpu = testGpu.gpu()
 
@@ -59,29 +61,49 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 			contrast = float(self.inpContrast.text())
 			curvature = float(self.inpCurvature.text())
 			upsample = bool(self.inpUpsample.isChecked())
+			# Run SIFT.
+			if type(self.plot.getImage(0)[0]) != type(None):
+				image,offset = self.plot.getImage(0)
+				_, descriptors = self._gpu.findFeaturesSIFT(image,sigma=sigma,contrast=contrast,curvature=curvature,upsample=upsample,plot=False)
+				logging.warning("Found {} features.".format(len(descriptors)))
+				if len(descriptors) > 0:
+					descriptors[:,:2] += offset
+					self.plot.plotDescriptors(0,descriptors,int(self.inpNKeypoints.text()))
 		except:
-			logging.warning("Could not get all parameters.")
-			return
-		# Run SIFT.
-		if type(self.plot.getImage(0)[0]) != type(None):
-			image,offset = self.plot.getImage(0)
-			_, descriptors = self._gpu.findFeaturesSIFT(image,sigma=sigma,contrast=contrast,curvature=curvature,upsample=upsample,plot=False)
-			logging.warning("Found {} features.".format(len(descriptors)))
-			if len(descriptors) > 0:
-				descriptors[:,:2] += offset
-				self.plot.plotDescriptors(0,descriptors,int(self.inpNKeypoints.text()))
+			logging.warning("Could not run SIFT for Image 1, check parameters.")
 
-		if type(self.plot.getImage(1)[0]) != type(None):
-			image,offset = self.plot.getImage(1)
-			_, descriptors = self._gpu.findFeaturesSIFT(image,sigma=sigma,contrast=contrast,curvature=curvature,upsample=upsample,plot=False)
-			logging.warning("Found {} features.".format(len(descriptors)))
-			if len(descriptors) > 0: 
-				descriptors[:,:2] += offset
-				self.plot.plotDescriptors(1,descriptors,int(self.inpNKeypoints.text()))
+		try:
+			# Params.
+			sigma = float(self.inpSigma_2.text())
+			contrast = float(self.inpContrast_2.text())
+			curvature = float(self.inpCurvature_2.text())
+			upsample = bool(self.inpUpsample_2.isChecked())
+			# Run SIFT.
+			if type(self.plot.getImage(1)[0]) != type(None):
+				image,offset = self.plot.getImage(1)
+				_, descriptors = self._gpu.findFeaturesSIFT(image,sigma=sigma,contrast=contrast,curvature=curvature,upsample=upsample,plot=False)
+				logging.warning("Found {} features.".format(len(descriptors)))
+				if len(descriptors) > 0:
+					descriptors[:,:2] += offset
+					self.plot.plotDescriptors(1,descriptors,int(self.inpNKeypoints.text()))
+		except:
+			logging.warning("Could not run SIFT for Image 2, check parameters.")
 
 	def clearAxes(self):
 		# Clear the plots.
 		self.plot.clearOverlays()
+
+	def setDefaults(self,index):
+		if index == 0:
+			self.inpSigma.setText("1.6")
+			self.inpContrast.setText("3")
+			self.inpCurvature.setText("10")
+			self.inpUpsample.setChecked(False)
+		elif index == 1:
+			self.inpSigma_2.setText("1.6")
+			self.inpContrast_2.setText("3")
+			self.inpCurvature_2.setText("10")
+			self.inpUpsample_2.setChecked(False)
 
 if __name__ == "__main__":
 	# QApp 
