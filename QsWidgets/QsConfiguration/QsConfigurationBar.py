@@ -1,5 +1,6 @@
 from PyQt5 import QtWidgets,QtCore,QtGui
 import epics
+import threading
 import logging
 
 __all__ = ['ConfigurationManager','ConfigurationItem']
@@ -68,6 +69,9 @@ class ConfigurationItem(QtWidgets.QWidget):
 		# Read the instructions from the file.
 		f = open(self.file,'r')
 		instructions = f.readlines()
+		f.close()
+
+		threads = []
 		for instruction in instructions:
 			if instruction.startswith('#') or len(instruction) == 0:
 				# Ignore it.
@@ -79,9 +83,26 @@ class ConfigurationItem(QtWidgets.QWidget):
 					pv, value = instruction
 					# Write the value to epics and wait for it to complete.
 					# epics.caput(pv,float(value),wait=True)
-					logging.critical("GO: {} -> {}".format(pv,value))
-					# MAKE THIS MULTITHREADED!
-		f.close()
+					# Do the epics processing on a seperate thread.
+					threads.append(threading.Thread(target=epics_threadsafe,args=[pv,float(value)]))
+					threads[-1].start()
+
+		# Wait until all the threads are finished.
+		while True:
+			if len(threads) > 0:
+				for thread in threads:
+					try:
+						# Once the thread has finished, remove it.
+						thread.join()
+						threads.remove(thread)
+					except:
+						pass	
+			else:
+				break
+
+		logging.info("Configuration is set.")
+
+
 
 	def edit(self):
 		""" Edit the file. """
@@ -89,6 +110,15 @@ class ConfigurationItem(QtWidgets.QWidget):
 		self.textedit.show()
 		self.textedit.raise_()
 		self.textedit.activateWindow()
+
+
+def epics_threadsafe(pv,value):
+	""" An epics ca.put() function that will wait until it has finished. """
+	try:
+		logging.info("Setting: {} -> {}".format(pv,value))
+		epics.caput(pv,value,wait=True)
+	except:
+		logging.warning("Could not set PV {} to {}.".format(pv,value))
 
 
 class FileEditor(QtWidgets.QWidget):
