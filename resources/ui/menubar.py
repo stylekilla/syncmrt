@@ -1,6 +1,7 @@
 def populate(mb):
 	""" Populate the menubar (mb). """
 	items = {}
+
 	"""
 	FILE
 	"""
@@ -36,6 +37,17 @@ def populate(mb):
 			script = tools_scripts.addAction(scriptName)
 			# When clicked then run the file in a separate python instance.
 			script.triggered.connect(partial(run,item))
+	# SCRIPTS
+	items['tools_populateConfigurationManager'] = tools.addAction("Populate Configuration Manager")
+
+	"""
+	VIEW
+	"""
+	view = mb.addMenu("View")
+	items['view_configurationManager'] = view.addAction("Show Configuration Manager")
+	
+
+	# Return the menu bar items.
 	return items
 
 def run(script):

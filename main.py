@@ -153,6 +153,14 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		self.pbCollapseSidebar.clicked.connect(self.rightSidebar.toggleVisibility)
 		self.statusBar.addPermanentWidget(self.pbCollapseSidebar)
 
+		# ==============
+		# Other Widgets.
+		# ==============
+		# Create the configuration manager widget.
+		self.configurationManager = QsWidgets.QsConfiguration.ConfigurationManager()
+		# Set up the configuration manager.
+		self.setupConfigurationManager()
+
 		# =============
 		# Top Menu Bar.
 		# =============
@@ -165,6 +173,8 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		# self._menuBar['load_folder'].triggered.connect(partial(self.openFiles,'folder'))
 		logging.warning("Have overriden load folder to just run the test function.")
 		self._menuBar['load_folder'].triggered.connect(self.test)
+		self._menuBar['view_configurationManager'].triggered.connect(self.toggleConfigurationManager)
+		self._menuBar['tools_populateConfigurationManager'].triggered.connect(self.setupConfigurationManager)
 
 		# Switches.
 		self._isXrayOpen = False
@@ -172,9 +182,9 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		self._isMRIOpen = False
 		self._isRTPOpen = False
 
-		"""
-		The Brain Setup.
-		"""
+		# ================
+		# The Brain Setup.
+		# ================
 		# Create a new system, this has a solver, detector and stage.
 		self.system = systems.theBrain.Brain(
 			resourceFilepath+config.files.patientSupports,
@@ -197,9 +207,9 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		# Get signal for a new patient support move.
 		# self.system.newMove.connect(self.showMovement)
 
-		"""
-		More GUI linking from System and Patient.
-		"""
+		# =========================================
+		# More GUI linking from System and Patient.
+		# =========================================
 		# Create controls work environment.
 		self.sbSettings.stageChanged.connect(self.system.setStage)
 		self.sbSettings.refreshConnections.connect(self.system.patientSupport.reconnect)
@@ -218,7 +228,30 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 
 	def test(self):
 		logging.critical("Running test function.")
-		self.system.movePatient([10,5,1,0,0,2.5],'absolute')
+		# self.system.movePatient([10,5,1,0,0,2.5],'absolute')
+
+	def setupConfigurationManager(self):
+		# Populate the manager with our config files.
+		# They must live in application_path/configurations/*.config
+		for root, subdir, fp in os.walk("{}/configurations/".format(application_path)):
+			for fn in fp:
+				if fn.endswith(tuple('.config')):
+					# Create the config item.
+					config = QsWidgets.QsConfiguration.ConfigurationItem(fn[:-7],os.path.join(root,fn))
+					# Add it to the manager.
+					self.configurationManager.addItem(config)
+
+	def toggleConfigurationManager(self):
+		if self.configurationManager.isVisible():
+			# Hide the manager.
+			self.configurationManager.hide()
+			self._menuBar['view_configurationManager'].setText("Show Configuration Manager")
+		else:
+			# Show the manager.
+			self.configurationManager.show()
+			self.configurationManager.raise_()
+			self.configurationManager.activateWindow()
+			self._menuBar['view_configurationManager'].setText("Hide Configuration Manager")
 
 	def newFile(self,modality):
 		if modality == 'xray':
