@@ -102,8 +102,6 @@ class ConfigurationItem(QtWidgets.QWidget):
 
 		logging.info("Configuration is set.")
 
-
-
 	def edit(self):
 		""" Edit the file. """
 		self.textedit = FileEditor(self.file)
