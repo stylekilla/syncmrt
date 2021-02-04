@@ -66,39 +66,37 @@ class ConfigurationItem(QtWidgets.QWidget):
 
 	def go(self):
 		""" Move everything in the configuration file. """
-		# Read the instructions from the file.
-		f = open(self.file,'r')
-		instructions = f.readlines()
-		f.close()
-
-		threads = []
-		for instruction in instructions:
-			if instruction.startswith('#') or len(instruction) == 0:
-				# Ignore it.
-				pass
+		# Parse the config file.
+		config = parseConfigFile(self.file)
+		for group in config:
+			if len(group) == 1:
+				# Get the PV and the value to write.
+				pv, value = group[0]
+				# Write the value to epics and wait for it to complete.
+				# epics.caput(pv,float(value),wait=True)
+				print("SINGLE {} = {}".format(pv,value))
 			else:
-				instruction = instruction.split(' ')
-				if len(instruction) == 2:
-					# Get the PV and the value to write.
-					pv, value = instruction
-					# Write the value to epics and wait for it to complete.
-					# epics.caput(pv,float(value),wait=True)
+				# Create a thread tracker.
+				threads = []
+				# Assume a group of commands.
+				for command in group:
+					# Seperate the PV and value data.
+					pv,value = command
 					# Do the epics processing on a seperate thread.
 					threads.append(threading.Thread(target=epics_threadsafe,args=[pv,float(value)]))
 					threads[-1].start()
-
-		# Wait until all the threads are finished.
-		while True:
-			if len(threads) > 0:
-				for thread in threads:
-					try:
-						# Once the thread has finished, remove it.
-						thread.join()
-						threads.remove(thread)
-					except:
-						pass	
-			else:
-				break
+				# Wait until all the threads are finished before we continue.
+				while True:
+					if len(threads) > 0:
+						for thread in threads:
+							try:
+								# Once the thread has finished, remove it.
+								thread.join()
+								threads.remove(thread)
+							except:
+								pass	
+					else:
+						break
 
 		logging.info("Configuration is set.")
 
@@ -109,12 +107,54 @@ class ConfigurationItem(QtWidgets.QWidget):
 		self.textedit.raise_()
 		self.textedit.activateWindow()
 
+def parseConfigFile(file):
+	""" 
+	Parse the config file.
+	Single commands shall be executed in order.
+	Grouped commands shall be executed simulatenously in threads.
+	"""
+	groups = []
+	commands = []
+
+	# Read the instructions from the file.
+	f = open(file,'r')
+	instructions = f.readlines()
+	f.close()
+
+	# Iterate over the instructions...
+	for instruction in instructions:
+		if instruction.startswith('#') or len(instruction) == 0:
+			# Ignore it.
+			pass
+		elif instruction == '{':
+			# Reset the commands list for the new group.
+			commands = []
+		elif instruction == '}':
+			# If we have any previous commands, add them as a group.
+			if len(commands) > 0:
+				groups.append(commands)
+		elif instruction.startswith('\t'):
+			# Remove the whitespace.
+			instruction = instruction.strip().split(' ')
+			# Add if there are only two values (assumes PV + Value).
+			if len(instruction) == 2:
+				if not instruction[0].startswith('#'):
+					commands.append(instruction)
+		else:
+			# Assume it's a single line, not in a group.
+			instruction = instruction.split(' ')
+			if len(instruction) == 2:
+				groups.append([instruction])
+
+	return groups
+
 
 def epics_threadsafe(pv,value):
 	""" An epics ca.put() function that will wait until it has finished. """
 	try:
 		logging.info("Setting: {} -> {}".format(pv,value))
-		epics.caput(pv,value,wait=True)
+		print("THREAD {} = {}".format(pv,value))
+		# epics.caput(pv,value,wait=True)
 	except:
 		logging.warning("Could not set PV {} to {}.".format(pv,value))
 
