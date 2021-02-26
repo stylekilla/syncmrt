@@ -23,6 +23,7 @@ DETECTOR_PVS = {
 	'DataType': 'IMAGE:DataType_RBV',
 	'ArraySize0': 'CAM:ArraySizeX_RBV',
 	'ArraySize1': 'CAM:ArraySizeY_RBV',
+	'RoiData': 'ROI1:IMAGE:ArrayData',
 	'ArrayData': 'IMAGE:ArrayData',
 }
 
@@ -138,9 +139,9 @@ class detector(QtCore.QObject):
 			# To aovid a race condition, wait until the motor has started moving before we continue. This ensures epics has had time to process the command.
 			time.sleep(1)
 			# Once finished grab the frame and return it.
-			image = self.ArrayData.get()
-			logging.debug("This is set to ArraySize0 and ArraySize1... should this not be X and Y? Is there something wrong with the IOC?")
-			image =  np.flipud(image.reshape(self.ArraySize1.get(),self.ArraySize0.get()))
-			return image[300:2034,:]
+			image = self.RoiData.get()
+			# logging.debug("This is set to ArraySize0 and ArraySize1... should this not be X and Y? Is there something wrong with the IOC?")
+			image =  np.flipud(image.reshape(124,2560))
+			return image
 		else:
 			raise DetectorException("Detector not connected. Cannot acquired image.")
