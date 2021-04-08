@@ -1,16 +1,16 @@
 import epics
 
 # Setting things up.
-home = -195.0
-start = -190.0
-stop = -200.0
-speed = 2
+home = 0.0
+start = 25.0
+stop = -25.0
+speed = 5
 distance = start-stop
 time = distance/speed
 
 # Number of pixels to read out.
 readoutHeight = 10
-pixelSize = 0.00815
+pixelSize = 0.01059
 
 # Calculate detector settings.
 acquireTime = (readoutHeight*pixelSize)/speed
@@ -47,11 +47,36 @@ epics.caput("SR08ID01ROB01:MOTOR_Z", start, wait=True)
 
 print("Waiting {}s.".format(time))
 import time as ttime
-ttime.sleep(time+2)
+ttime.sleep(time/2+2)
+
+# STEP 3: Open Shutters...
+print("Opening shutters...")
+epics.caput("SR08ID01PSS01:FE_SHUTTER_OPEN_CMD.VAL",1, wait=True)
+epics.caput("SR08ID01PSS01:HU01A_BL_SHUTTER_OPEN_CMD.VAL",1, wait=True)
+wait = True
+while wait:
+	# If shutter status is 3 then the shutter is open.
+	# If it is 2 it is closed.
+	if (epics.caget("SR08ID01PSS01:HU01A_SF_SHUTTER_STS") == 3) & (epics.caget("SR08ID01PSS01:FE_SHUTTER_STS") == 3): 
+		wait = False
+print("Shutters open.")
 
 print("Starting acquisition.")
 epics.caput("SR08ID01ROB01:MOTOR_Z", stop)
 epics.caput("SR08ID01DETIOC10:CAM:Acquire", 1, wait=True)
+
+# STEP 5: Close Shutters...
+print("Closing shutters...")
+# epics.caput("SR08ID01PSS01:FE_SHUTTER_CLOSE_CMD.VAL",1,wait=True)
+epics.caput("SR08ID01PSS01:HU01A_BL_SHUTTER_CLOSE_CMD.VAL",1, wait=True)
+wait = True
+while wait:
+	# If shutter status is 3 then the shutter is open.
+	# If it is 2 it is closed.
+	# if (epics.caget("SR08ID01PSS01:HU01A_SF_SHUTTER_STS") == 2) & (epics.caget("SR08ID01PSS01:FE_SHUTTER_STS") == 2): 
+	if (epics.caget("SR08ID01PSS01:HU01A_SF_SHUTTER_STS") == 2): 
+		wait = False
+print("Shutters closed.")
 
 print("Finished. Moving to home position.")
 epics.caput("SR08ID01ROB01:MOTOR_Z", home)

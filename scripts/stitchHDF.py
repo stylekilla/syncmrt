@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import h5py as hdf
 
 imagedir = '/mnt/tmp/'
-filename = 'UUID3.hdf'
+filename = 'UUID.hdf'
 
 f = hdf.File(imagedir+filename)
 arr = np.vstack(f['entry']['data']['data'])
