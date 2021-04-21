@@ -84,10 +84,14 @@ class motor(QtCore.QObject):
 
 	def setPosition(self,position):
 		position *= self._direction
-		try:
-			self._controller.write(position,mode='absolute')
-		except:
-			self.error.emit()
+		# If we are not already at the position, then try to go there.
+		if position != self._controller.read():
+			try:
+				self._controller.write(position,mode='absolute')
+			except:
+				self.error.emit()
+		else:
+			self.moveFinished.emit()
 
 	def shiftPosition(self,position):
 		position *= self._direction
