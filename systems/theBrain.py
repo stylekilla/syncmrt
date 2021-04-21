@@ -159,7 +159,7 @@ class Brain(QtCore.QObject):
 			# Start a new routine.
 			self._routine = ImagingRoutine()
 			# We should ideally define a beam height...
-			self._routine.dz = 20.635
+			self._routine.dz = 1.0
 			logging.critical("Hard setting a beam height of {} mm for now...".format(self._routine.dz))
 			# Theta and trans are relative values from current position.
 			self._routine.theta = theta
@@ -193,7 +193,8 @@ class Brain(QtCore.QObject):
 	def _startScan(self):
 		if self._routine.imageCounter < self._routine.imageCounterLimit:
 			# Set an offset between treatment position and imaging position.
-			offset = np.array([0,0,20,0,0,0])
+			# offset = np.array([0,0,20,0,0,0])
+			offset = np.array([0,0,0,0,0,0])
 			logging.info("Starting scan {}/{} at {}deg with offset {}.".format(self._routine.imageCounter+1,self._routine.imageCounterLimit,self._routine.theta[self._routine.imageCounter],offset))
 			# Calculate image start position and set patient to that position.
 			position = self._routine.preImagingPosition + np.array([0,0,self._routine.tz[0],0,0,self._routine.theta[self._routine.imageCounter]]) + offset
