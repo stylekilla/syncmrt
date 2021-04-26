@@ -1,7 +1,6 @@
 import matplotlib as mpl
 mpl.use('Qt5Agg')
 mpl.rcParams['toolbar'] = 'toolmanager'
-mpl.rcParams['datapath'] = './QsWidgets/QsMpl/mpl-data'
 
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg, FigureManagerQT
@@ -87,9 +86,9 @@ class QPlot(QtWidgets.QWidget):
 			self.toolbar.remove_toolitem(item)
 
 		# Populate the toolbar manager.
-		self.toolbarManager.add_tool('home','ToolHome')
-		self.toolbarManager.add_tool('zoom','ToolZoom')
-		self.toolbarManager.add_tool('pan','ToolPan')
+		# self.toolbarManager.add_tool('home','ToolHome')
+		# self.toolbarManager.add_tool('zoom','ToolZoom')
+		# self.toolbarManager.add_tool('pan','ToolPan')
 		self.toolbarManager.add_tool('pick',ToolPickPoint)
 		self.toolbarManager.add_tool('pickIso',ToolPickIso)
 		self.toolbarManager.add_tool('clear',ToolClearPoints)
