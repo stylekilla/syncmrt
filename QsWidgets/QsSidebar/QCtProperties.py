@@ -164,6 +164,8 @@ class QCtProperties(QtWidgets.QWidget):
 		self.widget['isocenter']['editIsoY'].setText("{:.2f}".format(y))
 		self.widget['isocenter']['editIsoZ'].setText("{:.2f}".format(z))
 		self.blockSignals(False)
+		# Turn the overlays on.
+		self.widget['overlays']['cbPatIsoc'].setChecked(True)
 
 	def _updateIsocenter(self):
 		""" Send a signal with updated x,y coordinates. """
@@ -171,7 +173,9 @@ class QCtProperties(QtWidgets.QWidget):
 		_y = float(self.widget['isocenter']['editIsoY'].text())
 		_z = float(self.widget['isocenter']['editIsoZ'].text())
 		self.isocenterUpdated.emit(_x,_y,_z)
-
+		# Turn the overlays on.
+		self.widget['overlays']['cbPatIsoc'].setChecked(True)
+		
 	def addPlotHistogramWindow(self,widget):
 		# These are new ones each time. Remove old wdigets.
 		layout = self.window['layout'].layout()
