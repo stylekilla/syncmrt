@@ -17,6 +17,13 @@ import logging
 
 __all__ = ['QPlot']
 
+CLR_RED = '#96031A'
+CLR_YELLOW = '#FAA916'
+CLR_WHITE = '#FBFFFE'
+CLR_GREY = '#6D676E'
+CLR_BLACK = '#1B1B1E'
+CLR_BLUE = '#0077B6'
+
 
 class QPlot(QtWidgets.QWidget):
 	# Signal that emits the index of the axes that (x,y) originate from as well as (x,y) themselves.
@@ -223,8 +230,8 @@ class QPlot(QtWidgets.QWidget):
 		n = len(self.markers[ax])
 		if n < self.markersMaximum:
 			# Plot marker list.
-			scatter = ax.scatter(x,y,c='r',marker='+',s=50)
-			text = ax.text(x+1,y,n+1,color='r')
+			scatter = ax.scatter(x,y,c=CLR_RED,marker='+',s=50)
+			text = ax.text(x+1,y,n+1,color=CLR_RED)
 			self.markers[ax].append([scatter,text])
 			# Refresh views.
 			self.canvas.draw()
@@ -252,8 +259,8 @@ class QPlot(QtWidgets.QWidget):
 			marker[0].remove()
 			marker[1].remove()
 			x,y = markerLocations[pos]
-			marker[0] = ax.scatter(x,y,c='r',marker='+',s=50)
-			marker[1] = ax.text(x+1,y,pos+1,color='r')
+			marker[0] = ax.scatter(x,y,c=CLR_RED,marker='+',s=50)
+			marker[1] = ax.text(x+1,y,pos+1,color=CLR_RED)
 			centroid += np.array([x,y]).astype(float)
 		# Calculate new centroid.
 		centroid = centroid/len(centroid)
@@ -337,12 +344,12 @@ class QPlot(QtWidgets.QWidget):
 				# Plot overlay scatter points.
 				if type(self.ctd[0]) != type(None):
 					x,y = self.ctd[0]
-					self.overlay['ctd'].append(self.ax[0].scatter(x,y,c='b',marker='+',s=50))
-					self.overlay['ctd'].append(self.ax[0].text(x+1,y-3,'ctd',color='b'))
+					self.overlay['ctd'].append(self.ax[0].scatter(x,y,c=CLR_BLUE,marker='+',s=50))
+					self.overlay['ctd'].append(self.ax[0].text(x+1,y-3,'ctd',color=CLR_BLUE))
 				if type(self.ctd[1]) != type(None):
 					x,y = self.ctd[1]
-					self.overlay['ctd'].append(self.ax[1].scatter(x,y,c='b',marker='+',s=50))
-					self.overlay['ctd'].append(self.ax[1].text(x+1,y-3,'ctd',color='b'))
+					self.overlay['ctd'].append(self.ax[1].scatter(x,y,c=CLR_BLUE,marker='+',s=50))
+					self.overlay['ctd'].append(self.ax[1].text(x+1,y-3,'ctd',color=CLR_BLUE))
 			else:
 				pass
 
@@ -361,10 +368,10 @@ class QPlot(QtWidgets.QWidget):
 				self.overlay['machIsoV'] = []
 				self.overlay['machIsoH'] = []
 				# Plot overlay lines.
-				self.overlay['machIsoV'].append(self.ax[0].axvline(self.machineIsocenter[0],c='r',alpha=0.5))
-				self.overlay['machIsoV'].append(self.ax[1].axvline(self.machineIsocenter[2],c='r',alpha=0.5))
-				self.overlay['machIsoH'].append(self.ax[0].axhline(self.machineIsocenter[1],c='r',alpha=0.5))
-				self.overlay['machIsoH'].append(self.ax[1].axhline(self.machineIsocenter[1],c='r',alpha=0.5))
+				self.overlay['machIsoV'].append(self.ax[0].axvline(self.machineIsocenter[0],c=CLR_RED,alpha=0.5))
+				self.overlay['machIsoV'].append(self.ax[1].axvline(self.machineIsocenter[2],c=CLR_RED,alpha=0.5))
+				self.overlay['machIsoH'].append(self.ax[0].axhline(self.machineIsocenter[1],c=CLR_RED,alpha=0.5))
+				self.overlay['machIsoH'].append(self.ax[1].axhline(self.machineIsocenter[1],c=CLR_RED,alpha=0.5))
 			else:
 				pass
 		elif overlayType == 2:
@@ -377,10 +384,10 @@ class QPlot(QtWidgets.QWidget):
 			if state is True:
 				self.overlay['patIso'] = []
 				# Plot patient iso.
-				self.overlay['patIso'].append(self.ax[0].scatter(self.patientIsocenter[0],self.patientIsocenter[1],marker='+',color='y',s=50))
-				self.overlay['patIso'].append(self.ax[0].text(self.patientIsocenter[0]+1,self.patientIsocenter[1]+1,'ptv',color='y'))
-				self.overlay['patIso'].append(self.ax[1].scatter(self.patientIsocenter[2],self.patientIsocenter[1],marker='+',color='y',s=50))
-				self.overlay['patIso'].append(self.ax[1].text(self.patientIsocenter[2]+1,self.patientIsocenter[1]+1,'ptv',color='y'))
+				self.overlay['patIso'].append(self.ax[0].scatter(self.patientIsocenter[0],self.patientIsocenter[1],marker='+',color=CLR_YELLOW,s=50))
+				self.overlay['patIso'].append(self.ax[0].text(self.patientIsocenter[0]+1,self.patientIsocenter[1]+1,'ptv',color=CLR_YELLOW))
+				self.overlay['patIso'].append(self.ax[1].scatter(self.patientIsocenter[2],self.patientIsocenter[1],marker='+',color=CLR_YELLOW,s=50))
+				self.overlay['patIso'].append(self.ax[1].text(self.patientIsocenter[2]+1,self.patientIsocenter[1]+1,'ptv',color=CLR_YELLOW))
 			else:
 				pass
 		elif overlayType == 3:
@@ -393,9 +400,9 @@ class QPlot(QtWidgets.QWidget):
 			if state is True:
 				self.overlay['beamArea'] = []
 				# Create new patches.
-				_beam = Rectangle((-self.maskSize/2,-self.maskSize/2), self.maskSize, self.maskSize,fc='r',ec='none',alpha=0.2)
-				_ptv1 = Rectangle((self.patientIsocenter[0]-self.maskSize/2,self.patientIsocenter[1]-self.maskSize/2), self.maskSize, self.maskSize,fc='none',ec='y',ls='--',alpha=1.0)
-				_ptv2 = Rectangle((self.patientIsocenter[2]-self.maskSize/2,self.patientIsocenter[1]-self.maskSize/2), self.maskSize, self.maskSize,fc='none',ec='y',ls='--',alpha=1.0)
+				_beam = Rectangle((-self.maskSize/2,-self.maskSize/2), self.maskSize, self.maskSize,fc=CLR_RED,ec='none',alpha=0.2)
+				_ptv1 = Rectangle((self.patientIsocenter[0]-self.maskSize/2,self.patientIsocenter[1]-self.maskSize/2), self.maskSize, self.maskSize,fc='none',ec=CLR_YELLOW,ls='--',alpha=1.0)
+				_ptv2 = Rectangle((self.patientIsocenter[2]-self.maskSize/2,self.patientIsocenter[1]-self.maskSize/2), self.maskSize, self.maskSize,fc='none',ec=CLR_YELLOW,ls='--',alpha=1.0)
 				# Different patch collection for each plot.
 				pc1 = PatchCollection([_beam,_ptv1],match_original=True)
 				pc2 = PatchCollection([_beam,_ptv2],match_original=True)
