@@ -109,7 +109,7 @@ class detector(QtCore.QObject):
 
 	def setup(self):
 		# Set up the detector.
-		logging.warning(*"Setting up the detector with hard coded defaults.")
+		logging.warning("Setting up the detector with hard coded defaults.")
 		# Here we should also allow for flipping the image to orientate it correctly.
 		self.Acquire.put(0)
 		self.AcquireTime.put(0.1)
