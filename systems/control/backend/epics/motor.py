@@ -112,7 +112,8 @@ class motor(QtCore.QObject):
 	def _movingMonitor(self,*args,**kwargs):
 		""" MOVN watch dog. """
 		# If it is moving and we have a move set, then we can say we have started the move.
-		if bool(kwargs['value']) and self._movementSet: self._movementStarted = True
+		if bool(kwargs['value']) and self._movementSet: 
+			self._movementStarted = True
 
 	def _doneMovingMonitor(self,*args,**kwargs):
 		""" A watchdog for movement. This callback is triggered by DMOV. """

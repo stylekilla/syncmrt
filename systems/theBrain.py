@@ -159,7 +159,7 @@ class Brain(QtCore.QObject):
 			# Start a new routine.
 			self._routine = ImagingRoutine()
 			# We should ideally define a beam height...
-			self._routine.dz = 20.635
+			self._routine.dz = 1.0
 			logging.critical("Hard setting a beam height of {} mm for now...".format(self._routine.dz))
 			# Theta and trans are relative values from current position.
 			self._routine.theta = theta
