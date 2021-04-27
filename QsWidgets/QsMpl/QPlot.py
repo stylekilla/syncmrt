@@ -192,26 +192,19 @@ class QPlot(QtWidgets.QWidget):
 			self.patientIsocenter[0:2] = [x,y]
 		elif index == 1:
 			self.patientIsocenter[1:3] = [y,x]
-		# Update the overlays.
-		if 'patIso' in self.overlay:
-			self.toggleOverlay(2,False) 
-			self.toggleOverlay(2,True)
-		if 'beamArea' in self.overlay:
-			self.toggleOverlay(3,False) 
-			self.toggleOverlay(3,True)
-		# Emit the signal to say we have a new iso.
+		# Get the XYZ coords.
 		x,y,z = list(map(float,self.patientIsocenter))
+		# Update the plot.
+		self.updatePatientIsocenter(x,y,z)
+		# Emit the signal to say we have a new iso.
 		self.newIsocenter.emit(x,y,z)
 
 	def updatePatientIsocenter(self,x,y,z):
-		""" Update the patient isocenter and refresh the overlay. """
+		""" Update the patient isocenter in 3D. """
 		self.patientIsocenter = [x,y,z]
-		if 'patIso' in self.overlay:
-			self.toggleOverlay(2,False) 
-			self.toggleOverlay(2,True)
-		if 'beamArea' in self.overlay:
-			self.toggleOverlay(3,False) 
-			self.toggleOverlay(3,True)
+		# Refresh the overlays if they exist.
+		self.toggleOverlay(2,state=True)
+		self.toggleOverlay(3,state=True)
 
 	def getHistograms(self):
 		""" Return a list of histograms. """
@@ -308,16 +301,6 @@ class QPlot(QtWidgets.QWidget):
 		self.images.clear()
 		# Refresh the canvas.
 		self.canvas.draw()
-
-	def updatePatientIsocenter(self,x,y,z):
-		""" Update the patient isocenter in 3D. """
-		self.patientIsocenter = [x,y,z]
-		if 'patIso' in self.overlay:
-			self.toggleOverlay(2,False) 
-			self.toggleOverlay(2,True)
-		if 'beamArea' in self.overlay:
-			self.toggleOverlay(3,False)
-			self.toggleOverlay(3,True)
 
 	def getIsocenter(self):
 		""" Return the patient isocenter. """
