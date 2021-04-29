@@ -11,15 +11,17 @@ Assumes:
 	- 
 """
 
+DET_PV = "SR08ID01DETIOC08"
+
 def getImage():
-	arr = epics.caget('SR08ID01DET04:IMAGE:ArrayData')
-	_x = epics.caget('SR08ID01DET04:IMAGE:ArraySize1_RBV')
-	_y = epics.caget('SR08ID01DET04:IMAGE:ArraySize0_RBV')
+	arr = epics.caget('{}:IMAGE:ArrayData'.format(DET_PV))
+	_x = epics.caget('{}:IMAGE:ArraySize1_RBV'.format(DET_PV))
+	_y = epics.caget('{}:IMAGE:ArraySize0_RBV'.format(DET_PV))
 	time.sleep(0.1)
-	return (np.array(arr).reshape(_x,_y))
+	return np.flipud(np.fliplr(np.array(arr).reshape(_x,_y)))
 
 image = getImage()
 
 import imageio
 
-imageio.imsave('./HamaPapaCalib.tif',image.astype('float32'))
+imageio.imsave('./DetectorCalib.tif',image.astype('float32'))
