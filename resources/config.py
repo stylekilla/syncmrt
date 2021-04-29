@@ -10,16 +10,14 @@ class files:
 
 class imager:
 	""" Settings for the imager configuration. """
-	# Pixel size and isocenter specified as (row,col).
-	# isocenter = [1167,2560/2]
-	isocenter = [(2034-300)/2,2560/2]
-	# Pixel size is SAX/SID which is 1.2m / 1.5m.
-	pixelSize = [0.0119,0.0119]
+	# Does the detector image need to be flipped?
 	flipud = True
 	fliplr = False
 	roi = [0,1,0,1]
-	# Can specify using SAD/SID if desired...
-	# sad = 1.2
-	# sid = 1.5
-	# magnification = sad/sid
-	# pixelSize = [0.2,0.2]*magnification
+	# Pixel size is SAX/SID which is 1.2m / 1.5m.
+	sad = 1.2
+	sid = 1.5 
+	magnification = sad/sid
+	# Pixel size and isocenter specified as (row,col).
+	pixelSize = [0.1*magnification,0.1*magnification]
+	isocenter = [985.531,544.469]
