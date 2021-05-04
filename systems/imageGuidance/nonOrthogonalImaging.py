@@ -77,6 +77,11 @@ def calculate(p1,p2,t1,t2):
 		# Calculate the angle between the chord and the a/b axes.
 		psi_a = np.abs(np.arcsin((b*np.sin(theta))/c))
 		psi_b = np.abs(np.arcsin((a*np.sin(theta))/c))
+
+		# If the chord length is zero (which occurs when a and b are both 0), there is a divide by zero above. So, instead, set the angles to 0.
+		if np.isnan(psi_a): psi_a = 0.0
+		if np.isnan(psi_b): psi_b = 0.0
+
 		# Calculate the angle between the chord and the a'/b' axes.
 		phi_a = (np.pi/2) - psi_a
 		phi_b = (np.pi/2) - psi_b
