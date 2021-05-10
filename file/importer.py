@@ -236,6 +236,10 @@ class ct(QtCore.QObject):
 		# Make the View Coordinate System (VCS) for each view. 
 		default = np.array([[1,0,0],[0,1,0],[0,0,1]])
 		ap = np.array([[1,0,0],[0,0,-1],[0,1,0]])
+		pa = np.array([[-1,0,0],[0,0,-1],[0,-1,0]])
+		lr = np.array([[0,0,-1],[1,0,0],[0,-1,0]])
+		rl = np.array([[0,0,1],[-1,0,0],[0,-1,0]])
+		si = np.array([[-1,0,0],[0,1,0],[0,0,-1]])
 		# Assign matrix, m, to the view matrix and axis titles.
 		if view == 'SI':
 			self.VCS = si
