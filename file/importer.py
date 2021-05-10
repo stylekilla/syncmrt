@@ -152,7 +152,7 @@ class ct(QtCore.QObject):
 		# Check that the dataset is indeed a DICOM CT dataset.
 		dataset = checkDicomModality(dataset,'CT')
 
-		if len(dataset) is 0:
+		if len(dataset) == 0:
 			# If the dataset has no CT files, then exit this function.
 			return
 		else:
@@ -167,30 +167,33 @@ class ct(QtCore.QObject):
 		for index,fn in enumerate(dataset):
 			ctSlice = dicom.dcmread(fn)
 			self.pixelArray[:,:,dataset.index(fn)] = ctSlice.pixel_array
-
 		# Rescale the Hounsfield Units.
 		self.pixelArray = (self.pixelArray*ref.RescaleSlope) + ref.RescaleIntercept
-		# Get current CT orientation.
-		self.patientPosition = ref.PatientPosition
-		# Python coordinate system.
+
+		# Python Coordinate System.
 		self.PCS = np.array([[0,1,0],[1,0,0],[0,0,1]])
 		# Patient reference coordinate system (RCS).
+		# http://dicom.nema.org/medical/dicom/current/output/chtml/part03/sect_C.7.6.2.html#sect_C.7.6.2.1.1
 		dcmAxes =  np.array(list(map(float,ref.ImageOrientationPatient)))
 		x = dcmAxes[:3]
 		y = dcmAxes[3:6]
 		z = np.cross(x,y)
-		self.RCS = np.vstack((x,y,z))
+		self.RCS = np.zeros((3,3))
+		self.RCS[:,0] = x
+		self.RCS[:,1] = y
+		self.RCS[:,2] = z
+
 		# Calculate spacing between slices as it isn't always provided.
 		z1 = list(map(float,ref.ImagePositionPatient))[2]
 		z2 = list(map(float,dicom.dcmread(dataset[-1]).ImagePositionPatient))[2]
 		spacingBetweenSlices = (z2-z1)/(len(dataset)-1)
-		# Get the pixel size.
-		self.pixelSize = np.append(np.array(list(map(float,ref.PixelSpacing))),spacingBetweenSlices)
+		# Get the pixel size (which comes as row,col - we need them as col,row).
+		self.pixelSize = np.append(np.array(list(map(float,ref.PixelSpacing))[::-1]),spacingBetweenSlices)
+
 		# Get the top left front pixel position in the RCS (set as the centre of the voxel).
 		self.TLF = np.array(list(map(float,ref.ImagePositionPatient)))
-		# Adjust the TLF to sit on the outside corner of the voxel (to align with the expected inputs for matplotlib's extent).
-		self.TLF +=  np.sign(self.TLF)*(self.pixelSize/2)
 		# Construct the transformation matrix, M.
+		# http://dicom.nema.org/medical/dicom/current/output/chtml/part03/sect_C.7.6.2.html#sect_C.7.6.2.1.1
 		self.M = np.zeros((4,4))
 		self.M[:3,0] = self.pixelSize[0]*x
 		self.M[:3,1] = self.pixelSize[1]*y
@@ -199,24 +202,23 @@ class ct(QtCore.QObject):
 		self.M[3,3] = 1
 
 		# Get the top left front and bottom right back indices for caclualting extent.
-		voxelIndex1 = np.array([0,0,0,1]).reshape((4,1))
-		voxelIndex2 = np.array([shape[0],shape[1],shape[2],1]).reshape((4,1))
+		voxelIndex1 = np.array([0,0,0,1])
+		voxelIndex2 = np.array([shape[1],shape[0],shape[2],1])
 		# Compute the voxel indices in mm.
 		voxelPosition1 = self.M@voxelIndex1
 		voxelPosition2 = self.M@voxelIndex2
+		# Adjust to sit on the outside corner of the voxel (to align with the expected inputs for matplotlib's extent).
 		# Extent is [Left,Right,Bottom,Top,Front,Back]
 		_x = [voxelPosition1[0],voxelPosition2[0]]
 		_y = [voxelPosition2[1],voxelPosition1[1]]
 		_z = [voxelPosition1[2],voxelPosition2[2]]
 		self.extent = np.array(_x+_y+_z).reshape((6,))
+		self.extent += np.sign(self.extent)*(np.repeat(self.pixelSize,2)/2)
 
+		# View Coordinate System.
+		self.VCS = np.array([[1,0,0],[0,1,0],[0,0,1]])
 		# Placeholder for a view extent.
 		self.viewExtent = np.zeros(self.extent.shape)
-
-		# Calculate the base extent.
-		# self.baseExtent = np.array(sorted(_x)+sorted(_y)+sorted(_z)).reshape((6,))
-		# Find the (0,0,0) mm as an 'index' (float).
-		# self.zeroIndex = np.linalg.inv(self.M)@np.array([0,0,0,1])
 
 		# Load array onto GPU for future reference.
 		self.gpu.loadData(self.pixelArray)
@@ -231,87 +233,84 @@ class ct(QtCore.QObject):
 
 	def calculateView(self,view,roi=None,flatteningMethod='sum'):
 		""" Rotate the CT array for a new view of the dataset. """
-		# Make the RCS for each view. 
+		# Make the View Coordinate System (VCS) for each view. 
 		default = np.array([[1,0,0],[0,1,0],[0,0,1]])
-		si = np.array([[-1,0,0],[0,1,0],[0,0,-1]])
-		lr = np.array([[0,0,1],[0,1,0],[-1,0,0]])
-		rl = np.array([[0,0,-1],[0,1,0],[1,0,0]])
-		ap = np.array([[1,0,0],[0,0,1],[0,-1,0]])
-		pa = np.array([[-1,0,0],[0,0,-1],[0,-1,0]])
+		ap = np.array([[1,0,0],[0,0,-1],[0,1,0]])
 		# Assign matrix, m, to the view matrix and axis titles.
 		if view == 'SI':
-			RCS = si
+			self.VCS = si
 			t1 = 'SI'
 			t2 = 'RL'
 		elif view == 'IS':
-			RCS = default
+			self.VCS = default
 			t1 = 'IS'
 			t2 = 'LR'
 		elif view == 'LR':
-			RCS = lr
+			self.VCS = lr
 			t1 = 'LR'
 			t2 = 'SI'
 		elif view == 'RL':
-			RCS = rl
+			self.VCS = rl
 			t1 = 'RL'
 			t2 = 'IS'
 		elif view == 'AP':
-			RCS = ap
+			self.VCS = ap
 			t1 = 'AP'
 			t2 = 'LR'
 		elif view == 'PA':
-			RCS = pa
+			self.VCS = pa
 			t1 = 'PA'
 			t2 = 'RL'
 
-		# Calculate a transform, W, that takes us from the original CT RCS to the new RCS.
-		W = wcs2wcs(self.RCS,RCS)
+		# Calculate a transform, W, that takes us from the original CT RCS to the new VCS.
+		R = wcs2wcs(self.VCS,self.RCS)
 		# Rotate the CT if required.
-		if np.array_equal(W,np.identity(3)):
+		if np.array_equal(R,np.identity(3)):
 			pixelArray = self.pixelArray
 		else:
-			pixelArray = self.gpu.rotate(W)
+			pixelArray = self.gpu.rotate(R)
+
 		# Calculate the new extent.
-		# Find Origin
+		# Find CT origin. Origin is a single column vector, thus the matrix transform must be multiplied onto the vector.
 		origin = (np.linalg.inv(self.M)@np.array([0,0,0,1]))[:3]
-		# Rotate the Origin
-		origin_rot = W@origin
+		# Rotate the Origin. 
+		R_origin = R@origin
+
 		# Rotate the pixel size.
-		pixelSize_rot = np.absolute(W@self.pixelSize)
-		# Find bounding box of output array.
-		basicBox = np.array([
-			[0,0,0],
-			[1,0,0],
-			[0,1,0],
-			[1,1,0],
-			[0,0,1],
-			[1,0,1],
-			[0,1,1],
-			[1,1,1]
-		])
-		inputShape = basicBox * self.pixelArray.shape
-		outputShape = np.zeros(basicBox.shape)
-		for index in range(8):
-			outputShape[index,:] = W@inputShape[index,:]
-		mins = np.absolute(np.amin(outputShape,axis=0))
-		outputShape += mins
-		# Calculate new origin situated in output array.
-		origin_new = origin_rot + mins
-		# Calculate new extent.
-		extent = np.zeros(self.extent.shape)
-		TLF = -origin_new * np.sum(RCS,axis=0) * pixelSize_rot
-		extent[::2] = TLF
-		extent[1::2] = TLF + np.amax(outputShape,axis=0) * np.sum(RCS,axis=0) * pixelSize_rot
-		# Extent is calculated as: [left, right, BOTTOM, TOP, front, back]. Swap top/bot values.
-		extent[2], extent[3] = extent[3], extent[2]
-		self.viewExtent = extent
+		R_pixelSize = R@self.pixelSize
+
+		# Array shape (as col,row,depth).
+		# Python produces (row major, we need column major).
+		inputShape = self.PCS@self.pixelArray.shape
+		outputShape = self.PCS@pixelArray.shape
+		R_shape = R@inputShape
+
+		# Calculate the TopLeftFront position.
+		TLF = -R_origin*R_pixelSize
+		for i in np.argwhere(R_shape<0):
+			# If the array box goes in the opposite direction, add the difference.
+			TLF[i] += R_shape[i]*R_pixelSize[i]
+
 		# Calculate the view matrix.
 		self.viewM = np.zeros((4,4))
-		self.viewM[0,:3] = pixelSize_rot[0] * (np.sign(np.sum(RCS[:,0]))*np.array([1,0,0]))
-		self.viewM[1,:3] = pixelSize_rot[1] * (np.sign(np.sum(RCS[:,1]))*np.array([0,1,0]))
-		self.viewM[2,:3] = pixelSize_rot[2] * (np.sign(np.sum(RCS[:,2]))*np.array([0,0,1]))
+		self.viewM[0,:3] = np.absolute(R_pixelSize[0]) * self.VCS[0,:]
+		self.viewM[1,:3] = np.absolute(R_pixelSize[1]) * self.VCS[1,:]
+		self.viewM[2,:3] = np.absolute(R_pixelSize[2]) * self.VCS[2,:]
 		self.viewM[:3,3] = TLF
 		self.viewM[3,3] = 1
+
+		# Get the top left front and bottom right back indices for caclualting extent.
+		voxelIndex1 = np.array([0,0,0,1])
+		voxelIndex2 = np.r_[inputShape,1]
+		# Compute the voxel indices in mm.
+		voxelPosition1 = self.viewM@voxelIndex1
+		voxelPosition2 = self.viewM@voxelIndex2
+		# Extent is [Left,Right,Bottom,Top,Front,Back]
+		_x = [voxelPosition1[0],voxelPosition2[0]]
+		_y = [voxelPosition2[1],voxelPosition1[1]]
+		_z = [voxelPosition1[2],voxelPosition2[2]]
+		self.viewExtent = np.array(_x+_y+_z).reshape((6,))
+		self.viewExtent += np.sign(self.viewExtent)*(np.repeat(np.absolute(R_pixelSize),2)/2)
 
 		if np.array_equal(roi,self.viewExtent):
 			# This does not work...
@@ -345,11 +344,13 @@ class ct(QtCore.QObject):
 		elif flatteningMethod == 'max': self.image[0].pixelArray = np.amax(pixelArray,axis=2)
 		self.image[0].extent = np.array(list(x)+list(y))
 		self.image[0].view = { 'title':t1 }
+		self.image[0].imagingAngle = 0
 		# Get the second flattened image.
 		if flatteningMethod == 'sum': self.image[1].pixelArray = np.sum(pixelArray,axis=1)
 		elif flatteningMethod == 'max': self.image[1].pixelArray = np.amax(pixelArray,axis=1)
 		self.image[1].extent = np.array(list(z)+list(y))
 		self.image[1].view = { 'title':t2 }
+		self.image[1].imagingAngle = -90
 
 		# Emit a signal to say a new view has been loaded.
 		self.newCtView.emit()
