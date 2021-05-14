@@ -13,8 +13,6 @@ class imager:
 	# Does the detector image need to be flipped?
 	flipud = True
 	fliplr = False
-	roi = [0,1,0,1]
-	# Pixel size is SAX/SID which is 1.2m / 1.5m.
 	sad = 1.2
 	sid = 1.5 
 	magnification = sad/sid
