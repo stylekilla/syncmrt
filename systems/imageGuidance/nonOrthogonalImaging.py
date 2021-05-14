@@ -5,7 +5,6 @@ import logging
 def calculate(p1,p2,t1,t2):
 	"""
 	This will take two points (p1 and p2) from two different imaging frames at non-orthogonal angles (t1 and t2) from the 0deg axis and give back a globally fixed position value (p) for the true position of the object w.r.t. to the fixed axis.
-	+X is downstream, +Y is downstream left (synchrotron coordinate system).
 
 	https://www.desmos.com/calculator/g28bkshwyz
 
@@ -59,11 +58,22 @@ def calculate(p1,p2,t1,t2):
 		p1 = np.array(p1_prime)
 		p2 = np.array(p2_prime)
 
-
-	logging.debug("Angle between imaging planes A ({:.3f}) and B ({:.3f}) is {:.3f} degrees.".format(t1,t2,np.rad2deg(theta)))
-
 	# The result to return.
 	result = np.zeros((len(p1),3))
+
+	message = """
+--------------
+NOI Debugging:
+==============
+Inputs
+--------------
+p1: \n {}
+
+p2: \n {}
+
+t1: {}
+t2: {}
+""".format(p1,p2,t1,t2)
 
 	# Iterate over each point.
 	for i in range(len(p1)):
@@ -72,7 +82,6 @@ def calculate(p1,p2,t1,t2):
 		b, z2 = p2[i]
 		# Calculate the chord length between the two imaging planes.
 		c = (a**2 + b**2 - 2*a*b*np.cos(2*np.pi-theta))**0.5
-		logging.debug("Chord length between imaging planes is {:.3f} mm.".format(c))
 
 		# Calculate the angle between the chord and the a/b axes.
 		psi_a = np.abs(np.arcsin((b*np.sin(theta))/c))
@@ -86,9 +95,6 @@ def calculate(p1,p2,t1,t2):
 		phi_a = (np.pi/2) - psi_a
 		phi_b = (np.pi/2) - psi_b
 
-		logging.debug("Calculated psi_a as {:.3f} degrees and psi_b {:.3f} degrees.".format(np.rad2deg(psi_a),np.rad2deg(psi_b)))
-		logging.debug("Calculated phi_a as {:.3f} degrees and phi_b {:.3f} degrees.".format(np.rad2deg(phi_a),np.rad2deg(phi_b)))
-
 		# Calculate the distance of the imaging frame the origin.
 		a_prime = c*np.sin(phi_b)/np.sin(theta)
 		b_prime = c*np.sin(phi_a)/np.sin(theta)
@@ -98,18 +104,15 @@ def calculate(p1,p2,t1,t2):
 		if (b<0):
 			a_prime = -a_prime
 
-		logging.debug("Calculated a' as {:.3f} mm and b' as {:.3f} mm.".format(a_prime,b_prime))
 
 		# Calculate the radius to the point.
 		r_a = (a**2 + a_prime**2)**0.5
 		r_b = (b**2 + b_prime**2)**0.5
 		r = (r_a+r_b)/2
-		logging.debug("Radius of point according to a is {:.3f} mm and for b is {:.3f} mm. Average is {:.3f} mm.".format(r_a,r_b,r))
 
 		# Calculate angle to radius line.
 		omega = np.arctan2(a,a_prime)
 		theta_r = theta_a + omega
-		logging.debug("Omega is {:.3f} degrees. Angle to radius is {:.3f} deg.".format(np.rad2deg(omega),np.rad2deg(theta_r)))
 
 		# Calculate the final resting positions on the orthogonal aligned BEV axes.
 		x = r*np.cos(theta_r)
@@ -117,6 +120,32 @@ def calculate(p1,p2,t1,t2):
 		z = (z1+z2)/2
 		# Add the new points to the result.
 		result[i,:] = [x,y,z]
-		logging.debug("Point is calculated as {}.".format(result[i,:]))
+
+		message += """
+==============
+Point {}/{}
+--------------
+Angle between imaging planes A ({:.3f}) and B ({:.3f}) is {:.3f} degrees.
+Chord length between imaging planes is {:.3f} mm.
+Calculated psi_a as {:.3f} degrees and psi_b {:.3f} degrees.
+Calculated phi_a as {:.3f} degrees and phi_b {:.3f} degrees.
+Calculated a' as {:.3f} mm and b' as {:.3f} mm.
+Radius of point according to a is {:.3f} mm and for b is {:.3f} mm. Average is {:.3f} mm.
+Omega is {:.3f} degrees. Angle to radius is {:.3f} deg.
+--------------
+Point is calculated as {}.
+		""".format(
+			i+1,len(p1),
+			t1,t2,np.rad2deg(theta),
+			c,
+			np.rad2deg(psi_a),np.rad2deg(psi_b),
+			np.rad2deg(phi_a),np.rad2deg(phi_b),
+			a_prime,b_prime,
+			r_a,r_b,r,
+			np.rad2deg(omega),np.rad2deg(theta_r),
+			result[i,:]
+		)
+	
+	logging.debug(message)
 
 	return result
