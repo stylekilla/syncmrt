@@ -37,9 +37,6 @@ class solver:
 		'''Points should come in as xyz cols and n-points rows: np.array((n,xyz))'''
 		n = np.shape(self._leftPoints)[0]
 
-		logging.critical(self._leftPoints)
-		logging.critical(self._rightPoints)
-
 		# Find the centroids of the LEFT and RIGHT WCS.
 		self._leftCentroid = centroid(self._leftPoints)
 		self._rightCentroid = centroid(self._rightPoints)
@@ -88,25 +85,49 @@ class solver:
 		# Final translation is a combination of all other translations.
 		translation = -(translation1 + translation2)
 
-		logging.critical("self._patientIsocenter: {}".format(self._patientIsocenter))
-		logging.critical("translation1: {}".format(translation1))
-		logging.critical("translation2: {}".format(translation2))
-		logging.critical("translation: {}".format(translation))
-
 		self.transform[:3,3] = translation.transpose().ravel()
-
-		# Extract scale.
-		# if synchRotIsoc is not None:
-		# 	self._rightPoints = np.zeros([n,3])
-		# 	for i in range(n):
-		# 		self._rightPoints[i,:] = np.subtract(self._rightPoints[i,:],self._rightCentroid)
-
 		self.scale = scale(self._leftPoints,self._rightPoints,R)
 		self.solution = np.hstack((translation.ravel(),rotation.ravel()))
-		logging.critical("Solution: {}".format(self.solution))
+		logging.info("Solution: {}".format(self.solution))
+
+		message = """
+-----------------
+Solver Debugging:
+=================
+Inputs
+-----------------
+Left Points (DICOM): \n {}
+
+Right Points (XR): \n {}
+
+Patient Isocentre: {}
+=================
+Outputs
+-----------------
+Left Centroid: {}
+Right Centroid: {}
+Translation 1 (iso to ctd): {}
+Translation 2 (ctd to mach): {}
+-----------------
+Translation: {}
+Rotation: {}
+Scale: {}
+		""".format(
+			self._leftPoints,
+			self._rightPoints,
+			self._patientIsocenter,
+			self._leftCentroid,
+			self._rightCentroid,
+			translation1,
+			translation2,
+			translation,
+			rotation,
+			self.scale
+		)
+		logging.debug(message)
 
 		# Calculate the patient isoc in the synchrotron frame of reference for plotting.
-		self._syncPatientIsocenter = self._rightCentroid + translation1
+		self._syncPatientIsocenter = np.array(self._rightCentroid + translation1).ravel()
 
 		return self.solution
 
