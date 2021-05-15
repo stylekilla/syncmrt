@@ -2,6 +2,7 @@
 from PyQt5 import QtWidgets, QtGui, QtCore
 from QsWidgets import QsMpl
 from systems.imageGuidance import nonOrthogonalImaging
+from tools.math.wcs2wcs import wcs2wcs
 import numpy as np
 import logging
 from functools import partial
@@ -42,6 +43,8 @@ class QPlotEnvironment(QtWidgets.QSplitter):
 		# Internal vars.
 		self._maxMarkers = 0
 		self.plotView = [None,None]
+		# The coordinate system identifies how data in this workspace should be transformed to the local coordinate system it is linked to.
+		self.coordinateSystem = None
 		# Signals.
 		for i, model in enumerate(self.tableModel):
 			model.itemChanged.connect(partial(self.updateMarkersFromModel,i))
@@ -93,39 +96,31 @@ class QPlotEnvironment(QtWidgets.QSplitter):
 		self.tableModel[0].clearPoints()
 		self.tableModel[1].clearPoints()
 
-	def getMarkers(self,raw=False):
+	def getMarkers(self):
 		""" Get the marker values from each plot, adjusted for the view of each plot. """
-		points = np.zeros((self._maxMarkers,3))
-		# Get the raw data and the angles of the image frames.
+		if self.coordinateSystem is None:
+			raise Exception("Must set coordinate system before QPlotEnvironment.getMarkers() can be used.")
+		# Get the markers in each image as (col-x,row-y) positions (in mm).
 		markers0 = np.array(self.tableModel[0].getMarkers())
 		markers1 = np.array(self.tableModel[1].getMarkers())
-		if raw:
-			# If we want just the raw points, take them.
-			# We assume that points is [x,y,z] and marker0 is [y,z] and marker1 is [x,z].
-			points[:,1] = markers0[:,0]
-			# See if we have two sets of points.
-			allZeroes = not markers1.any()
-			if allZeroes:
-				# Only one dataset, take that only.
-				points[:,2] = markers0[:,1]
-			else:
-				# Reconcile both datasets.
-				points[:,2] = (markers0[:,1] + markers1[:,1])/2
-				points[:,0] = markers1[:,0]
-		else:
-			# Else, adjust the points for the views.
-			theta0 = self.plotView[0]
-			theta1 = self.plotView[1]
-			# Check to see if there are any markers in the second dataset.
-			# allZeroes = not markers1.any()
-			allZeroes = (theta1 == None) | (not markers1.any())
-			if allZeroes:
-				# Only one dataset, take that only.
-				points[:,:2] = markers0
-			else: 
-				# Two datasets, mix them.
-				points = nonOrthogonalImaging.calculate(markers0,markers1,theta0,theta1)
+		# Get the image angles (as deltas from the BEV) for each image.
+		theta0, theta1 = self.plot.imagingAngles
 
+		# If theta1 is None, there is no data for the second image frame (i.e. it's only a 2D dataset).
+		if theta1 == None:
+			# Copy all the marker0 positions.
+			markers1 = np.array(markers0)
+			# Assign the horizontal component to be 0.0 (i.e. we have no depth data).
+			markers1[:,0] = 0.0
+			# Assign theta1 to be 90 degrees away from theta0.
+			theta1 = theta0 - 90.0
+
+		# Bring the markers (col-x,row-y) into orthogonality w.r.t. the BEV.
+		points = nonOrthogonalImaging.calculate(markers0,markers1,theta0,theta1)
+
+		# Align the points with the BEV coordinate system.
+		points = points@np.linalg.inv(self.coordinateSystem)
+		# Return the axis-aligned data.
 		return points
 
 	def updateIsocenter(self,x,y,z):
@@ -158,24 +153,47 @@ class QPlotEnvironment(QtWidgets.QSplitter):
 		isocenter : [x,y,z]
 			A list of three points representing the cartesian XYZ isocenter.
 		"""
-		# Get the raw data and the angles of the image frames.
-		iso = self.plot.getIsocenter()
-		if raw:
-			return iso
-		else:
-			iso0 = [iso[0],iso[1]]
-			iso1 = [iso[2],iso[1]]
-			theta0 = -self.plotView[0]
-			if self.plotView[1] == None:
-				theta1 = theta0 + 90
-			else:
-				theta1 = -self.plotView[1]
-			# Reconcile the two datasets.
-			isocenter = nonOrthogonalImaging.calculate(iso0,iso1,theta0,theta1)
 
-		return isocenter
+		""" Get the isocentre value. """
+		isocentre = self.plot.getIsocenter()
 
-	def loadImages(self,images):
+		if self.coordinateSystem is None:
+			raise Exception("Must set coordinate system before QPlotEnvironment.getMarkers() can be used.")
+
+		# If we want the raw isocentre, just get the value stored (in the case of a treatment plan where the isocentre is stored in DICOM XYZ coordinates).
+		# Otherwise, we must adjust the stored value for the angles of the images. This assumes the isocentre was chosen in the image frames (manual isocentre).
+		if not raw:
+			# Get the image angles (as deltas from the BEV) for each image.
+			theta0, theta1 = self.plot.imagingAngles
+			# If theta1 is None, there is no data for the second image frame (i.e. it's only a 2D dataset).
+			if theta1 == None:
+				# Assign the horizontal component to be 0.0 (i.e. we have no depth data).
+				isocentre[2] = 0.0
+				# Assign theta1 to be 90 degrees away from theta0.
+				theta1 = theta0 - 90.0
+			# Split the isocentre up in to two points.
+			markers0 = isocentre[:2]
+			markers1 = np.roll(isocentre[1:],1)
+			# Bring the markers (col-x,row-y) into orthogonality w.r.t. the BEV.
+			isocentre = nonOrthogonalImaging.calculate(markers0,markers1,theta0,theta1)
+
+		# Find the axis transform between the local image coordinate system and the synchrotron coordinate system.
+		axisTransform = wcs2wcs(self.coordinateSystem,np.identity(3))
+		# Align the isocentre with the synchrotron BEV coordinate system.
+		isocentre = isocentre@axisTransform
+		# Return the axis-aligned data.
+		return isocentre
+
+	def setCoordinateSystem(self,cs):
+		"""
+		Set the coordinate system of the workspace.
+		The coordinate system transform should be relative to the synchrotron coordinate system.
+		"""
+		cs = np.array(cs)
+		if cs.shape == (3,3):
+			self.coordinateSystem = cs
+
+	def loadImages(self,images,keepMarkers=False):
 		"""
 		Load up to two images in plot.
 
@@ -188,7 +206,8 @@ class QPlotEnvironment(QtWidgets.QSplitter):
 		if len(images) > 2:
 			raise Exception("Number of input images must be 1 or 2, instead {} images were received.".format(len(images)))
 		# Clear the markers.
-		self.clearMarkers()
+		if not keepMarkers:
+			self.clearMarkers()
 		# Load the images into the QPlot.
 		self.plot.loadImages(images)
 		# Iterate over input data.

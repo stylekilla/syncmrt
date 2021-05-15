@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg, FigureManagerQT
 from matplotlib.collections import PatchCollection
 from matplotlib.patches import Rectangle
-from .tools import ToolPickPoint, ToolPickIso, ToolClearPoints
+from .tools import *
 from .QHistogram import QHistogramWindow
 
 import numpy as np
@@ -62,6 +62,7 @@ class QPlot(QtWidgets.QWidget):
 		self.ctd = [None,None]
 		# Set up histograms dict for axes.
 		self.histograms = {}
+		self._roiSelector = None
 
 		# Create 2 axes.
 		self.ax = self.fig.subplots(1,2,gridspec_kw={'hspace':0,'wspace':0,'left':0,'right':1,'bottom':0,'top':1},sharey=False)
@@ -99,11 +100,13 @@ class QPlot(QtWidgets.QWidget):
 		self.toolbarManager.add_tool('pick',ToolPickPoint)
 		self.toolbarManager.add_tool('pickIso',ToolPickIso)
 		self.toolbarManager.add_tool('clear',ToolClearPoints)
+		self.toolbarManager.add_tool('roi',ToolSelectROI)
 
 		# Populate the toolbar.
 		self.toolbar.add_tool('home',"default")
 		self.toolbar.add_tool('zoom',"default")
 		self.toolbar.add_tool('pan',"default")
+		self.toolbar.add_tool('roi',"default")
 		self.toolbar.add_tool('pick',"default")
 		self.toolbar.add_tool('clear',"default")
 
@@ -128,12 +131,12 @@ class QPlot(QtWidgets.QWidget):
 
 		# self._radiographMode = 'sum'
 		# self._R = np.identity(3)
-		# self._imagingAngle = 0
 		# self.mask = None
 		self.maskSize = 20.0
 		self.overlay = {}
 		self.machineIsocenter = [0,0,0]
 		self.patientIsocenter = [0,0,0]
+		self.imagingAngles = [None,None]
 
 	def loadImages(self,images):
 		"""
@@ -155,10 +158,14 @@ class QPlot(QtWidgets.QWidget):
 		# Remove all previous markers.
 		for ax in self.ax:
 			del self.markers[ax][:]
+		# Reset the imaging angles.
+		self.imagingAngles = [None,None]
 
 		for i, image in enumerate(images):
 			# Load the image. Assumes 2D array, forces 32-bit floats.
-			self.images[self.ax[i]] = self.ax[i].imshow(np.array(image.pixelArray,dtype=np.float32), cmap='bone', extent=image.extent)
+			self.images[self.ax[i]] = self.ax[i].imshow(np.array(image.pixelArray,dtype=np.float32), cmap='gray', extent=image.extent)
+			# Save the imaging angle.
+			self.imagingAngles[i] = image.imagingAngle
 			# Setup the axes.
 			self.ax[i].set_xlim(image.extent[0:2])
 			self.ax[i].set_ylim(image.extent[2:4])
@@ -299,6 +306,8 @@ class QPlot(QtWidgets.QWidget):
 			self.histograms[ax].clear()
 		# Remove all references to ax.imshows.
 		self.images.clear()
+		# Reset imaging angles.
+		self.imagingAngles = [None,None]
 		# Refresh the canvas.
 		self.canvas.draw()
 
