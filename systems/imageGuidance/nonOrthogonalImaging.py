@@ -146,7 +146,13 @@ Point is calculated as {}.
 			np.rad2deg(omega),np.rad2deg(theta_r),
 			result[i,:]
 		)
-	
+
+	message += """
+Output
+-------------
+{}
+	""".format(result)
+
 	logging.debug(message)
 
 	return result
