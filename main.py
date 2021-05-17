@@ -274,6 +274,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		self.envCt.plot.addMarker(ax[1],159.8,64.7)
 		self.envCt.plot.addMarker(ax[1],190.1,53.9)
 		self.envCt.updateIsocenter(23.0,85.7,189.8)
+
 		self.patientCalculateAlignment(0)
 
 	def setupConfigurationManager(self):
@@ -727,11 +728,12 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		if index >= 0:
 			# This takes us from the default HFS-DICOM coordinate system (as a CT dataset is stored) into the synchrotron coordinate system.
 			# Xd maps onto -Ys. Yd maps onto -Zs. Zd maps onto Xs.
-			# synch2dicom = np.array([[0,-1,0],[0,0,-1],[1,0,0]])
-			dicom2synch = np.array([[0,0,1],[-1,0,0],[0,-1,0]])
+			DCS = np.array([[0,-1,0],[0,0,-1],[1,0,0]])
+			DCSi = np.linalg.inv(DCS)
 			# Map left (DICOM) points into the right (synchrotron) coordinate system.
-			l = l@dicom2synch
-			isocenter = isocenter@dicom2synch
+			for i in range(len(l)):
+				l[i] = DCSi@l[i]
+			isocenter = DCSi@isocenter
 
 		# Finally, we can send the points off for calculation to `theBrain`!
 		self.system.solver.setInputs(
