@@ -48,7 +48,8 @@ class sync_dx:
 			image.patientIsocenter = _set[str(i+1)].attrs.get('Image Isocenter',default=None)
 			image.patientPosition = list(_set[str(i+1)].attrs.get('Patient Support Position',default=None)) + list(_set[str(i+1)].attrs.get('Patient Support Angle',default=None))
 			image.view['title'] = str(_set[str(i+1)].attrs.get('Image Angle',default="None"))+"\u00B0"
-			image.imagingAngle = _set[str(i+1)].attrs.get('Image Angle',default=None)
+			# The imaging angle is the view angle (which is the opposite of the patient rotation.)
+			image.imagingAngle = -_set[str(i+1)].attrs.get('Image Angle',default=None)
 			image.M = _set[str(i+1)].attrs.get('M',default=None)
 			image.Mi = _set[str(i+1)].attrs.get('Mi',default=None)
 			image.comment = _set[str(i+1)].attrs.get('Comment',default=None)
@@ -233,9 +234,10 @@ class ct(QtCore.QObject):
 
 	def calculateView(self,view,roi=None,flatteningMethod='sum'):
 		""" Rotate the CT array for a new view of the dataset. """
-		# Make the View Coordinate System (VCS) for each view. 
+		# Make the View Coordinate System (VCS) for each view.
+		# These transform DICOM coordinates into the VIEW coordinates.
 		default = np.array([[1,0,0],[0,1,0],[0,0,1]])
-		ap = np.array([[1,0,0],[0,0,-1],[0,1,0]])
+		ap = np.array([[1,0,0],[0,0,1],[0,-1,0]])
 		pa = np.array([[-1,0,0],[0,0,-1],[0,-1,0]])
 		lr = np.array([[0,0,-1],[1,0,0],[0,-1,0]])
 		rl = np.array([[0,0,1],[-1,0,0],[0,-1,0]])
@@ -244,30 +246,30 @@ class ct(QtCore.QObject):
 		if view == 'SI':
 			self.VCS = si
 			t1 = 'SI'
-			t2 = 'RL'
+			t2 = 'LR'
 		elif view == 'IS':
 			self.VCS = default
 			t1 = 'IS'
-			t2 = 'LR'
+			t2 = 'RL'
 		elif view == 'LR':
 			self.VCS = lr
 			t1 = 'LR'
-			t2 = 'SI'
+			t2 = 'AP'
 		elif view == 'RL':
 			self.VCS = rl
 			t1 = 'RL'
-			t2 = 'IS'
+			t2 = 'PA'
 		elif view == 'AP':
 			self.VCS = ap
 			t1 = 'AP'
-			t2 = 'LR'
+			t2 = 'RL'
 		elif view == 'PA':
 			self.VCS = pa
 			t1 = 'PA'
-			t2 = 'RL'
+			t2 = 'LR'
 
-		# Calculate a transform, W, that takes us from the original CT RCS to the new VCS.
-		R = wcs2wcs(self.VCS,self.RCS)
+		# Calculate a transform, R, that takes us from the original CT RCS to the new VCS.
+		R = wcs2wcs(self.RCS,self.VCS,method='active')
 		# Rotate the CT if required.
 		if np.array_equal(R,np.identity(3)):
 			pixelArray = self.pixelArray
@@ -290,16 +292,20 @@ class ct(QtCore.QObject):
 		R_shape = R@inputShape
 
 		# Calculate the TopLeftFront position.
-		TLF = -R_origin*R_pixelSize
-		for i in np.argwhere(R_shape<0):
-			# If the array box goes in the opposite direction, add the difference.
-			TLF[i] += R_shape[i]*R_pixelSize[i]
+		offset = np.zeros((3,))
+		for i in range(len(offset)):
+			if R_origin[i] > R_shape[i]:
+				# The origin exists outside of the array.
+				offset[i] = R_shape[i]
+			else:
+				# There is no offset required.
+				offset[i] = 0
+		TLF = (offset-R_origin)*R_pixelSize
 
-		# Calculate the view matrix.
+		# Calculate the view matrix - operates on column major indices.
 		self.viewM = np.zeros((4,4))
-		self.viewM[0,:3] = np.absolute(R_pixelSize[0]) * self.VCS[0,:]
-		self.viewM[1,:3] = np.absolute(R_pixelSize[1]) * self.VCS[1,:]
-		self.viewM[2,:3] = np.absolute(R_pixelSize[2]) * self.VCS[2,:]
+		self.viewM[:3,:3] = np.absolute(self.VCS)
+		self.viewM[:3,:3] *= np.vstack([R_pixelSize,R_pixelSize,R_pixelSize]).T
 		self.viewM[:3,3] = TLF
 		self.viewM[3,3] = 1
 
@@ -317,8 +323,7 @@ class ct(QtCore.QObject):
 		self.viewExtent += np.sign(self.viewExtent)*(np.repeat(np.absolute(R_pixelSize),2)/2)
 
 		if np.array_equal(roi,self.viewExtent):
-			# This does not work...
-			temporary_extent = self.viewExtent
+			temporary_extent = np.array(self.viewExtent)
 		elif type(roi) is not type(None):
 			# Set the view extent to the ROI.
 			temporary_extent = roi
@@ -339,7 +344,7 @@ class ct(QtCore.QObject):
 			# Slice the array.
 			pixelArray = pixelArray[y1:y2,x1:x2,z1:z2]
 		else:
-			temporary_extent = self.viewExtent
+			temporary_extent = np.array(self.viewExtent)
 
 		# Split up into x, y and z extents for 2D image.
 		x,y,z = [temporary_extent[i:i+2] for i in range(0,len(temporary_extent),2)]
@@ -348,13 +353,13 @@ class ct(QtCore.QObject):
 		elif flatteningMethod == 'max': self.image[0].pixelArray = np.amax(pixelArray,axis=2)
 		self.image[0].extent = np.array(list(x)+list(y))
 		self.image[0].view = { 'title':t1 }
-		self.image[0].imagingAngle = 0
+		self.image[0].imagingAngle = -90
 		# Get the second flattened image.
 		if flatteningMethod == 'sum': self.image[1].pixelArray = np.sum(pixelArray,axis=1)
 		elif flatteningMethod == 'max': self.image[1].pixelArray = np.amax(pixelArray,axis=1)
 		self.image[1].extent = np.array(list(z)+list(y))
 		self.image[1].view = { 'title':t2 }
-		self.image[1].imagingAngle = -90
+		self.image[1].imagingAngle = 0
 
 		# Emit a signal to say a new view has been loaded.
 		self.newCtView.emit()
