@@ -106,6 +106,9 @@ class QPlotEnvironment(QtWidgets.QSplitter):
 		# Get the image angles (as deltas from the BEV) for each image.
 		theta0, theta1 = self.plot.imagingAngles
 
+		message = f"\nMarker points for {theta0}deg:\n{markers0}\nMarker points for {theta1}deg:\n{markers1}"
+		logging.debug(message)
+
 		# If theta1 is None, there is no data for the second image frame (i.e. it's only a 2D dataset).
 		if theta1 == None:
 			# Copy all the marker0 positions.
@@ -118,8 +121,14 @@ class QPlotEnvironment(QtWidgets.QSplitter):
 		# Bring the markers (col-x,row-y) into orthogonality w.r.t. the BEV.
 		points = nonOrthogonalImaging.calculate(markers0,markers1,theta0,theta1)
 
+		logging.debug(f"Points in local coordinate system:\n{points}")
+
 		# Align the points with the BEV coordinate system.
-		points = points@np.linalg.inv(self.coordinateSystem)
+		for i in range(len(points)):
+			points[i] = np.linalg.inv(self.coordinateSystem)@points[i]
+
+		logging.debug(f"Points in parent coordinate system:\n{points}")
+
 		# Return the axis-aligned data.
 		return points
 
@@ -154,35 +163,32 @@ class QPlotEnvironment(QtWidgets.QSplitter):
 			A list of three points representing the cartesian XYZ isocenter.
 		"""
 
-		""" Get the isocentre value. """
-		isocentre = self.plot.getIsocenter()
+		""" Get the isocenter value. """
+		isocenter = self.plot.getIsocenter()
 
 		if self.coordinateSystem is None:
 			raise Exception("Must set coordinate system before QPlotEnvironment.getMarkers() can be used.")
 
-		# If we want the raw isocentre, just get the value stored (in the case of a treatment plan where the isocentre is stored in DICOM XYZ coordinates).
-		# Otherwise, we must adjust the stored value for the angles of the images. This assumes the isocentre was chosen in the image frames (manual isocentre).
+		# If we want the raw isocenter, just get the value stored (in the case of a treatment plan where the isocenter is stored in DICOM XYZ coordinates).
+		# Otherwise, we must adjust the stored value for the angles of the images. This assumes the isocenter was chosen in the image frames (manual isocenter).
 		if not raw:
 			# Get the image angles (as deltas from the BEV) for each image.
 			theta0, theta1 = self.plot.imagingAngles
 			# If theta1 is None, there is no data for the second image frame (i.e. it's only a 2D dataset).
 			if theta1 == None:
 				# Assign the horizontal component to be 0.0 (i.e. we have no depth data).
-				isocentre[2] = 0.0
+				isocenter[2] = 0.0
 				# Assign theta1 to be 90 degrees away from theta0.
 				theta1 = theta0 - 90.0
-			# Split the isocentre up in to two points.
-			markers0 = isocentre[:2]
-			markers1 = np.roll(isocentre[1:],1)
+			# Split the isocenter up in to two points.
+			markers0 = isocenter[:2]
+			markers1 = np.roll(isocenter[1:],1)
 			# Bring the markers (col-x,row-y) into orthogonality w.r.t. the BEV.
-			isocentre = nonOrthogonalImaging.calculate(markers0,markers1,theta0,theta1)
+			isocenter = nonOrthogonalImaging.calculate(markers0,markers1,theta0,theta1)
 
-		# Find the axis transform between the local image coordinate system and the synchrotron coordinate system.
-		axisTransform = wcs2wcs(self.coordinateSystem,np.identity(3))
-		# Align the isocentre with the synchrotron BEV coordinate system.
-		isocentre = isocentre@axisTransform
+		isocenter = np.linalg.inv(self.coordinateSystem)@isocenter.ravel()
 		# Return the axis-aligned data.
-		return isocentre
+		return isocenter
 
 	def setCoordinateSystem(self,cs):
 		"""
