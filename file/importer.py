@@ -235,7 +235,9 @@ class ct(QtCore.QObject):
 	def calculateView(self,view,roi=None,flatteningMethod='sum'):
 		""" Rotate the CT array for a new view of the dataset. """
 		# Make the View Coordinate System (VCS) for each view.
-		# These transform DICOM coordinates into the VIEW coordinates.
+		# These PASSIVELY transform DICOM coordinates into the VIEW coordinates.
+		# They do not ACTIVELY rotate data into them from the DICOM base coordiante system.
+		# The ACTIVE rotations are just the inverse matrices of the PASSIVE transforms below.
 		default = np.array([[1,0,0],[0,1,0],[0,0,1]])
 		ap = np.array([[1,0,0],[0,0,1],[0,-1,0]])
 		pa = np.array([[-1,0,0],[0,0,-1],[0,-1,0]])
