@@ -106,8 +106,8 @@ Outputs
 -----------------
 Left Centroid: {}
 Right Centroid: {}
-Translation 1 (iso to ctd): {}
-Translation 2 (ctd to mach): {}
+Translation 1 (ctd to iso): {}
+Translation 2 (mach to ctd): {}
 -----------------
 Translation: {}
 Rotation: {}
@@ -235,7 +235,7 @@ def angles(R):
 				del z[i]
 			except:
 				logging.critical('Cannot solve alignment. Unknown cause.')
-				return 0, 0, 0
+				return np.array([[0,0,0]])
 
 	# Angles must be applied in xyz order.
 	return np.array([xx,yy,zz])
