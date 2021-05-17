@@ -16,13 +16,10 @@ import numpy as np
 from PyQt5.QtCore import pyqtSlot as Slot
 from PyQt5 import QtCore, QtGui, QtWidgets, uic
 
-<<<<<<< Updated upstream
+
 import threading
 
-# Forcing a fix for MPL?
-=======
 # Matplotlib setup.
->>>>>>> Stashed changes
 import matplotlib as mpl
 mpl.use('Qt5Agg')
 mpl.rcParams['toolbar'] = 'toolmanager'
@@ -40,9 +37,6 @@ qtCreatorFile = resourceFilepath+"/ui/main.ui"
 qtStyleSheet = open(resourceFilepath+"/ui/stylesheet.css")
 Ui_MainWindow, QtBaseClass = uic.loadUiType(qtCreatorFile)
 
-<<<<<<< Updated upstream
-import logging
-=======
 """
 LOGGING.
 """
@@ -52,11 +46,10 @@ coloredlogs.install(
 	fmt='%(asctime)s,%(msecs)d %(levelname)-8s [%(filename)s:%(lineno)d] %(message)s',
 	datefmt='%H:%M:%S',
 	level=logging.DEBUG
-	)
+)
 # Turn off annoying MPL messages.
 mpl_logger = logging.getLogger('matplotlib')
 mpl_logger.setLevel(logging.CRITICAL)
->>>>>>> Stashed changes
 
 """
 MAIN CLASS: Application starts here.
@@ -104,7 +97,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		self.logger = QsWidgets.QLog(self.frameLogger)
 		logger = logging.getLogger()
 		logger.addHandler(self.logger.handler)
-		logger.setLevel(logging.INFO)
+		logger.setLevel(logging.DEBUG)
 
 		# ===============================
 		# Left Sidebar: General Commands.
@@ -249,12 +242,14 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		# When the image mode changes tell the system.
 		self.sbImaging.imageModeChanged.connect(self.system.setImagingMode)
 
-		self.testing()
+		self.test()
 
-	def testing(self):
-		self.openXray('/Users/barnesmicah/OneDrive/Scratch/20200304-MicahAlignmentTests/HiddenTargetTest1/OrthoTest.hdf5')
+	def test(self):
+		logging.critical("Running test function.")
 
-		folder = '/Users/barnesmicah/OneDrive/Scratch/20200304-MicahAlignmentTests/CT_HTT1/'
+		self.openXray('/home/barnesm/OneDrive/Scratch/20200304-MicahAlignmentTests/HiddenTargetTest1/OrthoTest.hdf5')
+
+		folder = '/home/barnesm/OneDrive/Scratch/20200304-MicahAlignmentTests/CT_HTT1/'
 		dataset = []
 		modality = 'CT'
 		for root, subdir, fp in os.walk(folder):
@@ -264,19 +259,22 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		if len(dataset) > 0:
 			self.openCT(dataset)
 
-		self.envXray.addMarker(0,-25.4,25.4)
-		self.envXray.addMarker(0,-4.6,4.6)
-		self.envXray.addMarker(0,25.5,-5.2)
-		self.envXray.addMarker(1,26.2,25.4)
-		self.envXray.addMarker(1,5.5,4.6)
-		self.envXray.addMarker(1,-24.2,-5.2)
-		self.envCt.addMarker(0,-27.7,85.2)
-		self.envCt.addMarker(0,-8.1,64.7)
-		self.envCt.addMarker(0,21.8,53.9)
-		self.envCt.addMarker(1,139.4,85.2)
-		self.envCt.addMarker(1,159.8,64.7)
-		self.envCt.addMarker(1,190.1,53.9)
+		ax = self.envXray.plot.ax
+		self.envXray.plot.addMarker(ax[0],-25.4,25.4)
+		self.envXray.plot.addMarker(ax[0],-4.6,4.6)
+		self.envXray.plot.addMarker(ax[0],25.5,-5.2)
+		self.envXray.plot.addMarker(ax[1],37.5,25.4)
+		self.envXray.plot.addMarker(ax[1],17.4,4.6)
+		self.envXray.plot.addMarker(ax[1],-11.8,-5.2)
+		ax = self.envCt.plot.ax
+		self.envCt.plot.addMarker(ax[0],-27.7,85.2)
+		self.envCt.plot.addMarker(ax[0],-8.1,64.7)
+		self.envCt.plot.addMarker(ax[0],21.8,53.9)
+		self.envCt.plot.addMarker(ax[1],139.4,85.2)
+		self.envCt.plot.addMarker(ax[1],159.8,64.7)
+		self.envCt.plot.addMarker(ax[1],190.1,53.9)
 		self.envCt.updateIsocenter(23.0,85.7,189.8)
+		self.patientCalculateAlignment(0)
 
 	def setupConfigurationManager(self):
 		# Populate the manager with our config files.
@@ -343,7 +341,6 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 			for root, subdir, fp in os.walk(folder):
 				for fn in fp:
 					if (fn.endswith(tuple('.dcm'))) & (fn[:len(modality)] == 'CT'):
-						logging.info("Create dicom CT data parser here...")
 						dataset.append(os.path.join(root,fn))
 			if len(dataset) > 0:
 				self.openCT(dataset)
@@ -527,7 +524,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		# Connect max markers spin box.
 		self.sbAlignment.markersChanged.connect(partial(self.envCt.set,'maxMarkers'))
 		# Sidebar page for ct image properties.
-		widget = self.sidebar.addPage('ctImageProperties',QsWidgets.QCtProperties(),addList=False)
+		widget = self.sidebar.addPage('ctImageProperties',QsWidgets.QsSidebar.QCtProperties(),addList=False)
 		# Signals and slots.
 		widget.align.connect(self.patientCalculateAlignment)
 		widget.isocenterUpdated.connect(self.envCt.updateIsocenter)
@@ -748,7 +745,6 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 
 		# Update the x-ray isocentre to match if desired.
 		if index >= 0:
-			print(self.system.solver._syncPatientIsocenter)
 			x,y,z = self.system.solver._syncPatientIsocenter
 			self.envXray.updateIsocenter(x,y,z)
 

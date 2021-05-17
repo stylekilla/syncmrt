@@ -29,6 +29,8 @@ def calculate(p1,p2,t1,t2):
 	# Flag for axis alignment.
 	swap = False
 	# Determine if image data needs to be swapped.
+	# Imaging angle 1 must be greater than Imaging angle 2.
+	# In this way A is pointing to the left and B is pointing to the right.
 	if t1 < t2: 
 		swap = True
 
@@ -103,7 +105,6 @@ t2: {}
 			b_prime = -b_prime
 		if (b<0):
 			a_prime = -a_prime
-
 
 		# Calculate the radius to the point.
 		r_a = (a**2 + a_prime**2)**0.5
