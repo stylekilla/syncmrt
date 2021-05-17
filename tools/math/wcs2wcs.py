@@ -1,12 +1,18 @@
 import numpy as np
 
-def wcs2wcs(left,right):
-	'''
-	Left and right coordinate systems must be presented by a 3x3 matrix that describes the
-	mapping of the X Y and Z (rows) axes onto i j and k (cols).
-	'''
+def wcs2wcs(left,right,method='active'):
+	"""
+	Find an active rotation matrix that takes us from the left coordinate system to the right coordinate system.
+	Each coordinate system should be a 3x3 transform.
+	"""
 	# Find the quaternion matrix, N.
-	N = quaternion(left,right)
+	# Can be passive or active.
+	if method == 'active':
+		N = quaternion(left,right)
+	elif method == 'passive':
+		N = quaternion(right,left)
+	else:
+		raise TypeError("Method can only be active or passive.")
 	# Solve eigenvals and vec that maximises rotation.
 	val, vec = eigen(N)
 	# Extract transformation quarternion from evec.
