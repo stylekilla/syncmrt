@@ -52,6 +52,14 @@ mpl_logger = logging.getLogger('matplotlib')
 mpl_logger.setLevel(logging.CRITICAL)
 
 """
+GLOBAL PARAMETERS
+"""
+# This takes us from the default HFS-DICOM coordinate system (as a CT dataset is stored) into the synchrotron coordinate system.
+# Xd maps onto -Ys. Yd maps onto -Zs. Zd maps onto Xs.
+DCS = np.array([[0,-1,0],[0,0,-1],[1,0,0]])
+DCSi = np.linalg.inv(DCS)
+
+"""
 MAIN CLASS: Application starts here.
 """
 
@@ -273,7 +281,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		self.envCt.plot.addMarker(ax[1],139.4,85.2)
 		self.envCt.plot.addMarker(ax[1],159.8,64.7)
 		self.envCt.plot.addMarker(ax[1],190.1,53.9)
-		self.envCt.updateIsocenter(23.0,85.7,189.8)
+		self.envCt.updateIsocenter(23.0,189.8,85.7)
 
 		self.patientCalculateAlignment(0)
 
@@ -440,6 +448,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		# Make a widget for plot stuff.
 		self.envXray = self.environment.addPage('X-RAY',QsWidgets.QPlotEnvironment())
 		self.envXray.setCoordinateSystem(np.identity(3))
+		self.envXray.setAxisAlignment(np.identity(3))
 		# Connect signal for number of markers.
 		self.sbAlignment.markersChanged.connect(partial(self.envXray.set,'maxMarkers'))
 		# Connect image properties page.
@@ -520,6 +529,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 	def createWorkEnvironmentCT(self):
 		# Make a widget for plot stuff.
 		self.envCt = self.environment.addPage('CT',QsWidgets.QPlotEnvironment())
+		self.envCt.setAxisAlignment(DCS)
 		self.envCt.set('maxMarkers',config.markers.quantity)
 		self.envCt.toggleSettings.connect(partial(self.sidebar.showStack,'ImageProperties'))
 		# Connect max markers spin box.
@@ -556,6 +566,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 			self.sbTreatment.widget['quantity'].setText(str(i+1))
 			# Make a widget for plot stuff.
 			self.envRtplan[i] = self.environment.addPage('BEV%i'%(i+1),QsWidgets.QPlotEnvironment())
+			self.envRtplan[i].setPlotAxisAlignment(DCS)
 			self.envRtplan[i].set('maxMarkers',config.markers.quantity)
 			self.envRtplan[i].toggleSettings.connect(partial(self.sidebar.showStack,'ImageProperties'))
 			# Connect max markers spin box.
@@ -726,10 +737,6 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 			isocenter = self.envRtplan[index-1].getIsocenter(raw=True)
 
 		if index >= 0:
-			# This takes us from the default HFS-DICOM coordinate system (as a CT dataset is stored) into the synchrotron coordinate system.
-			# Xd maps onto -Ys. Yd maps onto -Zs. Zd maps onto Xs.
-			DCS = np.array([[0,-1,0],[0,0,-1],[1,0,0]])
-			DCSi = np.linalg.inv(DCS)
 			# Map left (DICOM) points into the right (synchrotron) coordinate system.
 			for i in range(len(l)):
 				l[i] = DCSi@l[i]

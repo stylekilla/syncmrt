@@ -1,17 +1,20 @@
+# Matplotlib setup.
 import matplotlib as mpl
 mpl.use('Qt5Agg')
 mpl.rcParams['toolbar'] = 'toolmanager'
-
+# Matplotlib imports.
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg, FigureManagerQT
 from matplotlib.collections import PatchCollection
 from matplotlib.patches import Rectangle
-from .tools import *
+# Local imports.
+from .QPlotTools import *
 from .QHistogram import QHistogramWindow
-
+from systems.imageGuidance import optimiseFiducials
+from tools.math import transform
+# Other.
 import numpy as np
 from PyQt5 import QtGui, QtCore, QtWidgets
-from systems.imageGuidance import optimiseFiducials
 from functools import partial
 import logging
 
@@ -29,7 +32,7 @@ class QPlot(QtWidgets.QWidget):
 	# Signal that emits the index of the axes that (x,y) originate from as well as (x,y) themselves.
 	newMarker = QtCore.pyqtSignal(int,float,float)
 	# New isocenter.
-	newIsocenter = QtCore.pyqtSignal(float,float,float)
+	newIsocenter = QtCore.pyqtSignal()
 	# Clear all the markers.
 	clearMarkers = QtCore.pyqtSignal()
 
@@ -134,6 +137,7 @@ class QPlot(QtWidgets.QWidget):
 		# self.mask = None
 		self.maskSize = 20.0
 		self.overlay = {}
+		# These are stored as (h1,h2,v) coordinates.
 		self.machineIsocenter = [0,0,0]
 		self.patientIsocenter = [0,0,0]
 		self.imagingAngles = [None,None]
@@ -192,26 +196,47 @@ class QPlot(QtWidgets.QWidget):
 		self.toolbarManager.trigger_tool('pickIso')
 
 	def _updateIsocenter(self,ax,x,y):
-		""" Update the patient isocenter with mouse click in plot. """
+		""" 
+		Update the patient isocenter with mouse click in plot.
+
+		Parameters
+		----------
+		ax : matplotlib.pyplot.axes
+			Expects a matplotlib axis reference that the click occured in.
+		x : float
+			Matplotlib x coordinate, i.e. horizontal component.
+		y : float
+			Matplotlib y coordinate, i.e. vertical component.
+		"""
 		# Get the axis index that it originated from.
 		index = np.argwhere(self.ax == ax)[0][0]
 		if index == 0:
-			self.patientIsocenter[0:2] = [x,y]
+			# Update [x,-,y].
+			self.patientIsocenter[::2] = [x,y]
 		elif index == 1:
-			self.patientIsocenter[1:3] = [y,x]
-		# Get the XYZ coords.
-		x,y,z = list(map(float,self.patientIsocenter))
-		# Update the plot.
-		self.updatePatientIsocenter(x,y,z)
-		# Emit the signal to say we have a new iso.
-		self.newIsocenter.emit(x,y,z)
-
-	def updatePatientIsocenter(self,x,y,z):
-		""" Update the patient isocenter in 3D. """
-		self.patientIsocenter = [x,y,z]
+			# Update [-,x,y].
+			self.patientIsocenter[1:] = [x,y]
 		# Refresh the overlays if they exist.
 		self.toggleOverlay(2,state=True)
 		self.toggleOverlay(3,state=True)
+		# Emit the signal to say we have a new iso.
+		self.newIsocenter.emit()
+
+	def updatePatientIsocenter(self,h1,h2,v):
+		""" 
+		Update the patient isocenter in 3D. 
+
+		Parameters
+		----------
+		x,y,z : float
+			Either the (h1,h2,v) coordinate of the new isocenter.
+		"""
+		self.patientIsocenter = np.r_[h1,h2,v]
+		# Refresh the overlays if they exist.
+		self.toggleOverlay(2,state=True)
+		self.toggleOverlay(3,state=True)
+		# Emit the signal to say we have a new iso.
+		self.newIsocenter.emit()
 
 	def getHistograms(self):
 		""" Return a list of histograms. """
@@ -374,12 +399,14 @@ class QPlot(QtWidgets.QWidget):
 					obj.remove()
 				del(self.overlay['patIso'])
 			if state is True:
+				# Reset the overlay list.
 				self.overlay['patIso'] = []
+				h1,h2,v = self.patientIsocenter
 				# Plot patient iso.
-				self.overlay['patIso'].append(self.ax[0].scatter(self.patientIsocenter[0],self.patientIsocenter[1],marker='+',color=CLR_YELLOW,s=50))
-				self.overlay['patIso'].append(self.ax[0].text(self.patientIsocenter[0]+1,self.patientIsocenter[1]+1,'ptv',color=CLR_YELLOW))
-				self.overlay['patIso'].append(self.ax[1].scatter(self.patientIsocenter[2],self.patientIsocenter[1],marker='+',color=CLR_YELLOW,s=50))
-				self.overlay['patIso'].append(self.ax[1].text(self.patientIsocenter[2]+1,self.patientIsocenter[1]+1,'ptv',color=CLR_YELLOW))
+				self.overlay['patIso'].append(self.ax[0].scatter(h1,v,marker='+',color=CLR_YELLOW,s=50))
+				self.overlay['patIso'].append(self.ax[0].text(h1+1,v+1,'ptv',color=CLR_YELLOW))
+				self.overlay['patIso'].append(self.ax[1].scatter(h2,v,marker='+',color=CLR_YELLOW,s=50))
+				self.overlay['patIso'].append(self.ax[1].text(h2+1,v+1,'ptv',color=CLR_YELLOW))
 			else:
 				pass
 		elif overlayType == 3:
@@ -391,10 +418,11 @@ class QPlot(QtWidgets.QWidget):
 				del(self.overlay['beamArea'])
 			if state is True:
 				self.overlay['beamArea'] = []
+				h1,h2,v = self.patientIsocenter
 				# Create new patches.
 				_beam = Rectangle((-self.maskSize/2,-self.maskSize/2), self.maskSize, self.maskSize,fc=CLR_RED,ec='none',alpha=0.2)
-				_ptv1 = Rectangle((self.patientIsocenter[0]-self.maskSize/2,self.patientIsocenter[1]-self.maskSize/2), self.maskSize, self.maskSize,fc='none',ec=CLR_YELLOW,ls='--',alpha=1.0)
-				_ptv2 = Rectangle((self.patientIsocenter[2]-self.maskSize/2,self.patientIsocenter[1]-self.maskSize/2), self.maskSize, self.maskSize,fc='none',ec=CLR_YELLOW,ls='--',alpha=1.0)
+				_ptv1 = Rectangle((h1-self.maskSize/2,v-self.maskSize/2), self.maskSize, self.maskSize,fc='none',ec=CLR_YELLOW,ls='--',alpha=1.0)
+				_ptv2 = Rectangle((h2-self.maskSize/2,v-self.maskSize/2), self.maskSize, self.maskSize,fc='none',ec=CLR_YELLOW,ls='--',alpha=1.0)
 				# Different patch collection for each plot.
 				pc1 = PatchCollection([_beam,_ptv1],match_original=True)
 				pc2 = PatchCollection([_beam,_ptv2],match_original=True)

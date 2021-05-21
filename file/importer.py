@@ -355,13 +355,13 @@ class ct(QtCore.QObject):
 		elif flatteningMethod == 'max': self.image[0].pixelArray = np.amax(pixelArray,axis=2)
 		self.image[0].extent = np.array(list(x)+list(y))
 		self.image[0].view = { 'title':t1 }
-		self.image[0].imagingAngle = -90
+		self.image[0].imagingAngle = 0
 		# Get the second flattened image.
 		if flatteningMethod == 'sum': self.image[1].pixelArray = np.sum(pixelArray,axis=1)
 		elif flatteningMethod == 'max': self.image[1].pixelArray = np.amax(pixelArray,axis=1)
 		self.image[1].extent = np.array(list(z)+list(y))
 		self.image[1].view = { 'title':t2 }
-		self.image[1].imagingAngle = 0
+		self.image[1].imagingAngle = -90
 
 		# Emit a signal to say a new view has been loaded.
 		self.newCtView.emit()

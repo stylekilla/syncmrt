@@ -43,8 +43,11 @@ class QPlotEnvironment(QtWidgets.QSplitter):
 		# Internal vars.
 		self._maxMarkers = 0
 		self.plotView = [None,None]
-		# The coordinate system identifies how data in this workspace should be transformed to the local coordinate system it is linked to.
 		self.coordinateSystem = None
+		self.axisAlignment = None
+		# This is stored as XYZ in the local coordinate system.
+		self.patientIsocenter = np.r_[0,0,0]
+		# The coordinate system identifies how data in this workspace should be transformed to 
 		# Signals.
 		for i, model in enumerate(self.tableModel):
 			model.itemChanged.connect(partial(self.updateMarkersFromModel,i))
@@ -59,7 +62,7 @@ class QPlotEnvironment(QtWidgets.QSplitter):
 		# Signals.
 		self.plot.newMarker.connect(self.addMarker)
 		self.plot.clearMarkers.connect(self.clearMarkers)
-		self.plot.newIsocenter.connect(self.newIsocenter.emit)
+		self.plot.newIsocenter.connect(self._updateIsocenterFromPlot)
 
 		# Create table widget.
 		self.table = QtWidgets.QWidget()
@@ -118,13 +121,20 @@ class QPlotEnvironment(QtWidgets.QSplitter):
 			# Assign theta1 to be 90 degrees away from theta0.
 			theta1 = theta0 - 90.0
 
-		# Bring the markers (col-x,row-y) into orthogonality w.r.t. the BEV.
+		# Bring the markers (col-x,row-y) into orthogonality.
 		points = nonOrthogonalImaging.calculate(markers0,markers1,theta0,theta1)
+
+		for i in range(len(points)):
+			# Take the orthogonal axes and align them with the BEV coordinate system.
+			# Note we use absolute because the input to the NOI calculation is already direction aligned.
+			# Therefore our transform must be direction agnostic, and instead only needs to align the axes.
+			points[i] = np.absolute(self.coordinateSystem@self.axisAlignment)@points[i]
 
 		logging.debug(f"Points in local coordinate system:\n{points}")
 
-		# Align the points with the BEV coordinate system.
 		for i in range(len(points)):
+			# The points are currently aligned with the BEV.
+			# Now we need to represent the points in the parent coordinate system.
 			points[i] = np.linalg.inv(self.coordinateSystem)@points[i]
 
 		logging.debug(f"Points in parent coordinate system:\n{points}")
@@ -134,7 +144,7 @@ class QPlotEnvironment(QtWidgets.QSplitter):
 
 	def updateIsocenter(self,x,y,z):
 		"""
-		Update the patient isocenter in the plot environment.
+		Update the patient isocenter as XYZ coordinates within the local coordinate system.
 
 		Parameters
 		----------
@@ -145,17 +155,19 @@ class QPlotEnvironment(QtWidgets.QSplitter):
 		z : float
 			The Z value of the isocenter.
 		"""
+		# Set the patient isocenter.
+		self.patientIsocenter = np.r_[x,y,z]
 		# Send to plot.
 		self.plot.updatePatientIsocenter(x,y,z)
 
 	def getIsocenter(self,raw=False):
 		""" 
-		Get the isocenter value from each plot, adjusted for the view of each plot. 
+		Get the isocenter value from the workspace.
 
 		Parameters
 		----------
 		raw : bool
-			If True, grabs the raw points. If False (default), it adjusts the points according to the views of the datasets.
+			If True, grabs the raw points as stored in the local coordinate system. If False (default), it represents the isocenter in the parent coordinate system.
 
 		Returns
 		-------
@@ -163,41 +175,74 @@ class QPlotEnvironment(QtWidgets.QSplitter):
 			A list of three points representing the cartesian XYZ isocenter.
 		"""
 
-		""" Get the isocenter value. """
-		isocenter = self.plot.getIsocenter()
+		if raw:
+			# Return the isocenter as is.
+			return self.patientIsocenter
+		else:
+			# If we want the raw isocenter, just get the value stored (in the case of a treatment plan where the isocenter is stored in DICOM XYZ coordinates).
+			# Otherwise, we must adjust the stored value for the angles of the images. This assumes the isocenter was chosen in the image frames (manual isocenter).
+			if self.coordinateSystem is None:
+				raise Exception("Must set coordinate system before QPlotEnvironment.getMarkers() can be used.")
+			# Represent the isocentre in the parent coordinate system.
+			return np.linalg.inv(self.coordinateSystem)@self.patientIsocenter
 
-		if self.coordinateSystem is None:
-			raise Exception("Must set coordinate system before QPlotEnvironment.getMarkers() can be used.")
+	def _updateIsocenterFromPlot(self):
+		""" Update the isocenter from the plot. """
+		isocenter = self.plot.patientIsocenter
+		logging.debug(f"Plot Isocenter: {isocenter}")
+		# Get the image angles (as deltas from the BEV) for each image.
+		theta0, theta1 = self.plot.imagingAngles
+		# If theta1 is None, there is no data for the second image frame (i.e. it's only a 2D dataset).
+		if theta1 == None:
+			# Assign the horizontal component to be 0.0 (i.e. we have no depth data).
+			isocenter[2] = 0.0
+			# Assign theta1 to be 90 degrees away from theta0.
+			theta1 = theta0 - 90.0
+		# Split the isocenter up in to two points.
+		markers0 = isocenter[::2]
+		markers1 = isocenter[1:]
+		# Find the orthogonal representation of the isocenter.
+		isocenter = nonOrthogonalImaging.calculate(markers0,markers1,theta0,theta1).ravel()
+		# Represent the isocentre in BEV coordinates.
+		isocenter = np.absolute(self.coordinateSystem@self.axisAlignment)@isocenter
+		# Update the isocenter.
+		self.patientIsocenter = np.array(isocenter)
+		# Emit the signal telling the world we have a new isocenter.
+		# This signal is designed to send out the (h1,h2,v) coordinate.
+		h1,h2,v = self.plot.patientIsocenter
+		self.newIsocenter.emit(h1,h2,v)
 
-		# If we want the raw isocenter, just get the value stored (in the case of a treatment plan where the isocenter is stored in DICOM XYZ coordinates).
-		# Otherwise, we must adjust the stored value for the angles of the images. This assumes the isocenter was chosen in the image frames (manual isocenter).
-		if not raw:
-			# Get the image angles (as deltas from the BEV) for each image.
-			theta0, theta1 = self.plot.imagingAngles
-			# If theta1 is None, there is no data for the second image frame (i.e. it's only a 2D dataset).
-			if theta1 == None:
-				# Assign the horizontal component to be 0.0 (i.e. we have no depth data).
-				isocenter[2] = 0.0
-				# Assign theta1 to be 90 degrees away from theta0.
-				theta1 = theta0 - 90.0
-			# Split the isocenter up in to two points.
-			markers0 = isocenter[:2]
-			markers1 = np.roll(isocenter[1:],1)
-			# Bring the markers (col-x,row-y) into orthogonality w.r.t. the BEV.
-			isocenter = nonOrthogonalImaging.calculate(markers0,markers1,theta0,theta1)
-
-		isocenter = np.linalg.inv(self.coordinateSystem)@isocenter.ravel()
-		# Return the axis-aligned data.
-		return isocenter
+	def setPlotIsocenter(self,h1,h2,v):
+		""" Set the plot isocenter. """
+		self.plot.updatePatientIsocenter(h1,h2,v)
 
 	def setCoordinateSystem(self,cs):
 		"""
 		Set the coordinate system of the workspace.
-		The coordinate system transform should be relative to the synchrotron coordinate system.
+		The coordinate system transform should be relative to the parent coordinate system (either DICOM or synchrotron).
+
+		Parameters
+		----------
+		cs : np.array()
+			A 3x3 np array that maps synchrotron (X,Y,Z) onto the environment coordinate system.
 		"""
 		cs = np.array(cs)
 		if cs.shape == (3,3):
 			self.coordinateSystem = cs
+
+	def setAxisAlignment(self,cs):
+		"""
+		Set the axis alignment of the workspace.
+		This aligns (h1,h2,v) plot information with the (X,Y,Z) coordinate system.
+
+		Parameters
+		----------
+		cs : np.array()
+			A 3x3 np array that maps (h1,h2,v) data-points onto the environment coordinate system.
+		"""
+		cs = np.array(cs)
+		if cs.shape == (3,3):
+			self.axisAlignment = cs
 
 	def loadImages(self,images,keepMarkers=False):
 		"""

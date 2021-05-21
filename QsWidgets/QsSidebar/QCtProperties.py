@@ -55,11 +55,11 @@ class QCtProperties(QtWidgets.QWidget):
 		self.widget['isocenter']['editIso'] = QtWidgets.QWidget()
 		label1 = QtWidgets.QLabel('Isocenter (mm)')
 		label2 = QtWidgets.QLabel('Horizontal 1: ')
-		self.widget['isocenter']['editIsoX'] = QtWidgets.QLineEdit()
+		self.widget['isocenter']['editIsoH1'] = QtWidgets.QLineEdit()
 		label3 = QtWidgets.QLabel('Vertical: ')
-		self.widget['isocenter']['editIsoY'] = QtWidgets.QLineEdit()
+		self.widget['isocenter']['editIsoV'] = QtWidgets.QLineEdit()
 		label4 = QtWidgets.QLabel('Horizontal 2: ')
-		self.widget['isocenter']['editIsoZ'] = QtWidgets.QLineEdit()
+		self.widget['isocenter']['editIsoH2'] = QtWidgets.QLineEdit()
 		self.widget['isocenter']['pick'] = QtWidgets.QPushButton("Pick")
 		# Signals.
 		self.widget['isocenter']['pick'].clicked.connect(self.pickIsocenter.emit)
@@ -67,26 +67,26 @@ class QCtProperties(QtWidgets.QWidget):
 		lytEditIsocenter = QtWidgets.QFormLayout()
 		lytEditIsocenter.setContentsMargins(0,0,0,0)
 		lytEditIsocenter.addRow(label1,self.widget['isocenter']['pick'])
-		lytEditIsocenter.addRow(label2,self.widget['isocenter']['editIsoX'])
-		lytEditIsocenter.addRow(label3,self.widget['isocenter']['editIsoY'])
-		lytEditIsocenter.addRow(label4,self.widget['isocenter']['editIsoZ'])
+		lytEditIsocenter.addRow(label2,self.widget['isocenter']['editIsoH1'])
+		lytEditIsocenter.addRow(label3,self.widget['isocenter']['editIsoV'])
+		lytEditIsocenter.addRow(label4,self.widget['isocenter']['editIsoH2'])
 		self.widget['isocenter']['editIso'].setLayout(lytEditIsocenter)
 		# Validators.
 		doubleValidator = QtGui.QDoubleValidator()
 		doubleValidator.setDecimals(3)
-		self.widget['isocenter']['editIsoX'].setText('0')
-		self.widget['isocenter']['editIsoY'].setText('0')
-		self.widget['isocenter']['editIsoZ'].setText('0')
-		self.widget['isocenter']['editIsoX'].setValidator(doubleValidator)
-		self.widget['isocenter']['editIsoY'].setValidator(doubleValidator)
-		self.widget['isocenter']['editIsoZ'].setValidator(doubleValidator)
+		self.widget['isocenter']['editIsoH1'].setText('0')
+		self.widget['isocenter']['editIsoH2'].setText('0')
+		self.widget['isocenter']['editIsoV'].setText('0')
+		self.widget['isocenter']['editIsoH1'].setValidator(doubleValidator)
+		self.widget['isocenter']['editIsoH2'].setValidator(doubleValidator)
+		self.widget['isocenter']['editIsoV'].setValidator(doubleValidator)
 		# Defaults
 		self.widget['isocenter']['editIso'].setEnabled(False)
 		self.widget['isocenter']['editIso'].setVisible(False)
 		# Signals and Slots
-		self.widget['isocenter']['editIsoX'].editingFinished.connect(self._updateIsocenter)
-		self.widget['isocenter']['editIsoY'].editingFinished.connect(self._updateIsocenter)
-		self.widget['isocenter']['editIsoZ'].editingFinished.connect(self._updateIsocenter)
+		self.widget['isocenter']['editIsoH1'].editingFinished.connect(self._updateIsocenter)
+		self.widget['isocenter']['editIsoH2'].editingFinished.connect(self._updateIsocenter)
+		self.widget['isocenter']['editIsoV'].editingFinished.connect(self._updateIsocenter)
 		# Set the layout of group.
 		lytIsocenter.addWidget(self.widget['isocenter']['cbCustomIsoc'])
 		lytIsocenter.addWidget(self.widget['isocenter']['editIso'])
@@ -157,22 +157,22 @@ class QCtProperties(QtWidgets.QWidget):
 		self.widget['isocenter']['editIso'].setEnabled(bool(state))
 		self.widget['isocenter']['editIso'].setVisible(bool(state))
 
-	def setIsocenter(self,x,y,z):
+	def setIsocenter(self,h1,h2,v):
 		""" Set the isocenter from an external source. """
 		self.blockSignals(True)
-		self.widget['isocenter']['editIsoX'].setText("{:.2f}".format(x))
-		self.widget['isocenter']['editIsoY'].setText("{:.2f}".format(y))
-		self.widget['isocenter']['editIsoZ'].setText("{:.2f}".format(z))
+		self.widget['isocenter']['editIsoH1'].setText("{:.2f}".format(h1))
+		self.widget['isocenter']['editIsoH2'].setText("{:.2f}".format(h2))
+		self.widget['isocenter']['editIsoV'].setText("{:.2f}".format(v))
 		self.blockSignals(False)
 		# Turn the overlays on.
 		self.widget['overlays']['cbPatIsoc'].setChecked(True)
 
 	def _updateIsocenter(self):
 		""" Send a signal with updated x,y coordinates. """
-		_x = float(self.widget['isocenter']['editIsoX'].text())
-		_y = float(self.widget['isocenter']['editIsoY'].text())
-		_z = float(self.widget['isocenter']['editIsoZ'].text())
-		self.isocenterUpdated.emit(_x,_y,_z)
+		h1 = float(self.widget['isocenter']['editIsoH1'].text())
+		h2 = float(self.widget['isocenter']['editIsoH2'].text())
+		v = float(self.widget['isocenter']['editIsoV'].text())
+		self.isocenterUpdated.emit(h1,h2,v)
 		# Turn the overlays on.
 		self.widget['overlays']['cbPatIsoc'].setChecked(True)
 		
