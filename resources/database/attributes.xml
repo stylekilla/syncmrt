@@ -1,0 +1,15 @@
+<?xml version="1.0" standalone="no" ?>
+<!-- Attributes -->
+<Attributes
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:noNamespaceSchemaLocation=
+    "https://github.com/areaDetector/ADCore/blob/master/iocBoot/NDAttributes.xsd"
+    >
+	<Attribute 
+		name="Z"
+		type="EPICS_PV"
+		source="SR08ID01ROB01:MOTOR_Z.RBV"
+		datatype="DBR_NATIVE"
+		description="Motor Z position."
+	/>
+</Attributes>

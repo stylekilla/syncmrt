@@ -9,7 +9,7 @@ the connection state of the pv's/device etc.
 Therefore, we implement all that functionality ourselves.
 """
 
-__all__ = ['motor']
+__all__ = ['motor','velocityController']
 
 MOTOR_PVS = [
 	'VAL', 'DESC', 'RBV', 'PREC', 'DMOV',
@@ -268,6 +268,104 @@ class workpoint(QtCore.QObject):
 
 	def reconnect(self):
 		for pv in WORKPOINT_PVS:
+			epicspv = getattr(self,pv)
+			try:
+				epicspv.reconnect()
+			except:
+				raise MotorException("Failed to force {} to reconnect.".format(pv))
+
+
+VELOCITY_PVS = ['Velocity','Acceleration']
+
+class velocityController(QtCore.QObject):
+	connected = QtCore.pyqtSignal()
+	disconnected = QtCore.pyqtSignal()
+	speedChanged = QtCore.pyqtSignal(float,float)
+	error = QtCore.pyqtSignal()
+
+	def __init__(self,ports):
+		super().__init__()
+		self._initComplete = False
+		self._connectionStatus = False
+		# Setup the Epics PVs.
+		self.pv = {}
+		# Requires:
+		# Velocity, Acceleration
+		for key,val in ports.items():
+			if key in VELOCITY_PVS:
+				setattr(self,key,epics.PV(val,
+					auto_monitor=True,
+					connection_callback=self._connectionMonitor
+					)
+				)
+
+		# Add callback for value monitoring.
+		self.Velocity.add_callback(self._velocityMonitor)
+		self.Acceleration.add_callback(self._velocityMonitor)
+		# Finished initialisation.
+		self._initComplete = True
+
+	def _connectionMonitor(self,*args,**kwargs):
+		"""
+		Update the device connection status.
+		All PV's must be connected in order for the device to be considered connected.
+		If any PV in the device is disconnected, the whole device is demmed disconnected.
+		"""
+		if not self._initComplete:
+			# We haven't finished setting up the motor yet, don't do anything.
+			return
+
+		if ('pvname' in kwargs) and ('conn' in kwargs):
+			# Update the device connection state (by testing all the devices pv's connection states).
+			teststate = [kwargs['conn']]
+			# N.B. Epics hasn't actually updated the pv.connected state of the motor sent to this function yet.
+			# So instead, get status of every motor except the one sent to this function.
+			searchPV = kwargs['pvname']
+			for key,val in self.pv.items():
+				if val == searchPV:
+					searchPVkey = val
+			# List of PV's that aren't the one sent to this function.
+			for pv in [val for key,val in self.pv if key != searchPVkey]:
+				testpv = getattr(self,pv)
+				teststate.append(testpv.connected)
+			self._connectionStatus = all(teststate)
+
+		# Send out an appropriate signal.
+		if self._connectionStatus:
+			self.connected.emit()
+		else:
+			self.disconnected.emit()
+
+	def isConnected(self):
+		# Return if we are connected or not.
+		return self._connectionStatus
+
+	def setSpeed(self,value):
+		""" Set the velocity. """
+		self.Velocity.put(float(value))
+
+	def getSpeed(self):
+		""" Get the velocity. """
+		return self.Velocity.get()
+
+	def setAcceleration(self,value):
+		""" Set the acceleration. """
+		self.Acceleration.put(float(value))
+
+	def getAcceleration(self,value):
+		""" Get the acceleration. """
+		return self.Acceleration.get()
+
+	def _velocityMonitor(self,*args,**kwargs):
+		""" Update the (velocity,acceleration). """
+		if ('pvname' in kwargs) and ('value' in kwargs):
+			velocity = float(self.Velocity.get())
+			acceleration = float(self.Acceleration.get())
+			# Emit the signal.
+			self.speedChanged.emit(velocity,acceleration)
+
+	def reconnect(self):
+		for pv in VELOCITY_PVS:
 			epicspv = getattr(self,pv)
 			try:
 				epicspv.reconnect()

@@ -1,6 +1,6 @@
 # from systems.control.hardware.motor import motor
 from systems.control import hardware
-from PyQt5 import QtCore, QtWidgets
+from PyQt5 import QtCore
 import numpy as np
 from functools import partial
 import logging
@@ -13,20 +13,20 @@ class patientSupport(QtCore.QObject):
 	error = QtCore.pyqtSignal()
 	moving = QtCore.pyqtSignal(str,float)
 
-	def __init__(self,database,ui=None,backendThread=None):
+	def __init__(self,database,config,backendThread=None):
 		super().__init__()
 		# Information
 		self.currentDevice = None
 		self.currentMotors = []
 		self._dof = (0,[0,0,0,0,0,0])
+		# Configuration file.
+		self.config = config
 		# Current movement id.
 		self.uid = None
+		# A queue for sequential movements.
+		self.motionQueue = []
 		# A preloadable motion.
 		self._motion = None
-		# Stage size information.
-		self._size = np.array([0,0,0])
-		# Calibration object size.
-		self._offset = np.array([0,0,0])
 		# Motor counter for finished arguments.
 		self._counter = 0
 		# Counter for calculate motion loop.
@@ -37,6 +37,11 @@ class patientSupport(QtCore.QObject):
 		self.backendThread = backendThread
 		# A settable work point for the patient support.
 		self.workPoint = None
+
+		if config.velocityMode == 'global':
+			self.velocityController = hardware.velocityController(config.VELOCITY_CONTROLLER)
+		else:
+			self.velocityController = None
 
 		"""
 		Load the CSV dataset.
@@ -96,12 +101,14 @@ class patientSupport(QtCore.QObject):
 					backendThread = self.backendThread
 				)
 
+			if self.config.velocityMode == 'global':
+				# Set the global speed for the device.
+				self.velocityController = hardware.velocityController(self.config.VELOCITY_CONTROLLER)
+
 			# Set the order of the list from 0-i.
 			self.currentMotors = sorted(self.currentMotors, key=lambda k: k._order)
 			# Update the name details.
 			self.currentDevice = name
-			# Calibrate with no calibration offset. This can be recalculated later.
-			self.calibrate(np.array([0,0,0]))
 			# Emit a signal to say we've selected a new patient support.
 			self.newSupportSelected.emit(name,[x.name for x in self.currentMotors])
 
@@ -120,57 +127,107 @@ class patientSupport(QtCore.QObject):
 		self.connected.emit(self._connectionStatus)
 
 	def reconnect(self):
+		""" Reconnect all the motors in the system. """
 		for motor in self.currentMotors:
 			motor.reconnectControls()
 
-	def calibrate(self,calibration):
-		# Stage size in mm including calibration offset (i.e. a pin or object used to calibrate the stage).
-		self._offset = calibration
-		self._size = calibration
-		for motor in self.currentMotors:
-			if motor._stage == 0:
-				self._size = np.add(self._size,motor._size)
+	def setSpeed(self,speed):
+		""" Set the speed of the patient support. """
+		if self.config.velocityMode == 'global':
+			# Set the global speed for the device.
+			self.velocityController.setSpeed(speed)
+			self.velocityController.setAcceleration(speed*4)
+
+		elif self.config.velocityMode == 'axis':
+			# Set the speed on each motor if it allows it.
+			for motor in self.currentMotors:
+				raise TypeError("Not implemented.")
+				# if motor.adjustableSpeed:
+					# motor.setSpeed(speed)
+
+	def getSpeed(self):
+		""" Return the speed of the patient support. """
+		if self.config.velocityMode == 'global':
+			return self.velocityController.getSpeed()
+		elif self.config.velocityMode == 'axis':
+			raise TypeError("Not implemented.")
 
 	def shiftPosition(self,position,uid=None,workpoint=None):
 		logging.info("Shifting position to {}".format(position))
 		# This is a relative position change.
 		# Set the uid.
 		self.uid = str(uid)
+
 		# Set the work point if required.
 		if (workpoint is not None) and (self.workPoint is not None):
 			logging.info("Setting the workpoint to {}".format(workpoint))
 			self.workPoint.offset(workpoint)
+
 		# Iterate through available motors.
 		for motor in self.currentMotors:
 			# Get position to move to for that motor.
 			value = position[(motor._axis + (3*motor._type))]
 			# Tell motor to shift position by amount, value.
-			motor.shiftPosition(value)
+			if self.config.simulatenousCommands:
+				motor.shiftPosition(value)
+			else:
+				self.motionQueue.append((motor,motor.shiftPosition,(value)))
+				# Connect move finished to queue routine.
+				motor.moveFinished.connect(self.runMotorQueue)
 			# Set position variable to 0 (if motor was successful).
 			position[(motor._axis + (3*motor._type))] = 0
+
+		if not self.config.simulatenousCommands: 
+			# Start the queue.
+			self.runMotorQueue()
 
 	def setPosition(self,position,uid=None,workpoint=None):
 		logging.info("Setting position to {}".format(position))
 		# This is a direct position change.
 		# Set the uid.
 		self.uid = str(uid)
+
 		# Set the work point if required.
 		if (workpoint is not None) and (self.workPoint is not None):
 			logging.info("Setting the workpoint to {}".format(workpoint))
 			self.workPoint.offset(workpoint)
+
 		# Iterate through available motors.
 		for motor in self.currentMotors:
 			# Get position to move to for that motor.
 			value = position[(motor._axis + (3*motor._type))]
 			# Tell motor to shift position by amount, value.
-			motor.setPosition(value)
+			if self.config.simulatenousCommands:
+				motor.setPosition(value)
+			else:
+				self.motionQueue.append((motor,motor.setPosition,(value)))
+				# Connect move finished to queue routine.
+				motor.moveFinished.connect(self.runMotorQueue)
 			# Set position variable to 0 (if motor was successful).
 			position[(motor._axis + (3*motor._type))] = 0
+
+		if not self.config.simulatenousCommands:
+			# Start the queue.
+			self.runMotorQueue()
+
+	def runMotorQueue(self):
+		""" Run all the items in the queue one at a time. Uses FIFO approach. """
+		if len(self.motionQueue) > 0:
+			# Take the first item and pop it.
+			item = self.motionQueue.pop()
+			# Unpack the queue item.
+			motor,func,args = item
+			# Run the function with the arguments.
+			func(*args)
+		else:
+			# The queue is finished and empty. Disconnect the slots.
+			for motor in self.currentMotors:
+				motor.moveFinished.disconnect(self.runMotorQueue)
 
 	def _finished(self):
 		# Increment the counter.
 		self._counter += 1
-		logging.info("Motor {} of {} finished movement.".format(self._counter,len(self.currentMotors)))
+		logging.info(f"Motor {self._counter} of {len(self.currentMotors)} finished movement.")
 		# If counter finished, emit finished signal.
 		if self._counter == len(self.currentMotors):
 			# Reset the counter.
@@ -228,7 +285,7 @@ class patientSupport(QtCore.QObject):
 			if sum(motor._workDistance) > 0:
 				# Get the current position of the stage.
 				stagePos = self.position()
-				motor.calculateWorkPoint(stagePos,self._size,stackPos)
+				# motor.calculateWorkPoint(stagePos,self._size,stackPos)
 			# Get the transform for the motor.
 			if motor._type == 0:
 				T = motor.transform(value)
@@ -266,55 +323,15 @@ class patientSupport(QtCore.QObject):
 			self._motion = variables
 			return self._motion
 
-	def applyMotion(self,variables=None,setWorkpoint=False,uid=None):
+	def applyMotion(self,variables=None,uid=None):
 		# If no motion is passed, then apply the stored motion.
 		if variables == None:
 			variables = self._motion
 			logging.info('inside apply motion, vars are now motion: {}'.format(variables))
 
-		# Carry out a shift movement. Workpoint is set to negative the shift as we want the workpoint to be at the point of interest, not where it ends up.
-		if setWorkpoint:
+		# Carry out a shift movement.
+		if self.conofig.workpoint:
+			# Workpoint is set to negative the shift as we want the workpoint to be at the point of interest, not where it ends up.
 			self.shiftPosition(variables,uid=uid,workpoint=-variables[:3])
 		else:
 			self.shiftPosition(variables,uid=uid,workpoint=None)
-
-		# logging.critical("Applying motion: {}".format(variables))
-
-		# # Set the work point if required.
-		# if setWorkpoint and (self.workPoint is not None):
-		# 	logging.info("Setting the workpoint to {}".format(variables[:3]))
-		# 	self.workPoint.offset(variables[:3])
-		# # Iterate over each motor in order.
-		# for motor in self.currentMotors:
-		# 	# Understand the motors function.
-		# 	index = motor._axis + (3*motor._type)
-		# 	# Get the x y z translation or rotation value.
-		# 	value = variables[index]
-		# 	# Apply the value.
-		# 	motor.shiftPosition(value)
-		# 	logging.info('Moving {}: {}'.format(motor.name,value))
-		# 	# Set the taken variable to 0. This stops any future motor from taking this value.
-		# 	variables[index] = 0
-		# 	# Connect to finished method.
-		# 	# motor.finished.connect(self._finished)
-		# QtWidgets.QMessageBox.warning(None,"Patient Alignment","Movement finished.")
-		# return
-
-		'''
-		Start with removing the rotations.
-		To remove these, we need to know the shift of the P in relation to the rotation origin.
-		what's left = T*M[rx]^-1
-		Find working origin.
-		what's left = T*M[ry]^-1
-		what's left = T*M[rz]^-1
-		Whats left now should only be translations.
-		After removing the translations, anything left should be considered impossible for the stage to complete. This should go into a "accuracy" measurement
-
-		Take position of stage when working distance is at the origin. homePos
-		Get the working distance, workDist
-		Get it's current position. currPos
-		workPos = currPos + workDist (this is the point we will rotate around)
-		Transform needs the workPos.
-		'''
-
-

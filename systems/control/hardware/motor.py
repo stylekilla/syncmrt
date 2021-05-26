@@ -10,6 +10,8 @@ Motor will emit finished signal after move is completed.
 Should only use motor.read() and motor.write() methods.
 """
 
+__all__ = ['motor','velocityController']
+
 class motor(QtCore.QObject):
 	connected = QtCore.pyqtSignal()
 	disconnected = QtCore.pyqtSignal()
@@ -128,6 +130,40 @@ class motor(QtCore.QObject):
 		if self._frame == 1:
 			# Can only be set if work distances are zero and it is a rotation.
 			self._workPoint = workpoint
+
+	def reconnectControls(self):
+		try:
+			self._controller.reconnect()
+		except:
+			self.error.emit()
+
+
+class velocityController(QtCore.QObject):
+	connected = QtCore.pyqtSignal()
+	disconnected = QtCore.pyqtSignal()
+	speedChanged = QtCore.pyqtSignal(float,float)
+	error = QtCore.pyqtSignal()
+
+	def __init__(self,ports):
+		super().__init__()
+		# Send the velocity/acceleration ports through to the controller.
+		self._controller = backend.velocityController(ports)
+
+	def setSpeed(self,value):
+		""" Passthrough function: Set the motor speed. """
+		self._controller.setSpeed(value)
+
+	def getSpeed(self):
+		""" Passthrough function: Get the motor speed. """
+		return self._controller.getSpeed()
+
+	def setAcceleration(self,value):
+		""" Passthrough function: Set the motor acceleration. """
+		self._controller.setAcceleration(value)
+
+	def getAcceleration(self):
+		""" Passthrough function: Get the motor acceleration. """
+		return self._controller.getAcceleration()
 
 	def reconnectControls(self):
 		try:

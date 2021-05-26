@@ -4,31 +4,35 @@ import numpy as np
 from functools import partial
 from PyQt5 import QtCore
 from uuid import uuid1
+import sched, time
+from datetime import datetime
 
 class Brain(QtCore.QObject):
 	"""
 	This module creates a treatment 'system' that is made up of imaging devices, positioning aparatus, beam delivery controls etc.
 	"""
 	connected = QtCore.pyqtSignal(bool)
-	imagesAcquired = QtCore.pyqtSignal(int)
 	newImageSet = QtCore.pyqtSignal(str)
 	newMove = QtCore.pyqtSignal(str)
 	moveFinished = QtCore.pyqtSignal(str)
+	workflowFinished = QtCore.pyqtSignal()
 
 	def __init__(self,patientSupports,detectors,config,**kwargs):
 		super().__init__()
-		# Image guidance solution solver.
-		self.solver = imageGuidance.solver()
-
-		# self.source = control.hardware.source()
+		# Machine configuration.
+		self.imagingMode = config.machine.imagingMode
+		# Create our x-ray sources for imaging and treatment.
+		self.imagingBeam = control.hardware.source('Imaging',config.imagingBeam)
+		self.treatmentBeam = control.hardware.source('Treatment',config.treatmentBeam)
+		# Threading.
 		if 'backendThread' in kwargs:
-			self.patientSupport = control.hardware.patientSupport(patientSupports,backendThread=kwargs['backendThread'])
+			self.patientSupport = control.hardware.patientSupport(patientSupports,config.patientSupport,backendThread=kwargs['backendThread'])
 			self.imager = control.hardware.Imager(detectors,config.imager,backendThread=kwargs['backendThread'])
 		else:
-			self.patientSupport = control.hardware.patientSupport(patientSupports)
+			self.patientSupport = control.hardware.patientSupport(patientSupports,config.patientSupport)
 			self.imager = control.hardware.Imager(detectors,config.imager)
 
-		# Signals.
+		# Hardware signals.
 		self.patientSupport.connected.connect(self._connectionMonitor)
 		self.imager.connected.connect(self._connectionMonitor)
 		self.patientSupport.finishedMove.connect(self._removePatientMove)
@@ -39,12 +43,15 @@ class Brain(QtCore.QObject):
 
 		# Current patient.
 		self.patient = None
-		# Stack.
-		self._moveList = dict()
-
+		# Move queue.
+		self._moveQueue = dict()
+		# Workflow queue.
+		self.workflowQueue = []
+		self._workflowLastTrigger = None
 		# Counters.
 		self._routine = None
-		self._imagingMode = 'step'
+		# Image guidance solution solver.
+		self.solver = imageGuidance.solver()
 
 		# When a new image set is acquired, tell the GUI.
 		self.imager.newImageSet.connect(self.newImageSet)
@@ -78,24 +85,20 @@ class Brain(QtCore.QObject):
 		""" Assumes patient has an already loaded x-ray dataset. """
 		self.patient = patient
 		self.patient.newDXfile.connect(self.setLocalXrayFile)
-		logging.info("System has been linked with the patient data.")
+		logging.info("Patient loaded.")
 
 	def setLocalXrayFile(self,file):
 		""" Link the patient datafile to the imager. """
 		self.imager.file = self.patient.dx.file
+		logging.info(f"Patient X-ray file set to: {self.imager.file}.")
 
 	def setStage(self,name):
+		logging.warning("Pending removal. Obsolete(?).")
 		self.patientSupport.load(name)
 
 	def setDetector(self,name):
+		logging.warning("Pending removal. Obsolete(?).")
 		self.imager.load(name)
-
-	def setImagingMode(self,mode):
-		"""
-		Describe the imaging mode. Single frame or continuous imaging??
-		"""
-		logging.debug("Imaging mode changed to {}.".format(mode))
-		self._imagingMode = mode
 
 	def setPatientSupportMonitor(self,monitor):
 		# The monitor should have functions to connect to singals and update the positions from.
@@ -105,16 +108,20 @@ class Brain(QtCore.QObject):
 		if self.patientSupport.currentDevice is not None:
 			monitor.newMotors(self.patientSupport.currentDevice,self.patientSupport.currentMotors)
 
+	def setImagingSpeed(self,value):
+		""" Set the velocity for the imaging routines. """
+		self.patientSupport.setSpeed(float(value))
+
 	def getPatientMove(self,uid):
-		logging.info("Getting Movement UID: {}".format(uid))
+		logging.debug("Getting Movement UID: {}".format(uid))
 		# Return the move from the move list.
-		return self._moveList[str(uid)]
+		return self._moveQueue[str(uid)]
 
 	def _removePatientMove(self,uid):
-		logging.info("Removing Movement UID: {}".format(uid))
+		logging.debug("Removing Movement UID: {}".format(uid))
 		# Remove the uid from the move list.
-		if str(uid) in self._moveList:
-			del self._moveList[str(uid)]
+		if str(uid) in self._moveQueue:
+			del self._moveQueue[str(uid)]
 		# Emiting signal to say we have finish move.
 		self.moveFinished.emit(str(uid))
 
@@ -127,170 +134,178 @@ class Brain(QtCore.QObject):
 		""" Tell the patientSupport to apply the calculated/prepared motion. """		# Create a new uuid.
 		uid = uuid1()
 		# Send the signal saying we have a new move.
-		self._moveList[str(uid)] = self.patientSupport._motion
+		self._moveQueue[str(uid)] = self.patientSupport._motion
 		self.newMove.emit(str(uid))
 		# Tell the patient support to move.
-		logging.warning("Applying calculated alignment with setWorkpoint = True.")
-		self.patientSupport.applyMotion(setWorkpoint=True,uid=str(uid))
+		self.patientSupport.applyMotion(uid=str(uid))
 
-	def movePatient(self,amount,motionType,):
+	def movePatient(self,amount,motionType):
 		""" All patient movement must be done through this function, as it sets a UUID for the motion. """
-		if self.isConnected():
-			# Create a new uuid.
+		if not self.isConnected():
+			logging.warning("Cannot move as not all systems are connected.")
+			return
+
+		# Create a new uuid and add it to the queue..
+		uid = uuid1()
+		self._moveQueue[str(uid)] = amount
+		# Send the signal saying we have a new move.
+		self.newMove.emit(str(uid))
+		# Finally, tell the patient support to move.
+		if motionType == 'relative':
+			self.patientSupport.shiftPosition(amount,uid)
+		elif motionType == 'absolute':
+			self.patientSupport.setPosition(amount,uid)
+		else:
+			logging.warning("Could not move patient with motion type {}.".format(motionType))
+			return
+
+	def synchronize(self,functions,args=(),kwargs={},delays=()):
+		""" Synchronize a list of events (to within ~16 ms). """
+		self._scheduler = sched.scheduler(time.time, time.sleep)
+		# Handle any empty lists.
+		if len(args) == 0: args = tuple([() for _ in range(functions)])
+		if len(kwargs) == 0: args = tuple([{} for _ in range(functions)])
+		if len(delays) == 0: args = tuple([0 for _ in range(functions)])
+		# Synchronize one second into the future.
+		executionTime = datetime.now() + datetime.timedelta(milliseconds=1000)
+		# Add the functions to synchronize.
+		for i in range(len(functions)):
+			self._scheduler.enterabs(
+				executionTime + datetime.timedelta(milliseconds=delays[i]),
+				i,args[i],kwargs[i]
+			)
+		# Run the scheduler.
+		self._scheduler.run()
+
+	def runWorkflowQueue(self):
+		""" Run all the items in the queue, one at a time. Uses FIFO approach. """
+		# Workflow items: (func, (args), {kwargs}, trigger).
+		# Trigger: connect a signal to trigger the next workflow item.
+
+		# If we had a trigger before, disconnect it.
+		if self._workflowLastTrigger is not None: self._workflowLastTrigger.disconnect(self.runWorkflowQueue)
+		# If there is something in the queue, process it.
+		if len(self.workflowQueue) > 0:
+			loigging.debug(f"Processing worfklow item. {len(self.workflowQueue)} items remaining.")
+			# Take the first item and pop it.
+			item = self.workflowQueue.pop()
+			# Unpack the queue item.
+			func,args,kwargs,trigger = item
+			# Keep a reference to the trigger.
+			self._workflowLastTrigger = trigger
+			# Make a trigger if required.
+			if self._workflowLastTrigger is not None: 
+				# Connect it to the the run workflow function.
+				self._workflowLastTrigger.connect(self.runWorkflowQueue)
+			# Finally, run the function with the arguments.
+			func(*args,**kwargs)
+			# If no trigger was provided for the next item... just trigger it automatically.
+			if self._workflowLastTrigger is None: self.runWorkflowQueue()
+		else:
+			# Disconnect any signals that are being held on to.
+			if self._workflowLastTrigger is not None:
+				self._workflowLastTrigger.disconnect(self.runWorkflowQueue)
+			# Tell the world our workflow is finished.
+			logging.debug("Workflow is empty.")
+			self.workflowFinished.emit()
+
+	def acquireXrays(self,theta,zrange=None,comment=''):
+		""" Theta and translation must be lists of values. """
+		# Check: Are all systems connected?
+		if not self.isConnected():
+			logging.warning("Cannot move as not all systems are connected.")
+			return
+		# Check: Is an x-ray file avaialbe to use?
+		if self.imager.file is None:
+			logging.critical("Cannot save images to dataset, no HDF5 file loaded.")
+			return
+
+		# Take note of the home position prior to imaging.
+		homePosition = self.patientSupport.position()
+		# Move to the imager position.
+		self.workflowQueue.append(
+			(self.movePatient, (self.imager.config.offset,'relative'), {}, self.patientSupport.finishedMove)
+		)
+
+		# Two very different imaging modes.
+		if self.imagingMode == 'dynamic':
+			# Calculate parameters.
+			start, stop = zrange
+			distance = start-stop
+			speed = self.patientSupport.getSpeed()
 			uid = uuid1()
-			self._moveList[str(uid)] = amount
-			# Send the signal saying we have a new move.
-			self.newMove.emit(str(uid))
-			# Finally, tell the patient support to move.
-			if motionType == 'relative':
-				self.patientSupport.shiftPosition(amount,uid)
-			elif motionType == 'absolute':
-				self.patientSupport.setPosition(amount,uid)
-			else:
-				logging.warning("Could not move patient with motion type {}.".format(motionType))
-		else:
-			logging.warning("Cannot move as not all systems are connected.")
-
-	def acquireXray(self,theta,trans,comment=''):
-		if self.isConnected():
-			if self.imager.file is None:
-				logging.critical("Cannot save images to dataset, no HDF5 file loaded.")
-				return
-			# Start a new routine.
-			self._routine = ImagingRoutine()
-			# We should ideally define a beam height...
-			self._routine.dz = 1.0
-			logging.critical("Hard setting a beam height of {} mm for now...".format(self._routine.dz))
-			# Theta and trans are relative values from current position.
-			self._routine.theta = theta
-			# Calculate how many x-rays are required.
-			self._routine.imageCounterLimit = len(theta)
-			# Get the current patient position.
-			self._routine.preImagingPosition = self.patientSupport.position()
-			# Calculate how many steps are required per image.
-			# self._routine.stepCounterLimit = np.ceil(np.absolute(trans[1]-trans[0])/self._routine.dz)
-			# Calculate how many steps below our current position we need to go.
-			m = np.ceil(np.absolute(trans[0])/self._routine.dz - 0.5)
-			# Calculate how many steps above our current position we need to go.
-			n = np.ceil(np.absolute(trans[1])/self._routine.dz - 0.5)
-			# Grab the starting Z position.
-			s = self._routine.preImagingPosition[2]
-			# Calculate the start and end translation points (relative to current position).
-			self._routine.tz = [np.sign(trans[0])*m*self._routine.dz,np.sign(trans[1])*n*self._routine.dz]
-			# Calculate our step counter limit.
-			self._routine.stepCounterLimit = m+n+1
-
-			# Signals and slots: Connections.
-			logging.info("Connecting patient support and detector signals to imaging routine.")
-			self.patientSupport.finishedMove.connect(partial(self._continueScan,'imaging'))
-			self.imager.imageAcquired.connect(partial(self._continueScan,'moving'))
-			# Start the scan process.
-			logging.info("Pre-imaging position at: {}".format(self._routine.preImagingPosition))
-			self._startScan()
-		else:
-			logging.warning("Cannot move as not all systems are connected.")
-
-	def _startScan(self):
-		if self._routine.imageCounter < self._routine.imageCounterLimit:
-			# Set an offset between treatment position and imaging position.
-			offset = np.array([0,0,20,0,0,0])
-			logging.info("Starting scan {}/{} at {}deg with offset {}.".format(self._routine.imageCounter+1,self._routine.imageCounterLimit,self._routine.theta[self._routine.imageCounter],offset))
-			# Calculate image start position and set patient to that position.
-			position = self._routine.preImagingPosition + np.array([0,0,self._routine.tz[0],0,0,self._routine.theta[self._routine.imageCounter]]) + offset
-			self.patientSupport.setPosition(position)
-		else:
-			# We are done. 
-			self._endScan()
-
-	def _continueScan(self,operation):
-		if self._routine.stepCounterLimit == 1:
-			# We are expecting more than 1 image step, and our counter is below that threshold.
-			logging.info("In continue scan method conducting: {} for single image.".format(operation,self._routine.stepCounter+1,self._routine.stepCounterLimit))
-			if operation == 'imaging':
-				# Acquire an x-ray.
-				tx,ty,tz,rx,ry,rz = self.patientSupport.position()
-				metadata = {
-					'Image Angle': self._routine.theta[self._routine.imageCounter],
-					'Patient Support Position': (tx,ty,tz),
-					'Patient Support Angle': (rx,ry,rz),
-					'Image Index': self._routine.imageCounter,
-				}
-				self.imager.acquire(self._routine.imageCounter,metadata)
-			elif operation == 'moving':
-				# We are done. 
-				self._routine.imageCounter += 1
-				# Go back to start scan.
-				self._startScan()
-
-		elif self._routine.stepCounter < self._routine.stepCounterLimit:
-			logging.info("In continue scan method conducting: {} for step {}/{}".format(operation,self._routine.stepCounter+1,self._routine.stepCounterLimit))
-			# We are expecting more than 1 image step, and our counter is below that threshold.
-			if operation == 'imaging':
-				# Increase the counter first, otherwise the imager signal will continue on without the counter incrementing.
-				self._routine.stepCounter += 1
-				# Acquire an image step.
-				self.imager.acquireStep(self._routine.dz)
-			elif operation == 'moving':
-				# Shift the position another step.
-				self.patientSupport.shiftPosition([0,0,self._routine.dz,0,0,0])
-		else:
-			# We have finished a stepped scan.
-			tx,ty,tz,rx,ry,rz = np.array(self._routine.preImagingPosition) + np.array([0,0,0,0,0,self._routine.theta[self._routine.imageCounter]])
+			time = datetime.now()
 			metadata = {
-				'Image Angle': self._routine.theta[self._routine.imageCounter],
-				'Patient Support Position': (tx,ty,tz),
-				'Patient Support Angle': (rx,ry,rz),
-				'Image Index': self._routine.imageCounter,
+				'Patient Position': homePosition,
+				'Imaging Mode': self.imagingMode,
+				'Image Angles': theta,
+				'Scan Range': zrange,
+				'Scan Distance': distance,
+				'Scan Speed': speed,
+				'UUID': uid,
+				'Time': time.strftime("%H:%M:%S"),
+				'Date': time.strftime("%d/%m/%Y"),
 			}
-			# The image start position.
-			z1 = self._routine.tz[0]
-			# The image finish position.
-			z2 = self.patientSupport.position()[2]
-			# Stitch the image together.
-			self.imager.imageAcquired.disconnect()
-			self.imager.stitch(self._routine.imageCounter,metadata,z1,z2)
-			self.imager.imageAcquired.connect(partial(self._continueScan,'moving'))
-			# Reset the counters. 
-			self._routine.imageCounter += 1
-			self._routine.stepCounter = 0
-			# Go back to start scan.
-			self._startScan()
 
-	def _endScan(self):
-		logging.info("Finishing scan.")
-		# Disconnect signals.
-		logging.info("Disconnecting patient support and detector signals from imaging routine.")
-		self.patientSupport.finishedMove.disconnect()
-		self.imager.imageAcquired.disconnect()
+			# self.movePatient([0,0,start,0,0,0],'relative')
+			# self.imager.setupDynamicScan(distance,speed,uid)
+			# self.imagingBeam.turnOn()
+			# self.imagingBeam.openShutter()
+			# self.synchronize(
+			# 	(self.movePatient,self.imager.acquire),
+			# 	args=(([0,0,stop,0,0,0],'relative'),()),
+			# 	delays=(0,200)
+			# )
+
+			# Set up a dynamic scan.
+			self.workflowQueue.append(
+			)
+			# For each angle, take an image.
+			for index,angle in enumerate(theta):
+				# Imaging UUID.
+				imageUid = uuid1()
+				imageMetadata = {
+					'Imaging Angle': angle,
+					'Imaging Mode': self.imagingMode,
+					'UUID': imageUid,
+				}
+				# Append to the workflow queue.
+				self.workflowQueue += [
+					(self.movePatient, ([0,0,start,0,0,angle],'relative'), {}, self.patientSupport.finishedMove),
+					(self.imager.setupDynamicScan, (distance,speed,imageUid,metadata), {}, self.imager.detector.detectorReady),
+					(self.imagingBeam.turnOn,		(), {}, self.imagingBeam.on),
+					(self.imagingBeam.openShutter,	(), {}, self.imagingBeam.shutterOpen),
+					(self.synchronize,	
+						(self.movePatient,self.imager.acquire), 
+						{
+							'args': (([0,0,-distance,0,0,0],'relative'),(self.imagingMode,imageUid,imageMetadata)),
+							'delays': (0,200)
+						},
+						self.patientSupport.finishedMove
+					),
+					(self.imagingBeam.closeShutter,	(), {}, self.imagingBeam.shutterClosed),
+					(self.imagingBeam.turnOff, (), {}, self.imagingBeam.off),
+					(self.movePatient, ([0,0,-stop,0,0,-angle],'relative'), {}, self.patientSupport.finishedMove),
+				]
+
+		elif self.imagingMode == 'static':
+			pass
+
+		else:
+			logging.warning(f"Unknown imaging mode {self.imagingMode}.")
+			return
+
+		# Move back to the pre-imaging position.
+		self.workflowQueue.append(
+				(self.movePatient, (homePosition,'absolute'), {}, self.patientSupport.finishedMove)
+			)
+		# What to do when the workflow is finished.
+		self.workflowFinished.connect(self._finaliseAcquireXrays)
+		# Start the workflow.
+		self.runWorkflowQueue()
+
+	def _finaliseAcquireXrays(self):
+		# Disconnect the signal that got us here.
+		self.workflowFinished.disconnect(self._finaliseAcquireXrays)
 		# Finalise image set.
 		self.imager.addImagesToDataset()
-		# Put patient back where they were.
-		self.patientSupport.finishedMove.connect(self._finishedScan)
-		logging.debug("Setting patient position to initial pre-imaging position.")
-		self.movePatient(self._routine.preImagingPosition,'absolute')
-
-	def _finishedScan(self):
-		logging.debug("Finished scan.")
-		# Disconnect signals.
-		self.patientSupport.finishedMove.disconnect()
-		# Send a signal saying how many images were acquired.
-		self.imagesAcquired.emit(self._routine.imageCounterLimit)
-		# Reset routine.
-		self._routine = None
-
-class ImagingRoutine:
-	""" Imaging routine data. """
-	# Imaging angles.
-	theta = []
-	# Imaging counters.
-	imageCounter = 0
-	imageCounterLimit = 0
-	# Distance to cover in Z from current position.
-	tz = [0,0]
-	# Delta Z is the step in z for each "slice" or "still frame".
-	dz = 0
-	# The position prior to imaging.
-	preImagingPosition = None
-	# A counter and counter limit for vertically stepping through a region.
-	stepCounter = 0
-	stepCounterLimit = 0

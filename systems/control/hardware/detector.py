@@ -3,6 +3,7 @@ from PyQt5 import QtCore, QtWidgets
 import logging
 import numpy as np
 from datetime import datetime as dt
+from functools import partial
 
 """
 class detector:
@@ -13,42 +14,45 @@ class detector:
 class detector(QtCore.QObject):
 	connected = QtCore.pyqtSignal()
 	disconnected = QtCore.pyqtSignal()
-	imageAcquired = QtCore.pyqtSignal()
+	error = QtCore.pyqtSignal()
+	detectorReady = QtCore.pyqtSignal()
+	imageAcquired = QtCore.pyqtSignal(str)
 
 	def __init__(self,
 				name,
-				pv,
+				config,
 				backendThread=None
 			):
 		super().__init__()
 		# self._name = str(name)
 		self.name = name
 		self.pv = pv
+		# Config.
+		self.config = config
 		# Row/Col pixel sizes.
 		self.pixelSize = [1,1]
-		# Bool triggers.
-		self.fliplr = False
-		self.flipud = False
 		# Isocenter as a pixel location in the image.
 		self.imageIsocenter = [0,0]
-		# Make a buffer. Useful for stitching images.
-		self.buffer = []
-		# Controllers.
-		self._controller = backend.detector(pv)
+		# Make a buffer of images. 
+		# Should be in the format { uid: (image,metadata) }.
+		self.buffer = {}
+		# Epics backend controller.
+		self.controller = backend.detector(config)
 		# Move to thread if specified.
 		if backendThread is not None:
-			self._controller.moveToThread(backendThread)
+			self.controller.moveToThread(backendThread)
 		# Signals.
-		self._controller.connected.connect(self.connected.emit)
-		self._controller.disconnected.connect(self.disconnected.emit)
+		self.controller.connected.connect(self.connected.emit)
+		self.controller.disconnected.connect(self.disconnected.emit)
+		self.controller.detectorReady.connect(self.detectorReady.emit)
 
 	def reconnect(self):
-		if self._controller is not None:
-			self._controller.reconnect()
+		if self.controller is not None:
+			self.controller.reconnect()
 
 	def isConnected(self):
 		# Return True or False for the connection state of the motor.
-		return self._controller.isConnected()
+		return self.controller.isConnected()
 
 	def setParameters(self,**kwargs):
 		# Kwargs should be in the form of a dict: {'key'=value}.
@@ -56,19 +60,43 @@ class detector(QtCore.QObject):
 			# Assumes correct value type for keyword argument.
 			backend.set(key,value)
 
-	def acquire(self):
+	def setupDynamicScan(self,distance,speed,uid):
+		""" Passthrough function: Set the detector up for a dynamic scan. """
+		# Create an entry into the buffer.
+		self.buffer[uid] = None
+		# Set the scan up.
+		self.detector.setupDynamicScan(distance,speed,uid)
+
+	def acquire(self,mode='static'):
+		""" Passthrough function: Acquire an image. """
+		# Get the acquire mode.
+		if mode not in ['static','dynamic']:
+			raise TypeError(f"Unknown acquire mode: {mode}.")
+		# If all good, acquire the image.
+		self.controller.imageAcquired.connect(partial(self._acquireFinished,mode))
+		try:
+			self.controller.acquire()
+		except:
+			self.error.emit()
+
+	def _acquireFinished(self,uid,mode):
+		""" Return an image. """
+		logging.critical(f"_acquireFinished CHECK ARG ORDER: (uid:{uid}, mode:{mode})")
+		# Get the current time.
 		time = dt.now()
 		# HDF5 does not support python datetime objects.
 		metadata = {
 			'Detector': self.name,
-			'Pixel Size': self.pixelSize,
-			'Image Isocenter': self.imageIsocenter,
 			'Time': time.strftime("%H:%M:%S"),
 			'Date': time.strftime("%d/%m/%Y"),
 		}
-		logging.info("Could be useful to have a flood/dark field image set stored and incorporated.")
-		# Acquire a static image.
-		return (self._controller.acquire(), metadata)
+		# Get the image from the detector.
+		self.buffer[uid] = self.detector.getImage(uid,mode)
+		# Update the metadata with the detector metadata (extent).
+		metadata.update(self.buffer[uid][1])
+		# Tell the world we have an image that is acquired (and finalized).
+		self.imageAcquired.emit(uid)
 
-	def acquireContinous(self,array):
-		self.buffer.append(array)
+	def getImage(self,uid):
+		# Return the data.
+		return self.buffer[uid]

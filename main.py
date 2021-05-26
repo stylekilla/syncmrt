@@ -112,8 +112,9 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		# ===============================
 		self.sidebar = ui.sidebar.Sidebar(self.frameSidebarStack,self.frameSidebarList)
 		# Sidebar: Imaging
-		self.sidebar.addPage('Imaging',QsWidgets.QsSidebar.QImaging(),before='all')
+		self.sidebar.addPage('Imaging',QsWidgets.QsSidebar.QImaging(config.imagingSidebar),before='all')
 		self.sbImaging = self.sidebar.getPage('Imaging')
+		self.sbImaging.widget['numImages'].setValue(config.imagingSidebar.numberOfXrays)
 		# Sidebar: Alignment.
 		self.sbAlignment = self.sidebar.addPage('Alignment',QsWidgets.QsSidebar.QAlignment(),after='Imaging')
 		self.sbAlignment.widget['maxMarkers'].valueChanged.connect(partial(self.updateSettings,'global',self.sbAlignment.widget['maxMarkers']))
@@ -246,11 +247,11 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		# When the current xray image setlist set is changed, plot it.
 		self.sbImaging.imageSetChanged.connect(self.loadXrayImage)
 		# Tell the system to acquire an x-ray.
-		self.sbImaging.acquire.connect(self.system.acquireXray)
-		# When the image mode changes tell the system.
-		self.sbImaging.imageModeChanged.connect(self.system.setImagingMode)
+		self.sbImaging.acquire.connect(self.system.acquireXrays)
+		# When the imaging speed changes, update the control system.
+		self.sbImaging.speedChanged.connect(self.system.setImagingSpeed)
 
-		self.test()
+		# self.test()
 
 	def test(self):
 		logging.critical("Running test function.")

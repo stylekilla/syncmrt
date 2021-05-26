@@ -9,24 +9,20 @@ class QImaging(QtWidgets.QWidget):
 	numberOfImagesChanged = QtCore.pyqtSignal(int)
 	imageSetChanged = QtCore.pyqtSignal(str)
 	imageModeChanged = QtCore.pyqtSignal(str)
+	speedChanged = QtCore.pyqtSignal(float)
 	# Storage.
 	widget = {}
 	group = {}
 
-	def __init__(self):
+	def __init__(self,config):
 		super().__init__()
 		# Vars.
-		self.theta = [90,0]
+		self.theta = [0,-90]
 		self.translation = [-20,20]
 		self.thetaRange = [-90,90]
 		self.translationRange = [-100,100]
 		# Layout.
 		self.layout = QtWidgets.QVBoxLayout()
-
-		'''
-		GROUP: Available Images
-		'''
-
 
 		'''
 		GROUP: Available Images
@@ -69,24 +65,24 @@ class QImaging(QtWidgets.QWidget):
 		self.widget['theta_range'] = QtWidgets.QLabel("Imaging Angles:")
 		imagingSequence_layout.addRow(self.widget['theta_range'])
 		# Theta 1
-		self.widget['theta1_label'] = QtWidgets.QLabel("\u03B8<sub>1</sub>\u00B0 [0,90]")
+		self.widget['theta1_label'] = QtWidgets.QLabel(f"\u03B8<sub>1</sub>\u00B0 [{config.imagingThetaRange[0]},{config.imagingThetaRange[1]}]")
 		self.widget['theta1'] = QtWidgets.QDoubleSpinBox()
 		self.widget['theta1'].setMinimumSize(55,20)
 		self.widget['theta1'].setDecimals(1)
-		self.widget['theta1'].setMinimum(0)
-		self.widget['theta1'].setMaximum(self.thetaRange[1])
-		self.widget['theta1'].setValue(90)
-		self.widget['theta1'].setToolTip("Choose the first imaging angle, must be between 0 and 90.")
+		self.widget['theta1'].setMinimum(config.imagingThetaRange[0])
+		self.widget['theta1'].setMaximum(config.imagingThetaRange[1])
+		self.widget['theta1'].setValue(config.defaultImagingAngles[0])
+		self.widget['theta1'].setToolTip("Choose the first imaging angle.")
 		imagingSequence_layout.addRow(self.widget['theta1_label'],self.widget['theta1'])
 		# Theta 2
-		self.widget['theta2_label'] = QtWidgets.QLabel("\u03B8<sub>2</sub>\u00B0 [-90,0]")
+		self.widget['theta2_label'] = QtWidgets.QLabel(f"\u03B8<sub>2</sub>\u00B0 [{config.imagingThetaRange[0]},{config.imagingThetaRange[1]}]")
 		self.widget['theta2'] = QtWidgets.QDoubleSpinBox()
 		self.widget['theta2'].setMinimumSize(55,20)
 		self.widget['theta2'].setDecimals(1)
-		self.widget['theta2'].setMinimum(self.thetaRange[0])
-		self.widget['theta2'].setMaximum(0)
-		self.widget['theta2'].setValue(0)
-		self.widget['theta2'].setToolTip("Choose the second imaging angle, must be between -90 and 0.")
+		self.widget['theta2'].setMinimum(config.imagingThetaRange[0])
+		self.widget['theta2'].setMaximum(config.imagingThetaRange[1])
+		self.widget['theta2'].setValue(config.defaultImagingAngles[1])
+		self.widget['theta2'].setToolTip("Choose the second imaging angle.")
 		imagingSequence_layout.addRow(self.widget['theta2_label'],self.widget['theta2'])
 
 		# Translation Range.
@@ -97,9 +93,9 @@ class QImaging(QtWidgets.QWidget):
 		self.widget['translation1'] = QtWidgets.QDoubleSpinBox()
 		self.widget['translation1'].setMinimumSize(55,20)
 		self.widget['translation1'].setDecimals(1)
-		self.widget['translation1'].setMinimum(self.translationRange[0])
-		self.widget['translation1'].setMaximum(self.translationRange[1])
-		self.widget['translation1'].setValue(self.translation[1])
+		self.widget['translation1'].setMinimum(config.imagingZRange[0])
+		self.widget['translation1'].setMaximum(config.imagingZRange[1])
+		self.widget['translation1'].setValue(config.imagingZRange[1])
 		self.widget['translation1'].setToolTip("Distance to image above the current patient position.")
 		imagingSequence_layout.addRow(self.widget['translation1_label'],self.widget['translation1'])
 		# translation 2
@@ -107,11 +103,23 @@ class QImaging(QtWidgets.QWidget):
 		self.widget['translation2'] = QtWidgets.QDoubleSpinBox()
 		self.widget['translation2'].setMinimumSize(55,20)
 		self.widget['translation2'].setDecimals(1)
-		self.widget['translation2'].setMinimum(self.translationRange[0])
-		self.widget['translation2'].setMaximum(self.translationRange[1])
-		self.widget['translation2'].setValue(self.translation[0])
+		self.widget['translation2'].setMinimum(config.imagingZRange[0])
+		self.widget['translation2'].setMaximum(config.imagingZRange[1])
+		self.widget['translation2'].setValue(config.imagingZRange[0])
 		self.widget['translation2'].setToolTip("Distance to image below the current patient position.")
 		imagingSequence_layout.addRow(self.widget['translation2_label'],self.widget['translation2'])
+
+		# Speed for imaging.
+		lblSpeed = QtWidgets.QLabel("Scan Velocity (mm/s):")
+		self.widget['speed'] = QtWidgets.QDoubleSpinBox()
+		self.widget['speed'].setMinimumSize(55,20)
+		self.widget['speed'].setDecimals(1)
+		self.widget['speed'].setMinimum(config.velocityRange[0])
+		self.widget['speed'].setMaximum(config.velocityRange[1])
+		self.widget['speed'].setValue(config.velocity)
+		self.widget['speed'].setToolTip("Velocity for dynamic imaging.")
+		imagingSequence_layout.addRow(lblSpeed)
+		imagingSequence_layout.addRow(self.widget['speed'])
 
 		# Comments.
 		self.widget['comment'] = QtWidgets.QLineEdit()
@@ -144,6 +152,7 @@ class QImaging(QtWidgets.QWidget):
 
 		# Signals.
 		self.widget['imageList'].currentTextChanged.connect(self.imageSetChanged)
+		self.widget['speed'].valueChanged.connect(self.speedChanged.emit)
 
 	def _imageModeChanged(self,mode,state):
 		if state is True:
