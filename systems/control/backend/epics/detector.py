@@ -29,8 +29,8 @@ class detector(QtCore.QObject):
 	"""
 	connected = QtCore.pyqtSignal()
 	disconnected = QtCore.pyqtSignal()
-	imageAcquired = QtCore.pyqtSignal(str)
 	detectorReady = QtCore.pyqtSignal()
+	imageAcquired = QtCore.pyqtSignal(str)
 
 	def __init__(self,config):
 		super().__init__()
@@ -48,6 +48,7 @@ class detector(QtCore.QObject):
 		self.pixelSize = np.array(config.pixelSize)
 		self.isocenter = np.array(config.isocenter)
 		self.roiport = str(config.roiPort)
+		self.attributesfile = str(config.attributesfile)
 		# Initialisation vars.
 		self._connectionStatus = True
 		self.arraySize = np.array([0,0])
@@ -55,7 +56,7 @@ class detector(QtCore.QObject):
 		# Add all the pv's.
 		self.pv = {}
 		for name,pv in self.pvs.items():
-			setattr(self,name,epics.PV(f"{port}:{pv}",
+			setattr(self,name,epics.PV(f"{self.port}:{pv}",
 				auto_monitor=True,
 				connection_callback=self._connectionMonitor
 				)
@@ -114,7 +115,7 @@ class detector(QtCore.QObject):
 		self.ImageMode.put('Single')
 		self.AutoSave.put('No')
 		self.ArrayCounter.put(0)
-		self.NumImages.put(1)
+		self.NumberOfImages.put(1)
 		# Get an image so area detector can get array sizes etc. for ROI.
 		self.Acquire.put(1)
 		time.sleep(1)
@@ -128,41 +129,40 @@ class detector(QtCore.QObject):
 		# Total imaging time.
 		time = distance/speed
 		# Number of pixels to read out.
-		logging.critical("Need to get ROI value.")
-		readoutHeight = 10
-		# readoutHeight = self.getRoiSize()
-		pixelSize = self.pixelSize
+		self.arraySize[0] = self.RoiSizeX.get()
+		self.arraySize[1] = self.RoiSizeY.get()
+		readoutHeight = self.arraySize[1]
+		pixelSize = self.pixelSize[1]
 		# Calculate detector settings.
 		acquireTime = (readoutHeight*pixelSize)/speed
 		acquirePeriod = acquireTime
 		numberOfImages = int(time/acquireTime + 1)
 
 		# Stop any acquisitions.
-		self.Acquire.put(0)
+		self.Acquire.put(0,wait=True)
 		# Set vars.
-		self.AcquireTime.put(acquireTime)
-		self.AcquirePeriod.put(acquirePeriod)
-		self.NumberOfImages.put(numberOfImages)
-		self.ImageMode.put(1)
-		self.ArrayCounter.put(0)
+		self.AcquireTime.put(acquireTime,wait=True)
+		self.AcquirePeriod.put(acquirePeriod,wait=True)
+		self.NumberOfImages.put(numberOfImages,wait=True)
+		self.ImageMode.put(1,wait=True)
+		self.ArrayCounter.put(0,wait=True)
 		# Turn off tiff saving.
-		self.TIFFautosave.put(False)
-		# Get the array size.
-		self.arraySize[0] = self.RoiSizeX.get()
-		self.arraySize[1] = self.RoiSizeY.get()
+		self.TIFFautosave.put(False,wait=True)
 		# Setup HDF imaging.
-		self.HDFcapture.put(0)
-		self.HDFfilePath.put(self.iocpath)
-		self.HDFfileName.put(uid)
-		self.HDFautosave.put(True)
-		self.HDFfileWriteMode.put(2)
-		self.HDFnumberOfImages.put(numberOfImages)
-		self.HDFautoIncrement.put(False)
-		self.HDFarrayPort.put(self.roiport)
-		self.HDFattributes.put(self.iocpath+'attributes.xml')
-		# Start the capture process.
+		self.HDFcapture.put(0,wait=True)
+		self.HDFfilePath.put(self.iocpath,wait=True)
+		self.HDFfileName.put(uid,wait=True)
+		self.HDFautosave.put(True,wait=True)
+		self.HDFfileWriteMode.put(2,wait=True)
+		self.HDFnumberOfImages.put(numberOfImages,wait=True)
+		self.HDFautoIncrement.put(False,wait=True)
+		self.HDFarrayPort.put(self.roiport,wait=True)
+		if self.attributesfile != "":
+			self.HDFattributes.put(self.iocpath+self.attributesfile,wait=True)
+		# Start the capture process. Don't use wait here, for some reason it takes an eternity to return.
 		self.HDFcapture.put(1)
 		logging.info("HDF capture process started... awaiting images.")
+		self.detectorReady.emit()
 
 	def set(self,parameter,value):
 		# If the parameter is known to the backend...
@@ -192,11 +192,63 @@ class detector(QtCore.QObject):
 		# While it is acquiring, do nothing.
 		while self.HDFcapture.get():
 			pass
-
+		# Wait a second for IOC to close the file.
+		time.sleep(0.1)
 		# Read the HDF5 file.
-		f = hdf.File(f'{self.localpath}{uid}.hdf','r')
+		fn = f'{self.localpath}{uid}.hdf'
+		f = hdf.File(fn,'r')
 		# Grab the image data.
-		arr = np.vstack(f['entry']['data']['data'])
+		arrData = f['entry']['data']['data']
+
+		if mode == 'dynamic':
+			# Get the zpos as well.
+			zPos = np.array(f['entry']['instrument']['NDAttributes']['Z'])
+			logging.debug(f"zPos: {zPos}")
+			# Filter the z positions so they are averaged over 3 places.
+			zPos_filtered = np.convolve(zPos, np.ones(3)/3,'valid')
+			zPos_diff = np.absolute(np.diff(zPos_filtered))
+			zPos_diff = np.r_[zPos_diff[0],zPos_diff,zPos_diff[-1]]
+			# Find the positions that exceed the mean +/- 2 std deviations.
+			mean = np.mean(zPos_diff[np.where(zPos_diff!=0)])
+			std = np.std(zPos_diff[np.where(zPos_diff!=0)])
+			invalidPositions = [
+				np.where(zPos_diff < mean - 2*std),
+				np.where(zPos_diff > mean + 2*std)
+			]
+			invalidPositions = np.hstack(invalidPositions).ravel()
+			# Find the start and finish indices of our valid image.
+			if len(invalidPositions) == 0: 
+				startIdx = 0
+				finishIdx = len(zPos_diff)
+			else:
+				theSplit = np.split(invalidPositions, np.where(np.diff(invalidPositions) != 1)[0]+1)
+				if len(theSplit) == 1:
+					# We only have one invalid region at the start or the end?
+					if 0 in theSplit[0]:
+						startIdx = theSplit[0][-1]
+						finishIdx = len(zPos_diff)
+					elif len(zPos_diff)-1 in theSplit[0]:
+						startIdx = 0
+						finishIdx = theSplit[0][0]
+				else:
+					# We have two regions.
+					if 0 in theSplit[0]:
+						startIdx = theSplit[0][-1]
+					else:
+						startIdx = 0
+					if len(zPos_diff)-1 in theSplit[-1]:
+						finishIdx = theSplit[-1][0]
+					else:
+						finishIdx = len(zPos_diff)
+			# Finalize the array and zrange.
+			arrData = arrData[startIdx:finishIdx]
+			zRange = [zPos[startIdx], zPos[finishIdx]]	
+
+		# Close the file.
+		f.close()
+
+		# Stack the array data.
+		arr = np.vstack(arrData)
 		# Do appropriate image gymnastics.
 		if self.flipud: arr = np.flipud(arr)
 		if self.fliplr: arr = np.fliplr(arr)
@@ -204,29 +256,25 @@ class detector(QtCore.QObject):
 		# Create metadata and return image.
 		if mode == 'static':
 			# Calculate the extent of the image.
-			l,t = self.pixelSize*self.imageIsocenter
+			l,t = self.pixelSize*self.isocenter
 			r,b = np.r_[l,t] - self.arraySize*self.pixelSize
 			extent = [l,r,b,t]
 			# Create metadata.
 			metadata.update({
 				'Pixel Size': self.pixelSize,
-				'Image Isocenter': self.imageIsocenter,
+				'Image Isocenter': self.isocenter,
 				'Extent': extent,
 				'Mode': mode,
 				'UUID': uid,
 			})
 
 		elif mode == 'dynamic':
-
-			logging.critical("Need to do image clean up here!... maybe in another subroutine.")
-			self._stitchValid(arr,z)
-
 			# Find the z values of the image.
-			z = f['entry']['attributes']['z']
+			z = zRange
 			# Calculate the extent of the image.
-			t = z[0] + self.imageIsocenter[1]*self.pixelSize[1]
-			b = z[-1] - self.imageIsocenter[1]*self.pixelSize[1]
-			l = self.imageIsocenter[0]*self.pixelSize[0]
+			t = z[0] + self.isocenter[1]*self.pixelSize[1]
+			b = z[-1] - self.isocenter[1]*self.pixelSize[1]
+			l = self.isocenter[0]*self.pixelSize[0]
 			r = l - self.arraySize[0]*self.pixelSize[0]
 			extent = [l,r,b,t]
 			# Create metadata.
@@ -242,7 +290,7 @@ class detector(QtCore.QObject):
 		# Save everything in the buffer.
 		self.buffer[uid] = (arr,metadata)
 		# Let the world know we've finished the image capture.
-		self.imageAcquired(uid)
+		self.imageAcquired.emit(uid)
 
 	def getImage(self,uid):
 		# Get the data from the buffer and delete it from the buffer.
@@ -250,7 +298,3 @@ class detector(QtCore.QObject):
 		del self.buffer[uid]
 		# Return the data from the buffer.
 		return data
-
-	def getRoiSize(self):
-		logging.critical("detector.getRoiSize(): Not implemented yet.")
-		return 0

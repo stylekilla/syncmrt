@@ -5,6 +5,7 @@ class general:
 	defaultImagingAngles = [0,-90]
 	imagingThetaRange = [-90,90]
 	imagingZRange = [-10,10]
+	imagingMaximumZRange = [-200,200]
 
 class markers:
 	""" Marker settings for fiducials. """
@@ -24,8 +25,12 @@ class treatmentBeam:
 	width = 55.0
 	height = 1.0
 	
-	# Connections.
-	# Should be a list: [access, value].
+	# Operating conditions for this beam.
+	CONDITIONS = {
+		'Beamline Enabled': ['SR08ID01PSS01:BL_ENABLE_STS','Enabled'],
+		'Shutter Mode': ['SR08ID01PSS01:SHUTTER_MODE','White mode'],
+	}
+	# 'SR08ID01PSS01:SHUTTER_MODE' == 'Mono mode'
 	# If a dict of values is provided, it uses those specific values to determine the state.
 	# Use None if does not exist or irrelevant.
 
@@ -72,13 +77,14 @@ class imager:
 	flipud = True
 	fliplr = False
 	# Geometric configuration of imager/source.
-	sad = 1.2
-	sid = 1.5 
-	magnification = sad/sid
+	# sad = 1.2
+	# sid = 1.5 
+	# magnification = sad/sid
+	# pixelSize = [0.1*magnification,0.1*magnification]		# Pixel size is 0.1 mm for HamaMama.
+	pixelSize = [0.044,0.044]
 	# Pixel size of image in mm for (col,row) (otherwise known as horiz,vertical; x,y).
-	pixelSize = [0.1*magnification,0.1*magnification]		# Pixel size is 0.1 mm for HamaMama.
 	# Isocenter specified as (col,row) (otherwise known as horiz,vertical; x,y).
-	isocenter = [985.531,544.469]
+	isocenter = [1133,5]
 	# Offset between the primary beam and the imager.
 	# offset = [0,0,0,0,0,0]			# No change (default).
 	offset = [0,0,20,0,0,0]			# Monochromatic beam (+20 mm in Z)
@@ -86,19 +92,21 @@ class imager:
 
 	# Choose a backend.
 	backend = 'epics'
+	name = 'PCO3-HCL'
 	# Specify an access port.
 	port = 'SR08ID01DETIOC10'
 	# Paths to objects.
 	roiPort = 'pcoEdge.cam.roi1'
 	iocpath = 'D:\\syncmrt\\'
-	filepath = '/mnt/tmp/syncmrt/'
+	localpath = '/mnt/tmp/'
+	attributesfile = 'LAPSPositionTracker.xml'
 	# Detector PV's to use.
-	DETECTOR_PVS = { 
+	DETECTOR_PVS = {
 		'Acquire': 'CAM:Acquire',
 		'AcquireTime': 'CAM:AcquireTime',
 		'AcquirePeriod': 'CAM:AcquirePeriod',
 		'ArrayCounter': 'CAM:ArrayCounter',
-		'NumImages': 'CAM:NumImages',
+		'NumberOfImages': 'CAM:NumImages',
 		'ImageMode': 'CAM:ImageMode',
 		'AutoSave': 'TIFF:AutoSave',
 		'DataType': 'IMAGE:DataType_RBV',
@@ -116,8 +124,8 @@ class imager:
 		'HDFarrayPort': 'HDF:NDArrayPort',
 		'HDFattributes': 'HDF:NDAttributesFile',
 		'TIFFautosave': 'TIFF:AutoSave',
-		'RoiSizeX': 'CAM:ArraySizeX_RBV',
-		'RoiSizeY': 'CAM:ArraySizeY_RBV',
+		'RoiSizeX': 'HDF:ArraySize0_RBV',
+		'RoiSizeY': 'HDF:ArraySize1_RBV',
 		# Need to link imaging shutter...?
 	}
 
@@ -161,5 +169,6 @@ class imagingSidebar:
 	defaultImagingAngles = general.defaultImagingAngles
 	imagingThetaRange = general.imagingThetaRange
 	imagingZRange = general.imagingZRange
+	imagingMaximumZRange = general.imagingMaximumZRange
 	velocity = patientSupport.velocity
 	velocityRange = patientSupport.velocityRange

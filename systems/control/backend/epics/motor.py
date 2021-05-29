@@ -155,6 +155,11 @@ class motor(QtCore.QObject):
 			writeValue = value
 		elif mode == 'relative':
 			writeValue = previousPosition + value
+
+		if np.absolute(previousPosition - writeValue) < 0.002:
+			# Do nothing.
+			self.moveFinished.emit()
+			return
 		# Write the value if acceptable.
 		if self.withinLimits(writeValue):
 			logging.info("[{}] Moving to {:.3f}".format(self.pvBase,writeValue))
@@ -181,10 +186,11 @@ class motor(QtCore.QObject):
 		expectedPosition = self.VAL.get()
 		currentPosition = self.RBV.get()
 
-		if float(abs(expectedPosition - currentPosition)) > (10**(-float(self.PREC.get()))+float(self.BDST.get())):
+		if float(abs(expectedPosition - currentPosition)) > (10**(float(self.PREC.get()))+float(self.BDST.get())):
 			# We are outside our precision range and backlash distance.
 			# raise MotorException("The motor did not stop at the expected position of {:.3f}.".format(expectedPosition))
 			logging.warning("{} did not stop at the expected position of {:.3f}. Instead stopped at {:.3f}.".format(self.pvBase,expectedPosition,currentPosition))
+			logging.critical(f"Testing against {(10**(float(self.PREC.get()))+float(self.BDST.get()))}")
 			self.error.emit()
 		else:
 			# Else we are successfull.
@@ -359,8 +365,12 @@ class velocityController(QtCore.QObject):
 	def _velocityMonitor(self,*args,**kwargs):
 		""" Update the (velocity,acceleration). """
 		if ('pvname' in kwargs) and ('value' in kwargs):
-			velocity = float(self.Velocity.get())
-			acceleration = float(self.Acceleration.get())
+			try:
+				velocity = float(self.Velocity.get())
+				acceleration = float(self.Acceleration.get())
+			except:
+				velocity = -1
+				acceleration = -1
 			# Emit the signal.
 			self.speedChanged.emit(velocity,acceleration)
 

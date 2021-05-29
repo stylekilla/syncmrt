@@ -217,6 +217,8 @@ class patientSupport(QtCore.QObject):
 			item = self.motionQueue.pop()
 			# Unpack the queue item.
 			motor,func,args = item
+			if type(args) != list: 
+				args = [args]
 			# Run the function with the arguments.
 			func(*args)
 		else:

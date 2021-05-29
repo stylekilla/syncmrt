@@ -87,8 +87,7 @@ class Imager(QtCore.QObject):
 			# Create the new detector and load config settings.
 			# This is a "hardware" detector.
 			newDetector = detector(
-				name,
-				self.detectors[name],
+				self.config.name,
 				self.config,
 				backendThread=self.backendThread
 			)
@@ -135,13 +134,14 @@ class Imager(QtCore.QObject):
 		""" Acquire an image. Can supply some metadata if desired. """
 		if self.file is None:
 			logging.warning("Cannot acquire x-rays when there is no HDF5 file.")
-			return None
+			return
 		# Tell the detector to acquire an image.
 		self.detector.acquire(mode,uid,metadata)
-
+		
 	def _addImage(self,uid):
 		""" Add an acquired image to the buffer. """
 		# Get the image index. Note the len() of the buffer will suffice as we haven't added the data to it yet.
+		logging.critical(f"Adding image {uid} to buffer.")
 		index = len(self.buffer)
 		# Get the image data: made up of (image,metadata).
 		data = self.detector.getImage(uid)
@@ -153,7 +153,7 @@ class Imager(QtCore.QObject):
 	def addImagesToDataset(self):
 		if self.file != None:
 			_name, _nims = self.file.addImageSet(self.buffer,metadata=self.metadata)
-			logging.debug("Adding {} images to set {}.".format(_nims,_name))
+			logging.critical("Adding {} images to set {}.".format(_nims,_name))
 			self.newImageSet.emit(_name, _nims)
 		else:
 			logging.critical("Cannot save images to dataset, no HDF5 file loaded.")

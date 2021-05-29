@@ -5,7 +5,36 @@ from functools import partial
 from PyQt5 import QtCore
 from uuid import uuid1
 import sched, time
-from datetime import datetime
+from datetime import datetime,timedelta
+
+def sleepFunction(td):
+	""" Sleep function to handle synchronization. """
+	# Essentiall the scheduler is stupid. It can't deal with datetime objects so we need to do it for it.
+	if type(td) is timedelta:
+		# If a time delta object is given, wait the amount of seconds required.
+		time.sleep(td.total_seconds())
+	else:
+		# Otherwise, it's an int or a float, so just wait that many seconds.
+		time.sleep(td)
+
+def synchronize(functions,args=(),kwargs=(),delays=()):
+	""" Synchronize a list of events (to within ~16 ms). """
+	_scheduler = sched.scheduler(datetime.now, sleepFunction)
+	# Handle any empty lists.
+	if len(args) == 0: args = tuple([() for _ in range(len(functions))])
+	if len(kwargs) == 0: kwargs = tuple([{} for _ in range(len(functions))])
+	if len(delays) == 0: delays = tuple([0 for _ in range(len(functions))])
+	# Synchronize one second into the future.
+	executionTime = datetime.now() + timedelta(milliseconds=1000)
+	# Add the functions to synchronize.
+	for i in range(len(functions)):
+		logging.debug(f"{functions[i]}: {args[i]}, {kwargs[i]}")
+		_scheduler.enterabs(
+			executionTime + timedelta(milliseconds=delays[i]), 1,
+			functions[i],argument=args[i],kwargs=kwargs[i]
+		)
+	# Run the scheduler.
+	_scheduler.run()
 
 class Brain(QtCore.QObject):
 	"""
@@ -62,6 +91,8 @@ class Brain(QtCore.QObject):
 			self.deviceMonitor = kwargs['deviceMonitor']
 			self.patientSupport.connected.connect(partial(self.deviceMonitor.updateMonitor,'Positioning Support'))
 			self.imager.connected.connect(partial(self.deviceMonitor.updateMonitor,'Imaging Detector'))
+			# self.imagingBeam.connected.connect(partial(self.deviceMonitor.updateMonitor,'Imaging Source'))
+			# self.treatmentBeam.connected.connect(partial(self.deviceMonitor.updateMonitor,'Treatment Source'))
 
 	def isConnected(self):
 		# Return the connection status.
@@ -159,38 +190,25 @@ class Brain(QtCore.QObject):
 			logging.warning("Could not move patient with motion type {}.".format(motionType))
 			return
 
-	def synchronize(self,functions,args=(),kwargs={},delays=()):
-		""" Synchronize a list of events (to within ~16 ms). """
-		self._scheduler = sched.scheduler(time.time, time.sleep)
-		# Handle any empty lists.
-		if len(args) == 0: args = tuple([() for _ in range(functions)])
-		if len(kwargs) == 0: args = tuple([{} for _ in range(functions)])
-		if len(delays) == 0: args = tuple([0 for _ in range(functions)])
-		# Synchronize one second into the future.
-		executionTime = datetime.now() + datetime.timedelta(milliseconds=1000)
-		# Add the functions to synchronize.
-		for i in range(len(functions)):
-			self._scheduler.enterabs(
-				executionTime + datetime.timedelta(milliseconds=delays[i]),
-				i,args[i],kwargs[i]
-			)
-		# Run the scheduler.
-		self._scheduler.run()
-
 	def runWorkflowQueue(self):
 		""" Run all the items in the queue, one at a time. Uses FIFO approach. """
 		# Workflow items: (func, (args), {kwargs}, trigger).
 		# Trigger: connect a signal to trigger the next workflow item.
 
 		# If we had a trigger before, disconnect it.
-		if self._workflowLastTrigger is not None: self._workflowLastTrigger.disconnect(self.runWorkflowQueue)
+		if self._workflowLastTrigger is not None: 
+			self._workflowLastTrigger.disconnect(self.runWorkflowQueue)
+			self._workflowLastTrigger = None
 		# If there is something in the queue, process it.
 		if len(self.workflowQueue) > 0:
-			loigging.debug(f"Processing worfklow item. {len(self.workflowQueue)} items remaining.")
+			logging.info(f"Processing worfklow item. {len(self.workflowQueue)} items remaining.")
 			# Take the first item and pop it.
-			item = self.workflowQueue.pop()
+			item = self.workflowQueue.pop(0)
+			# Put a small sleep in to help make things slower.
+			time.sleep(0.1)
 			# Unpack the queue item.
 			func,args,kwargs,trigger = item
+			# logging.debug(f"func: {func}\n\nargs: {args}\n\nkwargs: {kwargs}\n\ntrigger: ({trigger})")
 			# Keep a reference to the trigger.
 			self._workflowLastTrigger = trigger
 			# Make a trigger if required.
@@ -200,11 +218,14 @@ class Brain(QtCore.QObject):
 			# Finally, run the function with the arguments.
 			func(*args,**kwargs)
 			# If no trigger was provided for the next item... just trigger it automatically.
-			if self._workflowLastTrigger is None: self.runWorkflowQueue()
+			if self._workflowLastTrigger is None:
+				self.runWorkflowQueue()
 		else:
 			# Disconnect any signals that are being held on to.
 			if self._workflowLastTrigger is not None:
+				logging.critical(self._workflowLastTrigger)
 				self._workflowLastTrigger.disconnect(self.runWorkflowQueue)
+				self._workflowLastTrigger = None
 			# Tell the world our workflow is finished.
 			logging.debug("Workflow is empty.")
 			self.workflowFinished.emit()
@@ -231,12 +252,13 @@ class Brain(QtCore.QObject):
 		if self.imagingMode == 'dynamic':
 			# Calculate parameters.
 			start, stop = zrange
-			distance = start-stop
+			distance = stop-start
 			speed = self.patientSupport.getSpeed()
-			uid = uuid1()
+			uid = str(uuid1())
 			time = datetime.now()
 			metadata = {
-				'Patient Position': homePosition,
+				'Patient Support Position': homePosition[:3],
+				'Patient Support Angle': homePosition[3:],
 				'Imaging Mode': self.imagingMode,
 				'Image Angles': theta,
 				'Scan Range': zrange,
@@ -246,6 +268,8 @@ class Brain(QtCore.QObject):
 				'Time': time.strftime("%H:%M:%S"),
 				'Date': time.strftime("%d/%m/%Y"),
 			}
+
+			logging.debug(f"Metadata\n{metadata}")
 
 			# self.movePatient([0,0,start,0,0,0],'relative')
 			# self.imager.setupDynamicScan(distance,speed,uid)
@@ -257,15 +281,12 @@ class Brain(QtCore.QObject):
 			# 	delays=(0,200)
 			# )
 
-			# Set up a dynamic scan.
-			self.workflowQueue.append(
-			)
 			# For each angle, take an image.
 			for index,angle in enumerate(theta):
 				# Imaging UUID.
-				imageUid = uuid1()
+				imageUid = str(uuid1())
 				imageMetadata = {
-					'Imaging Angle': angle,
+					'Image Angle': angle,
 					'Imaging Mode': self.imagingMode,
 					'UUID': imageUid,
 				}
@@ -275,11 +296,15 @@ class Brain(QtCore.QObject):
 					(self.imager.setupDynamicScan, (distance,speed,imageUid,metadata), {}, self.imager.detector.detectorReady),
 					(self.imagingBeam.turnOn,		(), {}, self.imagingBeam.on),
 					(self.imagingBeam.openShutter,	(), {}, self.imagingBeam.shutterOpen),
-					(self.synchronize,	
-						(self.movePatient,self.imager.acquire), 
+					(synchronize,
+						[(self.movePatient,self.imager.acquire)],
 						{
-							'args': (([0,0,-distance,0,0,0],'relative'),(self.imagingMode,imageUid,imageMetadata)),
-							'delays': (0,200)
+							'args': (
+								([0,0,-distance,0,0,0],'relative'),
+								(self.imagingMode,imageUid,imageMetadata)
+							),
+							# 'delays': (0,1400)
+							'delays': (0,7200)
 						},
 						self.patientSupport.finishedMove
 					),
@@ -301,11 +326,48 @@ class Brain(QtCore.QObject):
 			)
 		# What to do when the workflow is finished.
 		self.workflowFinished.connect(self._finaliseAcquireXrays)
+		logging.warning("When the workflow is finished we an unlock it?")
 		# Start the workflow.
 		self.runWorkflowQueue()
 
 	def _finaliseAcquireXrays(self):
 		# Disconnect the signal that got us here.
 		self.workflowFinished.disconnect(self._finaliseAcquireXrays)
+		logging.warning("When the imager sends imageAcquired(n) == n expected x-rays, we can finalize?")
 		# Finalise image set.
 		self.imager.addImagesToDataset()
+
+	def deliverTreatment(self,ports,scanRanges,speeds):
+		# Check: Are all appropriate systems connected?
+		if not self.isConnected():
+			logging.warning("Cannot move as not all systems are connected.")
+			return
+
+		# Get the number of ports to deliver.
+		nPorts = len(ports)
+		# Take note of the home position prior to imaging.
+		homePosition = self.patientSupport.position()
+		# Create a workflow for each port.
+		for i in range(nPorts):
+			start,stop = scanRanges
+			# Treatment workflow:
+			self.workflowQueue += [
+				(self.movePatient, (ports[i],'relative'), {}, self.patientSupport.finishedMove),
+				(self.movePatient, ([0,0,start,0,0,0],'relative'), {}, self.patientSupport.finishedMove),
+				(self.treatmentBeam.turnOn,		(), {}, self.treatmentBeam.on),
+				(self.treatmentBeam.openShutter,	(), {}, self.treatmentBeam.shutterOpen),
+				(self.movePatient, ([0,0,stop,0,0,0],'relative'), {}, self.patientSupport.finishedMove)
+				(self.treatmentBeam.turnOff, (), {}, self.treatmentBeam.off),
+				(self.treatmentBeam.closeShutter,	(), {}, self.treatmentBeam.shutterClosed),
+				(self.movePatient, (homePosition,'absolute'), {}, self.patientSupport.finishedMove)
+			]
+		# What to do when the workflow is finished.
+		self.workflowFinished.connect(self._finaliseTreatment)
+		# Start the workflow.
+		self.runWorkflowQueue()
+
+	def _finaliseTreatment(self):
+		# Finalize the treatment.
+		message = QtWidgets.QMessageBox()
+		message.setText("Treatment finished.")
+		message.exec()

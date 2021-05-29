@@ -12,7 +12,7 @@ Therefore, we implement all that functionality ourselves.
 
 __all__ = ['source']
 
-SOURCE_PVS = ['On','Off','Status','ShutterOpen','ShutterClosed','ShutterStatus']
+SOURCE_PVS = ['On','Off','Status','ShutterOpen','ShutterClose','ShutterStatus']
 
 class source(QtCore.QObject):
 	# Beam signals.
@@ -23,6 +23,9 @@ class source(QtCore.QObject):
 	shutterOpen = QtCore.pyqtSignal()
 	shutterClosed = QtCore.pyqtSignal()
 	shutterState = QtCore.pyqtSignal(bool)
+	# Connection signals.
+	connected = QtCore.pyqtSignal()
+	disconnected = QtCore.pyqtSignal()
 
 	def __init__(self,name,ports):
 		super().__init__()
@@ -65,11 +68,12 @@ class source(QtCore.QObject):
 			callbackPV = kwargs['pvname']
 			for key,val in self.ports.items():
 				if val == callbackPV:
-					callbackPVname = val
+					callbackPVname = key
 			# List of PV's that aren't the one sent to this function.
-			for pv in [val for key,val in self.ports if key != callbackPVname]:
+			for pv in [key for key,val in self.ports.items() if key != callbackPVname]:
 				testpv = getattr(self,pv)
 				teststate.append(testpv.connected)
+			logging.critical(f"{self.name}-{callbackPVname}: {teststate}")
 			self._connectionStatus = all(teststate)
 
 		# Send out an appropriate signal.
@@ -85,6 +89,7 @@ class source(QtCore.QObject):
 	def _beamStatusMonitor(self,*args,**kwargs):
 		# Update the device's position.
 		if ('pvname' in kwargs) and ('value' in kwargs):
+			# State is 3 when beam is ON.
 			state = bool(int(kwargs['value'])==3)
 			# Emit the state signal.
 			self.state.emit(state)
@@ -107,17 +112,36 @@ class source(QtCore.QObject):
 				self.shutterClosed.emit()
 
 	def turnOn(self):
-		""" Open the shutter. """
-		self.On.put(1)
+		""" Turn beam on. """
+		if self.Status.get() == 2:
+			# If beam is off, turn on.
+			self.On.put(1)
+		else:
+			self.on.emit()
 
 	def turnOff(self):
-		""" Close the shutter. """
-		self.Off.put(1)
+		""" Turn beam off. """
+		if self.Status.get() == 3:
+			# If beam is on, turn off.
+			self.Off.put(1)
+		else:
+			# Already off.
+			self.off.emit()
 	
 	def openShutter(self):
 		""" Open the shutter. """
-		self.ShutterOpen.put(1)
+		if self.ShutterStatus.get() == 2:
+			# Open the shutter.
+			self.ShutterOpen.put(1)
+		else:
+			# Already open.
+			self.shutterOpen.emit()
 
 	def closeShutter(self):
 		""" Close the shutter. """
-		self.ShutterClose.put(1)
+		if self.ShutterStatus.get() == 3:
+			# If open, close it.
+			self.ShutterClose.put(1)
+		else:
+			# Already closed.
+			self.shutterClosed.emit()

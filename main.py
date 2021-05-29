@@ -143,6 +143,8 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		self.rightSidebar.addSection("Status Monitor",self.statusMonitor)
 		self.statusMonitor.addMonitor('Positioning Support')
 		self.statusMonitor.addMonitor('Imaging Detector')
+		self.statusMonitor.addMonitor('Imaging Source')
+		self.statusMonitor.addMonitor('Treatment Source')
 		# Property manager.
 		self.properties = QsWidgets.QsSidebar.QPropertyManager()
 		self.rightSidebar.addSection("Poperties",self.properties)

@@ -26,7 +26,6 @@ class detector(QtCore.QObject):
 		super().__init__()
 		# self._name = str(name)
 		self.name = name
-		self.pv = pv
 		# Config.
 		self.config = config
 		# Row/Col pixel sizes.
@@ -65,23 +64,22 @@ class detector(QtCore.QObject):
 		# Create an entry into the buffer.
 		self.buffer[uid] = None
 		# Set the scan up.
-		self.detector.setupDynamicScan(distance,speed,uid)
+		self.controller.setupDynamicScan(distance,speed,uid)
 
-	def acquire(self,mode='static'):
+	def acquire(self,mode,uid,metadata):
 		""" Passthrough function: Acquire an image. """
 		# Get the acquire mode.
 		if mode not in ['static','dynamic']:
 			raise TypeError(f"Unknown acquire mode: {mode}.")
 		# If all good, acquire the image.
-		self.controller.imageAcquired.connect(partial(self._acquireFinished,mode))
+		self.controller.imageAcquired.connect(self._acquireFinished)
 		try:
-			self.controller.acquire()
+			self.controller.acquire(mode,uid,metadata)
 		except:
 			self.error.emit()
 
-	def _acquireFinished(self,uid,mode):
+	def _acquireFinished(self,uid):
 		""" Return an image. """
-		logging.critical(f"_acquireFinished CHECK ARG ORDER: (uid:{uid}, mode:{mode})")
 		# Get the current time.
 		time = dt.now()
 		# HDF5 does not support python datetime objects.
@@ -91,7 +89,7 @@ class detector(QtCore.QObject):
 			'Date': time.strftime("%d/%m/%Y"),
 		}
 		# Get the image from the detector.
-		self.buffer[uid] = self.detector.getImage(uid,mode)
+		self.buffer[uid] = self.controller.getImage(uid)
 		# Update the metadata with the detector metadata (extent).
 		metadata.update(self.buffer[uid][1])
 		# Tell the world we have an image that is acquired (and finalized).
