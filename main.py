@@ -220,7 +220,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 			deviceMonitor=self.statusMonitor,
 			backendThread=self.backendControlThread
 		)
-
+		self.system.displayMessage.connect(self.displayMessage)
 		# Put the brain on it's own thread.
 		self.systemThread = QtCore.QThread()
 		self.systemThread.start()
@@ -252,6 +252,8 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		self.sbImaging.acquire.connect(self.system.acquireXrays)
 		# When the imaging speed changes, update the control system.
 		self.sbImaging.speedChanged.connect(self.system.setImagingSpeed)
+		# Acquire flat field correction images.
+		self.sbImaging.setupFlatFieldCorrection.connect(self.system.setupFlatFieldCorrection)
 
 		# self.test()
 
@@ -776,6 +778,14 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		self.system.calculateAlignment()
 		# Do the alignment.
 		self.system.applyAlignment()
+
+	def displayMessage(self,messageText):
+		""" Display a message in the GUI. """
+		# This is done here because if you try to do it in another thread, it no likely.
+		# And most of our sub-systems are in their own threads.
+		message = QtWidgets.QMessageBox()
+		message.setText(messageText)
+		message.exec()
 
 if __name__ == "__main__":
 	# QApp 

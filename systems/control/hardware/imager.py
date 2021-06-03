@@ -5,6 +5,8 @@ import numpy as np
 import csv, os
 import logging
 
+from datetime import datetime
+
 class Imager(QtCore.QObject):
 	"""
 	A QObject class containing information about imager hardware (detector + source).
@@ -95,7 +97,7 @@ class Imager(QtCore.QObject):
 			newDetector.connected.connect(self._connectionMonitor)
 			newDetector.disconnected.connect(self._connectionMonitor)
 			# When the detector acquires an image, add it to the data set.
-			newDetector.imageAcquired.connect(self._addImage)
+			# newDetector.imageAcquired.connect(self._addImage)
 			# Assign ourselves the new detector.
 			self.detector = newDetector
 			
@@ -135,8 +137,24 @@ class Imager(QtCore.QObject):
 		if self.file is None:
 			logging.warning("Cannot acquire x-rays when there is no HDF5 file.")
 			return
+		self.detector.imageAcquired.connect(self._addImage)
 		# Tell the detector to acquire an image.
 		self.detector.acquire(mode,uid,metadata)
+
+	def acquireFloodField(self):
+		""" Passthrough function. """
+		self.detector.imageAcquired.connect(self._finishedFloodDarkField)
+		self.detector.acquireFloodField()
+		
+	def acquireDarkField(self):
+		""" Passthrough function. """
+		self.detector.imageAcquired.connect(self._finishedFloodDarkField)
+		self.detector.acquireDarkField()
+
+	def _finishedFloodDarkField(self,imageType):
+		""" Disconnect relevant signals. """
+		self.detector.imageAcquired.disconnect(self._finishedFloodDarkField)
+		self.imageAcquired.emit(-1)
 		
 	def _addImage(self,uid):
 		""" Add an acquired image to the buffer. """
@@ -151,6 +169,7 @@ class Imager(QtCore.QObject):
 		self.imageAcquired.emit(index)
 
 	def addImagesToDataset(self):
+		self.detector.imageAcquired.disconnect(self._addImage)
 		if self.file != None:
 			_name, _nims = self.file.addImageSet(self.buffer,metadata=self.metadata)
 			logging.critical("Adding {} images to set {}.".format(_nims,_name))

@@ -10,6 +10,7 @@ class QImaging(QtWidgets.QWidget):
 	imageSetChanged = QtCore.pyqtSignal(str)
 	imageModeChanged = QtCore.pyqtSignal(str)
 	speedChanged = QtCore.pyqtSignal(float)
+	setupFlatFieldCorrection = QtCore.pyqtSignal()
 	# Storage.
 	widget = {}
 	group = {}
@@ -120,6 +121,14 @@ class QImaging(QtWidgets.QWidget):
 		self.widget['speed'].setToolTip("Velocity for dynamic imaging.")
 		imagingSequence_layout.addRow(lblSpeed)
 		imagingSequence_layout.addRow(self.widget['speed'])
+
+		# Flat field corrections.
+		lblFFC = QtWidgets.QLabel("Flat Field Correction:")
+		self.widget['ffc'] = QtWidgets.QPushButton("Acquire Flood/Dark Fields")
+		self.widget['ffc'].setToolTip("Acquire Flood/Dark Fields.")
+		self.widget['ffc'].clicked.connect(self.setupFlatFieldCorrection.emit)
+		imagingSequence_layout.addRow(lblFFC)
+		imagingSequence_layout.addRow(self.widget['ffc'])
 
 		# Comments.
 		self.widget['comment'] = QtWidgets.QLineEdit()

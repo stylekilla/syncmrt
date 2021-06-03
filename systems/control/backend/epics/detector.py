@@ -53,6 +53,9 @@ class detector(QtCore.QObject):
 		self._connectionStatus = True
 		self.arraySize = np.array([0,0])
 		self.buffer = {}
+		# Flood fields and dark fields.
+		self.floodfield = None
+		self.darkfield = None
 		# Add all the pv's.
 		self.pv = {}
 		for name,pv in self.pvs.items():
@@ -122,6 +125,42 @@ class detector(QtCore.QObject):
 		# Get the array size.
 		self.arraySize[0] = self.RoiSizeX.get()
 		self.arraySize[1] = self.RoiSizeY.get()
+
+	def setupFFC(self):
+		# Stop any existing imaging.
+		self.Acquire.put(0)
+		# Set new exposure up.
+		self.AcquireTime.put(0.1)
+		self.AcquirePeriod.put(0.0)
+		self.ImageMode.put('Single')
+		self.AutoSave.put('No')
+		self.ArrayCounter.put(0)
+		self.NumberOfImages.put(1)
+		self.Acquire.put(1)
+		time.sleep(0.2)
+		# Get the array size.
+		self.arraySize[0] = self.RoiSizeX.get()
+		self.arraySize[1] = self.RoiSizeY.get()
+
+	def acquireFFC(self,mode):
+		""" Acquire a dark field image. """
+		# Acquire an image.
+		self.Acquire.put(1)
+		time.sleep(0.2)
+		# Get the image.
+		arr = self.RoiData.get().reshape(tuple(self.arraySize[::-1]))
+		# Do appropriate image gymnastics.
+		if self.flipud: arr = np.flipud(arr)
+		if self.fliplr: arr = np.fliplr(arr)
+		# Set the field correction.
+		if mode == 'dark':
+			self.darkfield = arr
+			logging.info("Acquired Dark Field.")
+			self.imageAcquired.emit('darkField')
+		elif mode == 'flood':
+			self.floodfield = arr
+			logging.info("Acquired Flood Field.")
+			self.imageAcquired.emit('floodField')
 
 	def setupDynamicScan(self,distance,speed,uid="temp"):
 		""" Setup a dynamic image in Area Detector using HDF. """
@@ -203,7 +242,7 @@ class detector(QtCore.QObject):
 		if mode == 'dynamic':
 			# Get the zpos as well.
 			zPos = np.array(f['entry']['instrument']['NDAttributes']['Z'])
-			logging.debug(f"zPos: {zPos}")
+			# logging.debug(f"zPos: {zPos}")
 			# Filter the z positions so they are averaged over 3 places.
 			zPos_filtered = np.convolve(zPos, np.ones(3)/3,'valid')
 			zPos_diff = np.absolute(np.diff(zPos_filtered))
@@ -242,14 +281,24 @@ class detector(QtCore.QObject):
 						finishIdx = len(zPos_diff)
 			# Finalize the array and zrange.
 			arrData = arrData[startIdx:finishIdx]
-			zRange = [zPos[startIdx], zPos[finishIdx]]	
+			zRange = [zPos[startIdx], zPos[finishIdx]]
+			# logging.debug(f"zRange: {zRange}")
 
 		# Close the file.
 		f.close()
 
+		# Do appropriate image gymnastics (1/2).
+		if self.flipud: arrData = np.flipud(arrData)
+		if self.fliplr: arrData = np.fliplr(arrData)
+		# Apply flat field corrections (if available):
+		if (self.floodfield is not None) and (self.darkfield is not None):
+			for i in range(len(arrData)):
+				arrData[i] = (arrData[i]-self.darkfield)/(self.floodfield-self.darkfield)
 		# Stack the array data.
 		arr = np.vstack(arrData)
-		# Do appropriate image gymnastics.
+		# Handle any weird values.
+		arr = np.nan_to_num(arr, nan=0, posinf=0, neginf=0)
+		# Do appropriate image gymnastics (2/2).
 		if self.flipud: arr = np.flipud(arr)
 		if self.fliplr: arr = np.fliplr(arr)
 
@@ -284,9 +333,10 @@ class detector(QtCore.QObject):
 				'Mode': mode,
 				'UUID': uid,
 			})
-			
+
 		# We can't send the image + metadata over pyqt signals unfortunately.
 		# We will have to come back and manually get it.
+		logging.debug(f"Adding image to buffer: {uid}")
 		# Save everything in the buffer.
 		self.buffer[uid] = (arr,metadata)
 		# Let the world know we've finished the image capture.

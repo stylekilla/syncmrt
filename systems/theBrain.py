@@ -5,36 +5,63 @@ from functools import partial
 from PyQt5 import QtCore
 from uuid import uuid1
 import sched, time
+from threading import Thread, Event
 from datetime import datetime,timedelta
 
-def sleepFunction(td):
-	""" Sleep function to handle synchronization. """
-	# Essentiall the scheduler is stupid. It can't deal with datetime objects so we need to do it for it.
-	if type(td) is timedelta:
-		# If a time delta object is given, wait the amount of seconds required.
-		time.sleep(td.total_seconds())
-	else:
-		# Otherwise, it's an int or a float, so just wait that many seconds.
-		time.sleep(td)
+# def sleepFunction(td):
+# 	""" Sleep function to handle synchronization. """
+# 	# Essentiall the scheduler is stupid. It can't deal with datetime objects so we need to do it for it.
+# 	if type(td) is timedelta:
+# 		# If a time delta object is given, wait the amount of seconds required.
+# 	else:
+# 		time.sleep(td.total_seconds())
+# 		# Otherwise, it's an int or a float, so just wait that many seconds.
+# 		logging.critical(f"Sleeping {td} seconds?.")
+# 		time.sleep(td)
+
+class threadFunction(Thread):
+	def __init__(self,func,args=(),kwargs={},synchronizeEvent=None,delay=0):
+		""" A thread function. """
+		# Create the thread.
+		super().__init__()
+		# Save the func arguments.
+		self.func = func
+		self.args = args
+		self.kwargs = kwargs
+		# Mark the synchronization event.
+		self.event = synchronizeEvent
+		self.delay = delay
+	def run(self):
+		# Run this once the thread has been started.
+		# Wait for the trigger event then run the function.
+		if self.event is not None:
+			while not self.event.is_set():
+				pass
+		# Wait for the delay.
+		time.sleep(self.delay.total_seconds())
+		# Run the function.
+		self.func(*self.args,**self.kwargs)
 
 def synchronize(functions,args=(),kwargs=(),delays=()):
 	""" Synchronize a list of events (to within ~16 ms). """
-	_scheduler = sched.scheduler(datetime.now, sleepFunction)
 	# Handle any empty lists.
 	if len(args) == 0: args = tuple([() for _ in range(len(functions))])
 	if len(kwargs) == 0: kwargs = tuple([{} for _ in range(len(functions))])
 	if len(delays) == 0: delays = tuple([0 for _ in range(len(functions))])
-	# Synchronize one second into the future.
-	executionTime = datetime.now() + timedelta(milliseconds=1000)
+	threads = []
+	# Synchronization event.
+	synchronizeEvent = Event()
 	# Add the functions to synchronize.
 	for i in range(len(functions)):
-		logging.debug(f"{functions[i]}: {args[i]}, {kwargs[i]}")
-		_scheduler.enterabs(
-			executionTime + timedelta(milliseconds=delays[i]), 1,
-			functions[i],argument=args[i],kwargs=kwargs[i]
-		)
-	# Run the scheduler.
-	_scheduler.run()
+		threads.append(threadFunction(functions[i],args=args[i],kwargs=kwargs[i],synchronizeEvent=synchronizeEvent,delay=timedelta(milliseconds=delays[i])))
+	# Start and run the threads.
+	for thread in threads:
+		thread.start()
+	# Send the synchronization signal.
+	synchronizeEvent.set()
+	# Rejoin the threads.
+	for thread in threads:
+		thread.join()
 
 class Brain(QtCore.QObject):
 	"""
@@ -45,6 +72,7 @@ class Brain(QtCore.QObject):
 	newMove = QtCore.pyqtSignal(str)
 	moveFinished = QtCore.pyqtSignal(str)
 	workflowFinished = QtCore.pyqtSignal()
+	displayMessage = QtCore.pyqtSignal(str)
 
 	def __init__(self,patientSupports,detectors,config,**kwargs):
 		super().__init__()
@@ -244,9 +272,9 @@ class Brain(QtCore.QObject):
 		# Take note of the home position prior to imaging.
 		homePosition = self.patientSupport.position()
 		# Move to the imager position.
-		self.workflowQueue.append(
-			(self.movePatient, (self.imager.config.offset,'relative'), {}, self.patientSupport.finishedMove)
-		)
+		# self.workflowQueue.append(
+			# (self.movePatient, (self.imager.config.offset,'relative'), {}, self.patientSupport.finishedMove)
+		# )
 
 		# Two very different imaging modes.
 		if self.imagingMode == 'dynamic':
@@ -269,18 +297,6 @@ class Brain(QtCore.QObject):
 				'Date': time.strftime("%d/%m/%Y"),
 			}
 
-			logging.debug(f"Metadata\n{metadata}")
-
-			# self.movePatient([0,0,start,0,0,0],'relative')
-			# self.imager.setupDynamicScan(distance,speed,uid)
-			# self.imagingBeam.turnOn()
-			# self.imagingBeam.openShutter()
-			# self.synchronize(
-			# 	(self.movePatient,self.imager.acquire),
-			# 	args=(([0,0,stop,0,0,0],'relative'),()),
-			# 	delays=(0,200)
-			# )
-
 			# For each angle, take an image.
 			for index,angle in enumerate(theta):
 				# Imaging UUID.
@@ -297,19 +313,18 @@ class Brain(QtCore.QObject):
 					(self.imagingBeam.turnOn,		(), {}, self.imagingBeam.on),
 					(self.imagingBeam.openShutter,	(), {}, self.imagingBeam.shutterOpen),
 					(synchronize,
-						[(self.movePatient,self.imager.acquire)],
+						[(self.patientSupport.verticalScan,self.imager.acquire)],
 						{
 							'args': (
-								([0,0,-distance,0,0,0],'relative'),
+								(distance,'relative',speed),
 								(self.imagingMode,imageUid,imageMetadata)
 							),
-							# 'delays': (0,1400)
-							'delays': (0,7200)
+							'delays': (1400,0)
 						},
 						self.patientSupport.finishedMove
 					),
 					(self.imagingBeam.closeShutter,	(), {}, self.imagingBeam.shutterClosed),
-					(self.imagingBeam.turnOff, (), {}, self.imagingBeam.off),
+					# (self.imagingBeam.turnOff, (), {}, self.imagingBeam.off),
 					(self.movePatient, ([0,0,-stop,0,0,-angle],'relative'), {}, self.patientSupport.finishedMove),
 				]
 
@@ -357,8 +372,8 @@ class Brain(QtCore.QObject):
 				(self.treatmentBeam.turnOn,		(), {}, self.treatmentBeam.on),
 				(self.treatmentBeam.openShutter,	(), {}, self.treatmentBeam.shutterOpen),
 				(self.movePatient, ([0,0,stop,0,0,0],'relative'), {}, self.patientSupport.finishedMove)
-				(self.treatmentBeam.turnOff, (), {}, self.treatmentBeam.off),
 				(self.treatmentBeam.closeShutter,	(), {}, self.treatmentBeam.shutterClosed),
+				# (self.treatmentBeam.turnOff, (), {}, self.treatmentBeam.off),
 				(self.movePatient, (homePosition,'absolute'), {}, self.patientSupport.finishedMove)
 			]
 		# What to do when the workflow is finished.
@@ -368,6 +383,31 @@ class Brain(QtCore.QObject):
 
 	def _finaliseTreatment(self):
 		# Finalize the treatment.
-		message = QtWidgets.QMessageBox()
-		message.setText("Treatment finished.")
-		message.exec()
+		self.workflowFinished.disconnect(self._finaliseTreatment)
+		self.displayMessage.emit("Treatment finished.")
+
+	def setupFlatFieldCorrection(self):
+		# Check: Are all appropriate systems connected?
+		if not self.isConnected():
+			logging.warning("Cannot proceed as not all systems are connected.")
+			return
+
+		self.displayMessage.emit("Ensure there is nothing in the beam.")
+
+		# Detector workflow:
+		self.workflowQueue = [
+			(self.imagingBeam.turnOn,		(), {}, self.imagingBeam.on),
+			(self.imagingBeam.openShutter,	(), {}, self.imagingBeam.shutterOpen),
+			(self.imager.acquireFloodField,	(), {}, self.imager.imageAcquired),
+			(self.imagingBeam.closeShutter,	(), {}, self.imagingBeam.shutterClosed),
+			(self.imager.acquireDarkField,	(), {}, self.imager.imageAcquired),
+		]
+		# What to do when the workflow is finished.
+		self.workflowFinished.connect(self._finalizeFloodDarkFields)
+		# Start the workflow.
+		self.runWorkflowQueue()
+
+	def _finalizeFloodDarkFields(self):
+		# Finalize the treatment.
+		self.workflowFinished.disconnect(self._finalizeFloodDarkFields)
+		self.displayMessage.emit("Flood fields and dark fields acquired.")

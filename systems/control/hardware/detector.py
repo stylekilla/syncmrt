@@ -59,6 +59,21 @@ class detector(QtCore.QObject):
 			# Assumes correct value type for keyword argument.
 			backend.set(key,value)
 
+	def acquireFloodField(self):
+		""" Passthrough function. """
+		self.controller.imageAcquired.connect(self._finishedFloodDarkField)
+		self.controller.acquireFFC('flood')
+		
+	def acquireDarkField(self):
+		""" Passthrough function. """
+		self.controller.imageAcquired.connect(self._finishedFloodDarkField)
+		self.controller.acquireFFC('dark')
+
+	def _finishedFloodDarkField(self,imageType):
+		""" Disconnect relevant signals. """
+		self.controller.imageAcquired.disconnect(self._finishedFloodDarkField)
+		self.imageAcquired.emit(imageType)
+
 	def setupDynamicScan(self,distance,speed,uid):
 		""" Passthrough function: Set the detector up for a dynamic scan. """
 		# Create an entry into the buffer.
@@ -80,6 +95,8 @@ class detector(QtCore.QObject):
 
 	def _acquireFinished(self,uid):
 		""" Return an image. """
+		logging.debug(f"Acquire finished, grabbing image: {uid}")
+		self.controller.imageAcquired.disconnect(self._acquireFinished)
 		# Get the current time.
 		time = dt.now()
 		# HDF5 does not support python datetime objects.

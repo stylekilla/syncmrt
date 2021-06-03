@@ -4,7 +4,7 @@ class general:
 	numberOfXrays = 1
 	defaultImagingAngles = [0,-90]
 	imagingThetaRange = [-90,90]
-	imagingZRange = [-10,10]
+	imagingZRange = [-30,30]
 	imagingMaximumZRange = [-200,200]
 
 class markers:
@@ -52,7 +52,7 @@ class imagingBeam:
 	backend = 'epics'
 	# Basic properties. If irrelevant, set to 0. Units are in mm.
 	width = 100.0
-	height = 0.1
+	height = 1
 
 	# Connections.
 	# Should be a list: [access, value].
@@ -84,7 +84,7 @@ class imager:
 	pixelSize = [0.044,0.044]
 	# Pixel size of image in mm for (col,row) (otherwise known as horiz,vertical; x,y).
 	# Isocenter specified as (col,row) (otherwise known as horiz,vertical; x,y).
-	isocenter = [1133,5]
+	isocenter = [1130,5]
 	# Offset between the primary beam and the imager.
 	# offset = [0,0,0,0,0,0]			# No change (default).
 	offset = [0,0,20,0,0,0]			# Monochromatic beam (+20 mm in Z)
@@ -145,6 +145,8 @@ class patientSupport:
 	velocity = 5
 	velocityRange = [2,50]
 	accelerationRange = [2,500]
+	# Define the vertical translation for imaging and treatment.
+	verticalTranslationMotor = 'SR08ID01ROB01:MOTOR_Z'
 
 class machine:
 	""" A configuration for the machine - can be used to preconfigure things for Hutch 2B or Hutch 3B etc. """

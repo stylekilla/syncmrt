@@ -149,7 +149,7 @@ class motor(QtCore.QObject):
 			raise MotorException("Connection error. Could not write motor position.")
 		# Get the current motor position, before any attempt of movement.
 		previousPosition = self.RBV.get()
-		logging.info("[{}] Previous position = {:.3f}".format(self.pvBase,previousPosition))
+		# logging.debug("[{}] Previous position = {:.3f}".format(self.pvBase,previousPosition))
 		# Calculate the writevalue.
 		if mode == 'absolute':
 			writeValue = value
@@ -162,7 +162,7 @@ class motor(QtCore.QObject):
 			return
 		# Write the value if acceptable.
 		if self.withinLimits(writeValue):
-			logging.info("[{}] Moving to {:.3f}".format(self.pvBase,writeValue))
+			# logging.debug("[{}] Moving to {:.3f}".format(self.pvBase,writeValue))
 			# If the value is within the limits, write it.
 			self.VAL.put(writeValue)
 			# Say we have set the move.
@@ -190,7 +190,6 @@ class motor(QtCore.QObject):
 			# We are outside our precision range and backlash distance.
 			# raise MotorException("The motor did not stop at the expected position of {:.3f}.".format(expectedPosition))
 			logging.warning("{} did not stop at the expected position of {:.3f}. Instead stopped at {:.3f}.".format(self.pvBase,expectedPosition,currentPosition))
-			logging.critical(f"Testing against {(10**(float(self.PREC.get()))+float(self.BDST.get()))}")
 			self.error.emit()
 		else:
 			# Else we are successfull.

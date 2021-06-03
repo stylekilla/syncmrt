@@ -5,6 +5,8 @@ import numpy as np
 from functools import partial
 import logging
 
+from datetime import datetime
+
 class patientSupport(QtCore.QObject):
 	connected = QtCore.pyqtSignal(bool)
 	newSupportSelected = QtCore.pyqtSignal(str,list)
@@ -19,6 +21,8 @@ class patientSupport(QtCore.QObject):
 		self.currentDevice = None
 		self.currentMotors = []
 		self._dof = (0,[0,0,0,0,0,0])
+		# The vertical translation motor.
+		self.verticalTranslationMotor = None
 		# Configuration file.
 		self.config = config
 		# Current movement id.
@@ -112,6 +116,21 @@ class patientSupport(QtCore.QObject):
 			# Emit a signal to say we've selected a new patient support.
 			self.newSupportSelected.emit(name,[x.name for x in self.currentMotors])
 
+		# Define the new motor.
+		self.verticalTranslationMotor = hardware.motor(
+				'Vertical Translation Motor',2,0,
+				pv = self.config.verticalTranslationMotor,
+				backendThread = self.backendThread
+			)
+
+		# Signals and slots.
+		self.verticalTranslationMotor.connected.connect(self._connectionMonitor)
+		self.verticalTranslationMotor.disconnected.connect(self._connectionMonitor)
+		self.verticalTranslationMotor.position.connect(partial(self.moving.emit,self.verticalTranslationMotor.name))
+		self.verticalTranslationMotor.moveFinished.connect(partial(self.finishedMove.emit,None))
+		self.verticalTranslationMotor.error.connect(self.error.emit)
+
+
 	def isConnected(self):
 		# Return the connection status.
 		return self._connectionStatus
@@ -121,6 +140,7 @@ class patientSupport(QtCore.QObject):
 		teststate = []
 		for motor in self.currentMotors:
 			teststate.append(motor.isConnected())
+		teststate.append(self.verticalTranslationMotor.isConnected())
 		self._connectionStatus = all(teststate)
 
 		# Send out an appropriate signal.
@@ -153,7 +173,7 @@ class patientSupport(QtCore.QObject):
 			raise TypeError("Not implemented.")
 
 	def shiftPosition(self,position,uid=None,workpoint=None):
-		logging.info("Shifting position to {}".format(position))
+		logging.info("Shifting position by {}".format(position))
 		# This is a relative position change.
 		# Set the uid.
 		self.uid = str(uid)
@@ -240,6 +260,25 @@ class patientSupport(QtCore.QObject):
 			uid = str(self.uid)
 			self.uid = None
 			self.finishedMove.emit(uid)
+
+	def verticalScan(self,scanRange,mode,speed):
+		# Pass one argument for scan range and it will just go to that position.
+		# Pass two arguments in a tuple and it will go to start then go to stop.
+		logging.debug(f"Triggered at {datetime.now()}")
+		if type(scanRange) == tuple:
+			start,stop = scanRange
+		else:
+			start = np.NaN
+			stop = scanRange
+		# Make the motion queue.
+		if mode == 'absolute':
+			if start != np.NaN: self.motionQueue.append((self.verticalTranslationMotor,self.verticalTranslationMotor.setPosition,(start)))
+			self.motionQueue.append((self.verticalTranslationMotor,self.verticalTranslationMotor.setPosition,(stop)))
+		elif mode == 'relative':
+			if start != np.NaN: self.motionQueue.append((self.verticalTranslationMotor,self.verticalTranslationMotor.shiftPosition,(start)))
+			self.motionQueue.append((self.verticalTranslationMotor,self.verticalTranslationMotor.shiftPosition,(stop)))
+		# Run the motion queue.
+		self.runMotorQueue()
 
 	def position(self,idx=None):
 		# return the current position of the stage in Global XYZ.
