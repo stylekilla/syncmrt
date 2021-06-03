@@ -159,7 +159,6 @@ class Imager(QtCore.QObject):
 	def _addImage(self,uid):
 		""" Add an acquired image to the buffer. """
 		# Get the image index. Note the len() of the buffer will suffice as we haven't added the data to it yet.
-		logging.critical(f"Adding image {uid} to buffer.")
 		index = len(self.buffer)
 		# Get the image data: made up of (image,metadata).
 		data = self.detector.getImage(uid)
@@ -172,7 +171,7 @@ class Imager(QtCore.QObject):
 		self.detector.imageAcquired.disconnect(self._addImage)
 		if self.file != None:
 			_name, _nims = self.file.addImageSet(self.buffer,metadata=self.metadata)
-			logging.critical("Adding {} images to set {}.".format(_nims,_name))
+			logging.debug("Adding {} images to set {}.".format(_nims,_name))
 			self.newImageSet.emit(_name, _nims)
 		else:
 			logging.critical("Cannot save images to dataset, no HDF5 file loaded.")

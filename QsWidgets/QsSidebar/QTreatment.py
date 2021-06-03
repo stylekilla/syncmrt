@@ -1,4 +1,5 @@
 from PyQt5 import QtWidgets, QtCore
+from .. import QsGeneric
 from functools import partial
 import logging
 
@@ -6,6 +7,7 @@ class QTreatment(QtWidgets.QWidget):
 	calculate = QtCore.pyqtSignal(int)
 	align = QtCore.pyqtSignal(int)
 	deliver = QtCore.pyqtSignal(int)
+	deliverSingle = QtCore.pyqtSignal()
 
 	def __init__(self):
 		super().__init__()
@@ -40,6 +42,28 @@ class QTreatment(QtWidgets.QWidget):
 		# Defaults
 		# Signals and Slots
 
+		# Temporary Single Field Treatement
+		logging.warning("Added temporary single field irradiation at 0deg from +30 to -30.")
+		# Enable the group widget again.
+		self.widget['beamGroup'].setVisible(True)
+		self.widget['beam'] = [None]
+		i = 0
+		label = QtWidgets.QLabel(str('Beam %i'%(i+1)))
+		self.widget['beam'][i] = {}
+		self.widget['beam'][i]['interlock'] = QtWidgets.QCheckBox('Interlock')
+		self.widget['beam'][i]['deliver'] = QtWidgets.QPushButton('Deliver')
+		# Add them to the beam sequence.
+		self.widget['beamSequence'].addRow(label)
+		self.widget['beamSequence'].addRow(self.widget['beam'][i]['interlock'],self.widget['beam'][i]['deliver'])
+		# Defaults
+		self.widget['beam'][i]['alignmentComplete'] = False
+		self.widget['beam'][i]['interlock'].setChecked(True)
+		self.widget['beam'][i]['interlock'].setEnabled(True)
+		self.widget['beam'][i]['deliver'].setEnabled(False)
+		# Signals and Slots
+		self.widget['beam'][i]['interlock'].stateChanged.connect(partial(self.treatmentInterlock,i))
+		self.widget['beam'][i]['deliver'].clicked.connect(self.deliverSingle.emit)
+
 		# Finish page.
 		self.layout.addStretch(1)
 		self.updateLayout()
@@ -64,13 +88,13 @@ class QTreatment(QtWidgets.QWidget):
 
 			self.widget['beam'][i]['calculate'] = QtWidgets.QPushButton('Calculate')
 			self.widget['beam'][i]['align'] = QtWidgets.QPushButton('Align')
-			# self.widget['beam'][i]['hline'] = QHLine()
+			# self.widget['beam'][i]['hline'] = QsGeneric.QHLine()
 			self.widget['beam'][i]['interlock'] = QtWidgets.QCheckBox('Interlock')
 			self.widget['beam'][i]['deliver'] = QtWidgets.QPushButton('Deliver')
 			# Layout
 			self.widget['beamSequence'].addRow(label)
 			self.widget['beamSequence'].addRow(self.widget['beam'][i]['calculate'],self.widget['beam'][i]['align'])
-			self.widget['beamSequence'].addRow(QHLine())
+			self.widget['beamSequence'].addRow(QsGeneric.QHLine())
 			self.widget['beamSequence'].addRow(self.widget['beam'][i]['interlock'],self.widget['beam'][i]['deliver'])
 			# Defaults
 			self.widget['beam'][i]['alignmentComplete'] = False

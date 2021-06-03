@@ -254,6 +254,9 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		self.sbImaging.speedChanged.connect(self.system.setImagingSpeed)
 		# Acquire flat field correction images.
 		self.sbImaging.setupFlatFieldCorrection.connect(self.system.setupFlatFieldCorrection)
+		# Connect treatment button.
+		logging.warning("Temporarily connecting single treatment.")
+		self.sbTreatment.deliverSingle.connect(self.system.deliverTreatment)
 
 		# self.test()
 

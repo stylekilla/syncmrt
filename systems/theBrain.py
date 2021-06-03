@@ -272,9 +272,9 @@ class Brain(QtCore.QObject):
 		# Take note of the home position prior to imaging.
 		homePosition = self.patientSupport.position()
 		# Move to the imager position.
-		# self.workflowQueue.append(
-			# (self.movePatient, (self.imager.config.offset,'relative'), {}, self.patientSupport.finishedMove)
-		# )
+		self.workflowQueue.append(
+			(self.movePatient, (self.imager.config.offset,'relative'), {}, self.patientSupport.finishedMove)
+		)
 
 		# Two very different imaging modes.
 		if self.imagingMode == 'dynamic':
@@ -289,6 +289,7 @@ class Brain(QtCore.QObject):
 				'Patient Support Angle': homePosition[3:],
 				'Imaging Mode': self.imagingMode,
 				'Image Angles': theta,
+				'Image Offset': self.imager.config.offset,
 				'Scan Range': zrange,
 				'Scan Distance': distance,
 				'Scan Speed': speed,
@@ -304,6 +305,7 @@ class Brain(QtCore.QObject):
 				imageMetadata = {
 					'Image Angle': angle,
 					'Imaging Mode': self.imagingMode,
+					'Image Offset': self.imager.config.offset,
 					'UUID': imageUid,
 				}
 				# Append to the workflow queue.
@@ -352,7 +354,7 @@ class Brain(QtCore.QObject):
 		# Finalise image set.
 		self.imager.addImagesToDataset()
 
-	def deliverTreatment(self,ports,scanRanges,speeds):
+	def deliverTreatment(self,ports=([0,0,0,0,0,0],),scanRanges=([30,-30],),speeds=(5,)):
 		# Check: Are all appropriate systems connected?
 		if not self.isConnected():
 			logging.warning("Cannot move as not all systems are connected.")
@@ -364,14 +366,15 @@ class Brain(QtCore.QObject):
 		homePosition = self.patientSupport.position()
 		# Create a workflow for each port.
 		for i in range(nPorts):
-			start,stop = scanRanges
+			start,stop = scanRanges[i]
 			# Treatment workflow:
 			self.workflowQueue += [
+				(self.patientSupport.setSpeed, (speeds[i],), {}, None),
 				(self.movePatient, (ports[i],'relative'), {}, self.patientSupport.finishedMove),
-				(self.movePatient, ([0,0,start,0,0,0],'relative'), {}, self.patientSupport.finishedMove),
+				(self.movePatient, ([0,0,start,0,0,0],'absolute'), {}, self.patientSupport.finishedMove),
 				(self.treatmentBeam.turnOn,		(), {}, self.treatmentBeam.on),
 				(self.treatmentBeam.openShutter,	(), {}, self.treatmentBeam.shutterOpen),
-				(self.movePatient, ([0,0,stop,0,0,0],'relative'), {}, self.patientSupport.finishedMove)
+				(self.movePatient, ([0,0,stop,0,0,0],'absolute'), {}, self.patientSupport.finishedMove),
 				(self.treatmentBeam.closeShutter,	(), {}, self.treatmentBeam.shutterClosed),
 				# (self.treatmentBeam.turnOff, (), {}, self.treatmentBeam.off),
 				(self.movePatient, (homePosition,'absolute'), {}, self.patientSupport.finishedMove)

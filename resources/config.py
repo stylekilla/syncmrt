@@ -75,7 +75,7 @@ class imager:
 	""" Settings for the imager configuration. """
 	# Orientation of detector image.
 	flipud = True
-	fliplr = False
+	fliplr = True
 	# Geometric configuration of imager/source.
 	# sad = 1.2
 	# sid = 1.5 

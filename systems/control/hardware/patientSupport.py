@@ -4,7 +4,7 @@ from PyQt5 import QtCore
 import numpy as np
 from functools import partial
 import logging
-
+import time
 from datetime import datetime
 
 class patientSupport(QtCore.QObject):
@@ -241,6 +241,8 @@ class patientSupport(QtCore.QObject):
 				args = [args]
 			# Run the function with the arguments.
 			func(*args)
+			logging.info("Sleep to allow the *LAPS* IOC to finish processing before triggering the next movement.")
+			time.sleep(0.2)
 		else:
 			# The queue is finished and empty. Disconnect the slots.
 			for motor in self.currentMotors:
@@ -249,13 +251,13 @@ class patientSupport(QtCore.QObject):
 	def _finished(self):
 		# Increment the counter.
 		self._counter += 1
-		logging.info(f"Motor {self._counter} of {len(self.currentMotors)} finished movement.")
+		logging.debug(f"Motor {self._counter} of {len(self.currentMotors)} finished movement.")
 		# If counter finished, emit finished signal.
 		if self._counter == len(self.currentMotors):
 			# Reset the counter.
 			self._counter = 0
 			# Send signal.
-			logging.info("Emitting finished move.")
+			logging.debug("Emitting finished move.")
 			# Set the uid to none before sending out the signal.
 			uid = str(self.uid)
 			self.uid = None
@@ -264,7 +266,6 @@ class patientSupport(QtCore.QObject):
 	def verticalScan(self,scanRange,mode,speed):
 		# Pass one argument for scan range and it will just go to that position.
 		# Pass two arguments in a tuple and it will go to start then go to stop.
-		logging.debug(f"Triggered at {datetime.now()}")
 		if type(scanRange) == tuple:
 			start,stop = scanRange
 		else:
@@ -371,7 +372,7 @@ class patientSupport(QtCore.QObject):
 			logging.info('inside apply motion, vars are now motion: {}'.format(variables))
 
 		# Carry out a shift movement.
-		if self.conofig.workpoint:
+		if self.config.workpoint:
 			# Workpoint is set to negative the shift as we want the workpoint to be at the point of interest, not where it ends up.
 			self.shiftPosition(variables,uid=uid,workpoint=-variables[:3])
 		else:

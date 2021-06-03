@@ -301,12 +301,16 @@ class detector(QtCore.QObject):
 		# Do appropriate image gymnastics (2/2).
 		if self.flipud: arr = np.flipud(arr)
 		if self.fliplr: arr = np.fliplr(arr)
+		# Get the Z offset from the imaging system.
+		zOffset = float(metadata['Image Offset'][2])
 
 		# Create metadata and return image.
 		if mode == 'static':
 			# Calculate the extent of the image.
 			l,t = self.pixelSize*self.isocenter
 			r,b = np.r_[l,t] - self.arraySize*self.pixelSize
+			t -= zOffset
+			b -= zOffset
 			extent = [l,r,b,t]
 			# Create metadata.
 			metadata.update({
@@ -321,8 +325,8 @@ class detector(QtCore.QObject):
 			# Find the z values of the image.
 			z = zRange
 			# Calculate the extent of the image.
-			t = z[0] + self.isocenter[1]*self.pixelSize[1]
-			b = z[-1] - self.isocenter[1]*self.pixelSize[1]
+			t = z[0] - zOffset + self.isocenter[1]*self.pixelSize[1]
+			b = z[-1] - zOffset - self.isocenter[1]*self.pixelSize[1]
 			l = self.isocenter[0]*self.pixelSize[0]
 			r = l - self.arraySize[0]*self.pixelSize[0]
 			extent = [l,r,b,t]
