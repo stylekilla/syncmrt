@@ -363,7 +363,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 				self.openCT(dataset)
 
 		elif modality == 'xray':
-			fileFormat = 'HDF5 (*.hdf5)'
+			fileFormat = 'HDF5 (*.hdf *.hdf5)'
 			fileDialogue = QtWidgets.QFileDialog()
 			fileDialogue.setFileMode(QtWidgets.QFileDialog.ExistingFiles)
 			file, dtype = fileDialogue.getOpenFileNames(self, "Open Xray dataset", "", fileFormat)
