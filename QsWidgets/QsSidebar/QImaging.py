@@ -199,6 +199,8 @@ class QImaging(QtWidgets.QWidget):
 		self.numberOfImagesChanged.emit(i)
 
 	def acquireImages(self):
+		# Disable the button.
+		self.disableAcquisition()
 		# Gather theta values.
 		i = int(self.widget['numImages'].value())
 		if i == 1:

@@ -250,6 +250,8 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		self.sbImaging.imageSetChanged.connect(self.loadXrayImage)
 		# Tell the system to acquire an x-ray.
 		self.sbImaging.acquire.connect(self.system.acquireXrays)
+		# When imaging is complete, re-enable image acquisition.
+		self.system.newImageSet.connect(self.sbImaging.enableAcquisition)
 		# When the imaging speed changes, update the control system.
 		self.sbImaging.speedChanged.connect(self.system.setImagingSpeed)
 		# Acquire flat field correction images.
@@ -446,7 +448,6 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		self.envXray.set('maxMarkers',config.markers.quantity)
 		# Finalise import. Set open status to true and open the workspace.
 		self._isXrayOpen = True
-		# self.sbImaging.enableAcquisition()
 		self.environment.button['X-RAY'].clicked.emit()
 		self.sidebar.linkPages('ImageProperties','xrayImageProperties')
 
