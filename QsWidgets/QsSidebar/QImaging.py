@@ -1,6 +1,7 @@
 from PyQt5 import QtWidgets, QtCore
 from .. import QsGeneric
 from functools import partial
+from os import path
 import logging
 
 class QImaging(QtWidgets.QWidget):
@@ -39,8 +40,12 @@ class QImaging(QtWidgets.QWidget):
 		self.widget['imageList'].setToolTip("Select an existing image.")
 		commentLabel = QtWidgets.QLabel("Comment:")
 		self.widget['currentImageComment'] = QtWidgets.QLabel("-")
+		currentFileLabel = QtWidgets.QLabel("Current File:")
+		self.widget['currentFile'] = QtWidgets.QLabel("-")
+		self.widget['currentFile'].setToolTip('No file loaded.')
 		imagingSequence_layout.addRow(lblImages,self.widget['imageList'])
 		imagingSequence_layout.addRow(commentLabel,self.widget['currentImageComment'])
+		imagingSequence_layout.addRow(currentFileLabel,self.widget['currentFile'])
 		# Set the group layout.
 		self.group['availableImages'].setLayout(imagingSequence_layout)
 
@@ -166,6 +171,32 @@ class QImaging(QtWidgets.QWidget):
 	def _imageModeChanged(self,mode,state):
 		if state is True:
 			self.imageModeChanged.emit(mode)
+
+	def setCurrentFile(self,filepath):
+		""" Set the current filename. """
+		# Split the dirs and the filename.
+		dirs,filename = path.split(str(filepath))
+		dirs = dirs.split('/')
+		# Define maximum character length for the string.
+		maxChars = 30
+		# Start with the maximum path length.
+		nChars = len(filepath)
+		curr = filepath
+		i = 0
+		while nChars > maxChars:
+			# Increment counter.
+			i += 1
+			if i > len(dirs) - 1:
+				# There are no more directories left to use, just use the filename.
+				curr = f".../{filename}"
+				break
+			else:
+				# Remove a directory off the string and recount...
+				curr = f".../{'/'.join(dirs[i:])}/{filename}"
+				nChars = len(curr)
+		# Set the formatted filepath.
+		self.widget['currentFile'].setText(curr)
+		self.widget['currentFile'].setToolTip(filepath)
 
 	def updateSeparationRange(self,newRange):
 		# Get new range.
