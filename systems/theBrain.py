@@ -251,7 +251,6 @@ class Brain(QtCore.QObject):
 		else:
 			# Disconnect any signals that are being held on to.
 			if self._workflowLastTrigger is not None:
-				logging.critical(self._workflowLastTrigger)
 				self._workflowLastTrigger.disconnect(self.runWorkflowQueue)
 				self._workflowLastTrigger = None
 			# Tell the world our workflow is finished.
@@ -271,9 +270,16 @@ class Brain(QtCore.QObject):
 
 		# Take note of the home position prior to imaging.
 		homePosition = self.patientSupport.position()
+		# Set the workpoint (if required).
+		if self.patientSupport.workpoint is not None:
+			self.workflowQueue.append(
+				(self.patientSupport.zeroWorkpoint, (), {}, self.patientSupport.workpointZeroed)
+			)
+			# Also, as the workpoint is zeroed, we need to overide our home position.
+			homePosition[:3] = [0,0,0]
 		# Move to the imager position.
 		self.workflowQueue.append(
-			(self.movePatient, (self.imager.config.offset,'relative'), {}, self.patientSupport.finishedMove)
+			(self.movePatient, (tuple(self.imager.config.offset),'relative'), {}, self.patientSupport.finishedMove)
 		)
 
 		# Two very different imaging modes.

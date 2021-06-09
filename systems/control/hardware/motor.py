@@ -27,8 +27,6 @@ class motor(QtCore.QObject):
 				mrange=np.array([-np.inf,np.inf]),
 				direction=1,
 				frame=1,
-				size=np.array([0,0,0]),
-				workDistance=np.array([0,0,0]),
 				stageLocation=0
 			):
 		super().__init__()
@@ -53,11 +51,6 @@ class motor(QtCore.QObject):
 		self._frame = frame
 		# Does it affect the stage location? No (0), Yes (1).
 		self._stage = stageLocation
-		# Stage size.
-		self._size = size
-		# Define a work point for the motor, this will be non-zero if it has a fixed mechanical working point. This is nominally the isocenter of the machine.
-		self._workDistance = workDistance
-		self._workPoint = np.array([0,0,0])
 		# Upper and lower limits of motor movement.
 		self._range = mrange
 
@@ -80,20 +73,12 @@ class motor(QtCore.QObject):
 		# Return True or False for the connection state of the motor.
 		return self._controller.isConnected()
 
-	def setUi(self,ui):
-		# Connect user interface.
-		self._ui = motor.ui(ui)
-
 	def setPosition(self,position):
 		position *= self._direction
-		# If we are not already at the position, then try to go there.
-		if position != self._controller.read():
-			try:
-				self._controller.write(position,mode='absolute')
-			except:
-				self.error.emit()
-		else:
-			self.moveFinished.emit()
+		try:
+			self._controller.write(position,mode='absolute')
+		except:
+			self.error.emit()
 
 	def shiftPosition(self,position):
 		position *= self._direction
@@ -116,20 +101,7 @@ class motor(QtCore.QObject):
 			return math.transform.translation(self._axis,value)
 		if self._type == 1:
 			value += self._controller.read()
-			return math.transform.rotation(self._axis,value,self._workPoint), math.transform.rotation(self._axis,-self._controller.read(),self._workPoint)
-
-	def calculateWorkPoint(self,pstage,dstage,offset):
-		if self._frame == 0:
-			# Find hardware specific position in stage.
-			pmotor = pstage - dstage + offset
-			# Find work point related to hardware.
-			self._workPoint = pstage - dstage + pmotor + self._size + self._workDistance
-
-	def setWorkPoint(self,workpoint):
-		# This is useful for robotic arms that do movements in global space.
-		if self._frame == 1:
-			# Can only be set if work distances are zero and it is a rotation.
-			self._workPoint = workpoint
+			return math.transform.rotation(self._axis,value), math.transform.rotation(self._axis,-self._controller.read())
 
 	def reconnectControls(self):
 		try:

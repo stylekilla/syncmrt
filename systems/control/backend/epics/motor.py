@@ -2,6 +2,7 @@ import epics
 import numpy as np
 import logging
 from PyQt5 import QtCore
+import time
 
 """
 We don't use the device classes due to a lack of callback functionality and you can't check things like
@@ -149,20 +150,21 @@ class motor(QtCore.QObject):
 			raise MotorException("Connection error. Could not write motor position.")
 		# Get the current motor position, before any attempt of movement.
 		previousPosition = self.RBV.get()
-		# logging.debug("[{}] Previous position = {:.3f}".format(self.pvBase,previousPosition))
 		# Calculate the writevalue.
 		if mode == 'absolute':
 			writeValue = value
 		elif mode == 'relative':
 			writeValue = previousPosition + value
 
+		logging.debug(f"{self.pvBase}: Moving from {previousPosition:.3f} to {writeValue:.3f}.")
+
 		if np.absolute(previousPosition - writeValue) < 0.002:
 			# Do nothing.
+			time.sleep(0.25)
 			self.moveFinished.emit()
 			return
 		# Write the value if acceptable.
 		if self.withinLimits(writeValue):
-			# logging.debug("[{}] Moving to {:.3f}".format(self.pvBase,writeValue))
 			# If the value is within the limits, write it.
 			self.VAL.put(writeValue)
 			# Say we have set the move.
@@ -171,7 +173,7 @@ class motor(QtCore.QObject):
 			self.moveStarted.emit(float(previousPosition),float(writeValue))
 		else:
 			# It is outside the limits.
-			raise MotorLimitException("Value {} exceeds motor limits.".format(self.pvBase,writeValue))
+			raise MotorLimitException(f"{self.pvBase}: Value {writeValue:.3f} exceeds motor limits.")
 
 	def withinLimits(self,value):
 		return (value <= self.HLM.get() and value >= self.LLM.get())
@@ -193,91 +195,92 @@ class motor(QtCore.QObject):
 			self.error.emit()
 		else:
 			# Else we are successfull.
+			time.sleep(0.25)
 			self.moveFinished.emit()
 
 
-WORKPOINT_PVS = [
-	'TCPAXIS1',
-	'TCPAXIS2',
-	'TCPAXIS3',
-	'TOOL_NO',
-	'TOOL_NO_RBV',
-	'READ_TCP',
-	'SET_TCP',
-	'ZERO_TOOL',
-	'ZERO_BASE',
-	'MXA_STATUS',
-]
+# WORKPOINT_PVS = [
+# 	'TCPAXIS1',
+# 	'TCPAXIS2',
+# 	'TCPAXIS3',
+# 	'TOOL_NO',
+# 	'TOOL_NO_RBV',
+# 	'READ_TCP',
+# 	'SET_TCP',
+# 	'ZERO_TOOL',
+# 	'ZERO_BASE',
+# 	'MXA_STATUS',
+# ]
 
-class workpoint(QtCore.QObject):
-	"""
-	This class allows us to set a workpoint on our device.
-	Typically, this is used with robots and the workpoint = TCP.
-	"""
-	connected = QtCore.pyqtSignal()
-	disconnected = QtCore.pyqtSignal()
-	moveStarted = QtCore.pyqtSignal(float,float)
-	position = QtCore.pyqtSignal(float)
-	moveFinished = QtCore.pyqtSignal()
+# class workpoint(QtCore.QObject):
+# 	"""
+# 	This class allows us to set a workpoint on our device.
+# 	Typically, this is used with robots and the workpoint = TCP.
+# 	"""
+# 	connected = QtCore.pyqtSignal()
+# 	disconnected = QtCore.pyqtSignal()
+# 	moveStarted = QtCore.pyqtSignal(float,float)
+# 	position = QtCore.pyqtSignal(float)
+# 	moveFinished = QtCore.pyqtSignal()
 
-	def __init__(self,pvName):
-		super().__init__()
-		# Flag for init completion. Without this, callbacks will run before we've finished setting up and it will crash.
-		self._initComplete = False
-		# Save the pv base.
-		self.pvBase = pvName
-		# Initialisation vars.
-		self._connectionStatus = True
-		# Add all the pv's.
-		self.pv = {}
-		for pv in WORKPOINT_PVS:
-			setattr(self,pv,epics.PV("{}.{}".format(self.pvBase,pv),
-				auto_monitor=True,
-				connection_callback=self._connectionMonitor
-				)
-			)
-		# Add callback for positioning monitoring.
-		# self.RBV.add_callback(self._positionMonitor)
-		# Flag for init completion.
-		self._initComplete = True
+# 	def __init__(self,pvName):
+# 		super().__init__()
+# 		# Flag for init completion. Without this, callbacks will run before we've finished setting up and it will crash.
+# 		self._initComplete = False
+# 		# Save the pv base.
+# 		self.pvBase = pvName
+# 		# Initialisation vars.
+# 		self._connectionStatus = True
+# 		# Add all the pv's.
+# 		self.pv = {}
+# 		for pv in WORKPOINT_PVS:
+# 			setattr(self,pv,epics.PV("{}.{}".format(self.pvBase,pv),
+# 				auto_monitor=True,
+# 				connection_callback=self._connectionMonitor
+# 				)
+# 			)
+# 		# Add callback for positioning monitoring.
+# 		# self.RBV.add_callback(self._positionMonitor)
+# 		# Flag for init completion.
+# 		self._initComplete = True
 
-	def _connectionMonitor(self,*args,**kwargs):
-		"""
-		Update the device connection status.
-		All PV's must be connected in order for the device to be considered connected.
-		If any PV in the device is disconnected, the whole device is demmed disconnected.
-		"""
-		if not self._initComplete:
-			# We haven't finished setting up the motor yet, don't do anything.
-			return
+# 	def _connectionMonitor(self,*args,**kwargs):
+# 		"""
+# 		Update the device connection status.
+# 		All PV's must be connected in order for the device to be considered connected.
+# 		If any PV in the device is disconnected, the whole device is demmed disconnected.
+# 		"""
+# 		if not self._initComplete:
+# 			# We haven't finished setting up the motor yet, don't do anything.
+# 			return
 
-		if ('pvname' in kwargs) and ('conn' in kwargs):
-			# Update the device connection state (by testing all the devices pv's connection states).
-			teststate = [kwargs['conn']]
-			# N.B. Epics hasn't actually updated the pv.connected state of the motor sent to this function yet.
-			# So instead, get status of every motor except the one sent to this function.
-			for pv in [x for x in WORKPOINT_PVS if x!=kwargs['pvname'][kwargs['pvname'].find('.')+1:]]:
-				testpv = getattr(self,pv)
-				teststate.append(testpv.connected)
-			self._connectionStatus = all(teststate)
+# 		if ('pvname' in kwargs) and ('conn' in kwargs):
+# 			# Update the device connection state (by testing all the devices pv's connection states).
+# 			teststate = [kwargs['conn']]
+# 			# N.B. Epics hasn't actually updated the pv.connected state of the motor sent to this function yet.
+# 			# So instead, get status of every motor except the one sent to this function.
+# 			for pv in [x for x in WORKPOINT_PVS if x!=kwargs['pvname'][kwargs['pvname'].find('.')+1:]]:
+# 				testpv = getattr(self,pv)
+# 				teststate.append(testpv.connected)
+# 			self._connectionStatus = all(teststate)
 
-		# Send out an appropriate signal.
-		if self._connectionStatus:
-			self.connected.emit()
-		else:
-			self.disconnected.emit()
+# 		# Send out an appropriate signal.
+# 		if self._connectionStatus:
+# 			self.connected.emit()
+# 		else:
+# 			self.disconnected.emit()
 
-	def isConnected(self):
-		# Return if we are connected or not.
-		return self._connectionStatus
+# 	def isConnected(self):
+# 		# Return if we are connected or not.
+# 		return self._connectionStatus
 
-	def reconnect(self):
-		for pv in WORKPOINT_PVS:
-			epicspv = getattr(self,pv)
-			try:
-				epicspv.reconnect()
-			except:
-				raise MotorException("Failed to force {} to reconnect.".format(pv))
+# 	def reconnect(self):
+# 		for pv in WORKPOINT_PVS:
+# 			epicspv = getattr(self,pv)
+# 			try:
+# 				epicspv.reconnect()
+# 			except:
+# 				raise MotorException("Failed to force {} to reconnect.".format(pv))
 
 
 VELOCITY_PVS = ['Velocity','Acceleration']

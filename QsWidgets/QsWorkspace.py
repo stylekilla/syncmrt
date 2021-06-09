@@ -189,13 +189,12 @@ class QPlotEnvironment(QtWidgets.QSplitter):
 	def _updateIsocenterFromPlot(self):
 		""" Update the isocenter from the plot. """
 		isocenter = self.plot.patientIsocenter
-		logging.debug(f"Plot Isocenter: {isocenter}")
 		# Get the image angles (as deltas from the BEV) for each image.
 		theta0, theta1 = self.plot.imagingAngles
 		# If theta1 is None, there is no data for the second image frame (i.e. it's only a 2D dataset).
 		if theta1 == None:
 			# Assign the horizontal component to be 0.0 (i.e. we have no depth data).
-			isocenter[2] = 0.0
+			isocenter[1] = 0.0
 			# Assign theta1 to be 90 degrees away from theta0.
 			theta1 = theta0 - 90.0
 		# Split the isocenter up in to two points.

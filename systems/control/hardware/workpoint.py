@@ -9,9 +9,11 @@ Motor will emit finished signal after move is completed.
 Should only use motor.read() and motor.write() methods.
 """
 
-class workPoint(QtCore.QObject):
+class workpoint(QtCore.QObject):
 	connected = QtCore.pyqtSignal()
 	disconnected = QtCore.pyqtSignal()
+	workpointSet = QtCore.pyqtSignal()
+	workpointZeroed = QtCore.pyqtSignal()
 	error = QtCore.pyqtSignal()
 
 	def __init__(self,
@@ -29,6 +31,8 @@ class workPoint(QtCore.QObject):
 		# Signals.
 		self._controller.connected.connect(self.connected.emit)
 		self._controller.disconnected.connect(self.disconnected.emit)
+		self._controller.workpointSet.connect(self.workpointSet.emit)
+		self._controller.workpointZeroed.connect(self.workpointZeroed.emit)
 		self._controller.error.connect(self.error.emit)
 
 	def isConnected(self):
@@ -42,6 +46,10 @@ class workPoint(QtCore.QObject):
 	def set(self,position):
 		""" Set the workpoint to a position. """
 		self._controller.set(position)
+
+	def zero(self):
+		""" Zero the workpoint. """
+		self._controller.zero()
 
 	def reconnectControls(self):
 		try:

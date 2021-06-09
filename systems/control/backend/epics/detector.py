@@ -4,6 +4,7 @@ import logging
 import time
 import h5py as hdf
 from PyQt5 import QtCore
+import os
 
 """
 We don't use the device classes due to a lack of callback functionality and you can't check things like
@@ -286,9 +287,8 @@ class detector(QtCore.QObject):
 
 		# Close the file.
 		f.close()
-
-		# Array data comes in from bottom to top. Flip it round so the slices are ordered top to bottom.
-		# arrData = arrData[::-1]
+		# Delete the HDF5 file.
+		os.remove(fn)
 
 		# Apply flat field corrections (if available):
 		for i in range(len(arrData)):
@@ -326,8 +326,8 @@ class detector(QtCore.QObject):
 			# Find the z values of the image.
 			z = zRange - zOffset
 			# Calculate the extent of the image.
-			t = -z[0] + self.isocenter[1]*self.pixelSize[1]
-			b = -z[-1] - self.isocenter[1]*self.pixelSize[1]
+			t = z[1] + self.isocenter[1]*self.pixelSize[1]
+			b = z[0] - self.isocenter[1]*self.pixelSize[1]
 			l = self.isocenter[0]*self.pixelSize[0]
 			r = l - self.arraySize[0]*self.pixelSize[0]
 			extent = [l,r,b,t]

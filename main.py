@@ -774,14 +774,12 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		self.properties.updateVariable('Alignment','Scale',float(self.system.solver.scale))
 
 		# Calculate alignment for stage.
-		logging.critical("Turned off self.system.calculateAlignment as I am at home - i.e. no motors to move...")
-		# self.system.calculateAlignment()
+		self.system.calculateAlignment()
 
 	def patientApplyAlignment(self,index):
 		"""Calculate alignment first."""
-		self.patientCalculateAlignment(index=index)
 		# Calculate alignment for stage.
-		self.system.calculateAlignment()
+		self.patientCalculateAlignment(index=index)
 		# Do the alignment.
 		self.system.applyAlignment()
 
