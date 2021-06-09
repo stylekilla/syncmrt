@@ -149,9 +149,6 @@ class detector(QtCore.QObject):
 		time.sleep(0.2)
 		# Get the image.
 		arr = self.RoiData.get().reshape(tuple(self.arraySize[::-1]))
-		# Do appropriate image gymnastics.
-		if self.flipud: arr = np.flipud(arr)
-		if self.fliplr: arr = np.fliplr(arr)
 		# Set the field correction.
 		if mode == 'dark':
 			self.darkfield = arr
@@ -179,6 +176,9 @@ class detector(QtCore.QObject):
 
 		# Stop any acquisitions.
 		self.Acquire.put(0,wait=True)
+		# Setup image processing.
+		self.HDFenable.put(1,wait=True)
+		self.TIFFenable.put(0,wait=True)
 		# Set vars.
 		self.AcquireTime.put(acquireTime,wait=True)
 		self.AcquirePeriod.put(acquirePeriod,wait=True)
@@ -281,26 +281,27 @@ class detector(QtCore.QObject):
 						finishIdx = len(zPos_diff)
 			# Finalize the array and zrange.
 			arrData = arrData[startIdx:finishIdx]
-			zRange = [zPos[startIdx], zPos[finishIdx]]
+			zRange = np.array([zPos[startIdx], zPos[finishIdx]])
 			# logging.debug(f"zRange: {zRange}")
 
 		# Close the file.
 		f.close()
 
-		# Do appropriate image gymnastics (1/2).
-		if self.flipud: arrData = np.flipud(arrData)
-		if self.fliplr: arrData = np.fliplr(arrData)
+		# Array data comes in from bottom to top. Flip it round so the slices are ordered top to bottom.
+		# arrData = arrData[::-1]
+
 		# Apply flat field corrections (if available):
-		if (self.floodfield is not None) and (self.darkfield is not None):
-			for i in range(len(arrData)):
+		for i in range(len(arrData)):
+			# Do FFC before image gymnasticks (they are unadulterated fields).
+			if (self.floodfield is not None) and (self.darkfield is not None):
 				arrData[i] = (arrData[i]-self.darkfield)/(self.floodfield-self.darkfield)
+			# Do appropriate image gymnastics.
+			if self.flipud: arrData[i] = np.flipud(arrData[i])
+			if self.fliplr: arrData[i] = np.fliplr(arrData[i])
 		# Stack the array data.
 		arr = np.vstack(arrData)
 		# Handle any weird values.
 		arr = np.nan_to_num(arr, nan=0, posinf=0, neginf=0)
-		# Do appropriate image gymnastics (2/2).
-		if self.flipud: arr = np.flipud(arr)
-		if self.fliplr: arr = np.fliplr(arr)
 		# Get the Z offset from the imaging system.
 		zOffset = float(metadata['Image Offset'][2])
 
@@ -323,10 +324,10 @@ class detector(QtCore.QObject):
 
 		elif mode == 'dynamic':
 			# Find the z values of the image.
-			z = zRange
+			z = zRange - zOffset
 			# Calculate the extent of the image.
-			t = z[0] - zOffset + self.isocenter[1]*self.pixelSize[1]
-			b = z[-1] - zOffset - self.isocenter[1]*self.pixelSize[1]
+			t = -z[0] + self.isocenter[1]*self.pixelSize[1]
+			b = -z[-1] - self.isocenter[1]*self.pixelSize[1]
 			l = self.isocenter[0]*self.pixelSize[0]
 			r = l - self.arraySize[0]*self.pixelSize[0]
 			extent = [l,r,b,t]

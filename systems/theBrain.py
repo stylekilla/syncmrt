@@ -289,7 +289,7 @@ class Brain(QtCore.QObject):
 				'Patient Support Angle': homePosition[3:],
 				'Imaging Mode': self.imagingMode,
 				'Image Angles': theta,
-				'Image Offset': self.imager.config.offset,
+				'Image Offset': tuple(self.imager.config.offset),
 				'Scan Range': zrange,
 				'Scan Distance': distance,
 				'Scan Speed': speed,
@@ -305,13 +305,14 @@ class Brain(QtCore.QObject):
 				imageMetadata = {
 					'Image Angle': angle,
 					'Imaging Mode': self.imagingMode,
-					'Image Offset': self.imager.config.offset,
+					'Image Offset': tuple(self.imager.config.offset),
 					'UUID': imageUid,
 				}
+
 				# Append to the workflow queue.
 				self.workflowQueue += [
 					(self.movePatient, ([0,0,start,0,0,angle],'relative'), {}, self.patientSupport.finishedMove),
-					(self.imager.setupDynamicScan, (distance,speed,imageUid,metadata), {}, self.imager.detector.detectorReady),
+					(self.imager.setupDynamicScan, (distance,speed,imageUid), {}, self.imager.detector.detectorReady),
 					(self.imagingBeam.turnOn,		(), {}, self.imagingBeam.on),
 					(self.imagingBeam.openShutter,	(), {}, self.imagingBeam.shutterOpen),
 					(synchronize,
