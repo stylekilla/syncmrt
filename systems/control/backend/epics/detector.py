@@ -51,7 +51,7 @@ class detector(QtCore.QObject):
 		self.roiport = str(config.roiPort)
 		self.attributesfile = str(config.attributesfile)
 		# Initialisation vars.
-		self._connectionStatus = True
+		self._connectionStatus = False
 		self.arraySize = np.array([0,0])
 		self.buffer = {}
 		# Flood fields and dark fields.
@@ -66,7 +66,7 @@ class detector(QtCore.QObject):
 				)
 			)
 		# Set up the detector preferences. Should link to config file or settings?
-		self.setup()
+		# self.setup()
 		# Flag for init completion.
 		self._initComplete = True
 
@@ -112,6 +112,8 @@ class detector(QtCore.QObject):
 
 	def setup(self):
 		# Set up the detector.
+		if not self._connectionStatus:
+			raise DetectorException("Cannot continue with setup as not all PV's are connected.")
 		# Here we should also allow for flipping the image to orientate it correctly.
 		self.Acquire.put(0)
 		self.AcquireTime.put(0.1)

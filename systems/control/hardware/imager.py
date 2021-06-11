@@ -3,6 +3,7 @@ from file import hdf5
 from PyQt5 import QtCore
 import numpy as np
 import csv, os
+import importlib
 import logging
 
 from datetime import datetime
@@ -45,7 +46,7 @@ class Imager(QtCore.QObject):
 	imageAcquired = QtCore.pyqtSignal(int)
 	newImageSet = QtCore.pyqtSignal(str,int)
 
-	def __init__(self,database,config,backendThread=None):
+	def __init__(self,config,backendThread=None):
 		super().__init__()
 		# Information
 		self.detector = None
@@ -60,21 +61,10 @@ class Imager(QtCore.QObject):
 		self._connectionStatus = False
 		# Save the backend thread (if any).
 		self.backendThread = backendThread
-		# Open CSV file
-		f = open(database)
-		r = csv.DictReader(f)
-		# Devices is the total list of all devices in the database.
-		self.detectors = {}
-		self.deviceList = set()
-		for row in r:
-			# Check for commented out lines first.
-			if row['Detector'].startswith('--'): 
-				continue
-			else:
-				self.detectors[row['Detector']] = row['PV Root']
-				self.deviceList.add(row['Detector'])
+		# Load the detector.
+		self.load()
 
-	def load(self,name):
+	def load(self):
 		"""
 		Load a detector into the imager configuration.
 
@@ -83,23 +73,22 @@ class Imager(QtCore.QObject):
 		name : str
 			The name of the detector to look up in the database file.
 		"""
-		if name in self.deviceList:
-			# Update our name accordingly.
-			self.name = name
-			# Create the new detector and load config settings.
-			# This is a "hardware" detector.
-			newDetector = detector(
-				self.config.name,
-				self.config,
-				backendThread=self.backendThread
-			)
-			# Signals and slots.
-			newDetector.connected.connect(self._connectionMonitor)
-			newDetector.disconnected.connect(self._connectionMonitor)
-			# When the detector acquires an image, add it to the data set.
-			# newDetector.imageAcquired.connect(self._addImage)
-			# Assign ourselves the new detector.
-			self.detector = newDetector
+		# Update our name accordingly.
+		self.name = self.config.name
+		# Create the new detector and load config settings.
+		# This is a "hardware" detector.
+		newDetector = detector(
+			self.config.name,
+			self.config,
+			backendThread=self.backendThread
+		)
+		# Signals and slots.
+		newDetector.connected.connect(self._connectionMonitor)
+		newDetector.disconnected.connect(self._connectionMonitor)
+		# When the detector acquires an image, add it to the data set.
+		# newDetector.imageAcquired.connect(self._addImage)
+		# Assign ourselves the new detector.
+		self.detector = newDetector
 			
 	def reconnect(self):
 		""" Reconnect the detector controller to Epics. Use this if the connection dropped out. """

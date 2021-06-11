@@ -59,4 +59,3 @@ def fixedRotation(p,cor,rx,ry,rz):
 	print(result)
 	# return transform@P
 	return result
-

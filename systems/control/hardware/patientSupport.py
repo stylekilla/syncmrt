@@ -17,16 +17,16 @@ class patientSupport(QtCore.QObject):
 	moving = QtCore.pyqtSignal(str,float)
 	error = QtCore.pyqtSignal()
 
-	def __init__(self,database,config,backendThread=None):
+	def __init__(self,config,backendThread=None):
 		super().__init__()
+		# Configuration file.
+		self.config = config
 		# Information
-		self.currentDevice = None
-		self.currentMotors = []
+		self.name = self.config.name
+		self.motors = []
 		self._dof = (0,[0,0,0,0,0,0])
 		# The vertical translation motor.
 		self.verticalTranslationMotor = None
-		# Configuration file.
-		self.config = config
 		# Current movement id.
 		self.uid = None
 		# A queue for sequential movements.
@@ -44,97 +44,60 @@ class patientSupport(QtCore.QObject):
 		self.backendThread = backendThread
 		# A settable work point for the patient support.
 		self.workpoint = None
+		self.velocityController = None
+		# Load the config.
+		self.load()
 
-		if config.velocityMode == 'global':
-			self.velocityController = hardware.velocityController(config.VELOCITY_CONTROLLER)
-		else:
-			self.velocityController = None
-
-		"""
-		Load the CSV dataset.
-		"""
-		# Get list of motors.
-		import csv, os
-		# Open CSV file
-		f = open(database)
-		r = csv.DictReader(f)
-		# Devices is the total list of all devices in the database.
-		self.motors = []
-		self.deviceList = set()
-		for row in r:
-			# Check for commented out lines first.
-			if row['PatientSupport'].startswith('--'): 
-				continue
-			else:
-				self.motors.append(row)
-				self.deviceList.add(row['PatientSupport'])
-
-	def load(self,name):
+	def load(self):
 		# Load a set of motors for the patient support.
-		logging.info("Loading patient support: {}.".format(name))
+		logging.info("Loading patient support: {}.".format(self.name))
 
-		# Check if the desired device is in the devices list.
-		if name in self.deviceList:
-			# Remove all existing motors.
-			for i in range(len(self.currentMotors)):
-				del self.currentMotors[-1]
+		# Iterate over motors.
+		for motorConfig in self.config.MOTOR_CONTROLLERS:
+			# Define the new motor.
+			newMotor = hardware.motor(
+					motorConfig,
+					backend=self.config.backend,
+					backendThread=self.backendThread
+				)
+			# Signals and slots.
+			newMotor.connected.connect(self._connectionMonitor)
+			newMotor.disconnected.connect(self._connectionMonitor)
+			newMotor.position.connect(partial(self.moving.emit,newMotor.port))
+			newMotor.moveFinished.connect(self._finished)
+			newMotor.error.connect(self.error.emit)
 
-			# Iterate over new motors.
-			for support in self.motors:
-				# Does the motor match the name?
-				if support['PatientSupport'] == name:
-					# Define the new motor.
-					newMotor = hardware.motor(
-							support['Description'],
-							int(support['Axis']),
-							int(support['Order']),
-							pv = support['PV Root'],
-							backendThread = self.backendThread
-						)
+			# Append the motor to the list.
+			self.motors.append(newMotor)
 
-					# Signals and slots.
-					newMotor.connected.connect(self._connectionMonitor)
-					newMotor.disconnected.connect(self._connectionMonitor)
-					newMotor.position.connect(partial(self.moving.emit,newMotor.name))
-					newMotor.moveFinished.connect(self._finished)
-					newMotor.error.connect(self.error.emit)
+		# Define the vertical translation motor.
+		self.verticalTranslationMotor = hardware.motor(
+				self.config.VERTICALMOTION_CONTROLLER,
+				backend=self.config.backend,
+				backendThread=self.backendThread
+			)
+		# Signals and slots.
+		self.verticalTranslationMotor.connected.connect(self._connectionMonitor)
+		self.verticalTranslationMotor.disconnected.connect(self._connectionMonitor)
+		self.verticalTranslationMotor.position.connect(partial(self.moving.emit,self.verticalTranslationMotor.port))
+		self.verticalTranslationMotor.moveFinished.connect(partial(self.finishedMove.emit,None))
+		self.verticalTranslationMotor.error.connect(self.error.emit)
 
-					# Append the motor to the list.
-					self.currentMotors.append(newMotor)
-
-			logging.critical("Hard coding LAPS TCP stuff...")
+		# Define a workpoint.
+		if self.config.workpoint:
 			self.workpoint = hardware.workpoint(
-					"SR08ID01ROB01",
-					backendThread = self.backendThread
+					self.config,
+					backend=self.config.backend,
+					backendThread=self.backendThread
 				)
 			self.workpoint.workpointSet.connect(self.workpointSet.emit)
 			self.workpoint.workpointZeroed.connect(self.workpointZeroed.emit)
 
-			if self.config.velocityMode == 'global':
-				# Set the global speed for the device.
-				self.velocityController = hardware.velocityController(self.config.VELOCITY_CONTROLLER)
-
-			# Set the order of the list from 0-i.
-			self.currentMotors = sorted(self.currentMotors, key=lambda k: k._order)
-			# Update the name details.
-			self.currentDevice = name
-			# Emit a signal to say we've selected a new patient support.
-			self.newSupportSelected.emit(name,[x.name for x in self.currentMotors])
-
-		# Define the new motor.
-		self.verticalTranslationMotor = hardware.motor(
-				'Vertical Translation Motor',2,0,
-				pv = self.config.verticalTranslationMotor,
-				backendThread = self.backendThread
-			)
-
-		# Signals and slots.
-		self.verticalTranslationMotor.connected.connect(self._connectionMonitor)
-		self.verticalTranslationMotor.disconnected.connect(self._connectionMonitor)
-		self.verticalTranslationMotor.position.connect(partial(self.moving.emit,self.verticalTranslationMotor.name))
-		self.verticalTranslationMotor.moveFinished.connect(partial(self.finishedMove.emit,None))
-		self.verticalTranslationMotor.error.connect(self.error.emit)
-
+		# Set the speed controller for the device.
+		if self.config.velocityMode == 'global':
+			self.velocityController = hardware.velocityController(self.config.VELOCITY_CONTROLLER,self.config.backend)
+		else:
+			raise TypeError(f"Velocity mode {self.config.velocityMode} not implemented yet.")
 
 	def isConnected(self):
 		# Return the connection status.
@@ -143,7 +106,7 @@ class patientSupport(QtCore.QObject):
 	def _connectionMonitor(self):
 		# Connection monitor for all the motors that make up the patient support system.
 		teststate = []
-		for motor in self.currentMotors:
+		for motor in self.motors:
 			teststate.append(motor.isConnected())
 		teststate.append(self.verticalTranslationMotor.isConnected())
 		self._connectionStatus = all(teststate)
@@ -153,7 +116,7 @@ class patientSupport(QtCore.QObject):
 
 	def reconnect(self):
 		""" Reconnect all the motors in the system. """
-		for motor in self.currentMotors:
+		for motor in self.motors:
 			motor.reconnectControls()
 
 	def setSpeed(self,speed):
@@ -165,10 +128,8 @@ class patientSupport(QtCore.QObject):
 
 		elif self.config.velocityMode == 'axis':
 			# Set the speed on each motor if it allows it.
-			for motor in self.currentMotors:
+			for motor in self.motors:
 				raise TypeError("Not implemented.")
-				# if motor.adjustableSpeed:
-					# motor.setSpeed(speed)
 
 	def getSpeed(self):
 		""" Return the speed of the patient support. """
@@ -211,7 +172,7 @@ class patientSupport(QtCore.QObject):
 				self.motionQueue.append((self.workpoint.offset,(workpoint),self.workpoint.workpointSet))
 
 		# Iterate through available motors.
-		for motor in self.currentMotors:
+		for motor in self.motors:
 			# Get position to move to for that motor.
 			value = position[(motor._axis + (3*motor._type))]
 			# Tell motor to shift position by amount, value.
@@ -232,7 +193,6 @@ class patientSupport(QtCore.QObject):
 		logging.info(f"Setting position to {position}")
 		# Set the uid.
 		self.uid = str(uid)
-
 		# Set the work point if required.
 		if (workpoint is not None) and (self.workpoint is not None):
 			if self.config.simulatenousCommands:
@@ -240,9 +200,8 @@ class patientSupport(QtCore.QObject):
 				self.workpoint.offset(workpoint)
 			else:
 				self.motionQueue.append((self.workpoint.offset,(workpoint),self.workpoint.workpointSet))
-
 		# Iterate through available motors.
-		for motor in self.currentMotors:
+		for motor in self.motors:
 			# Get position to move to for that motor.
 			value = position[(motor._axis + (3*motor._type))]
 			# Tell motor to shift position by amount, value.
@@ -292,9 +251,9 @@ class patientSupport(QtCore.QObject):
 	def _finished(self):
 		# Increment the counter.
 		self._counter += 1
-		logging.debug(f"Motor {self._counter} of {len(self.currentMotors)} finished movement.")
+		logging.debug(f"Motor {self._counter} of {len(self.motors)} finished movement.")
 		# If counter finished, emit finished signal.
-		if self._counter == len(self.currentMotors):
+		if self._counter == len(self.motors):
 			# Reset the counter.
 			self._counter = 0
 			# Send signal.
@@ -326,7 +285,7 @@ class patientSupport(QtCore.QObject):
 	def position(self,idx=None):
 		# return the current position of the stage in Global XYZ.
 		pos = np.array([0,0,0,0,0,0],dtype=float)
-		for motor in self.currentMotors:
+		for motor in self.motors:
 			# Read motor position and the axis it works on.
 			mpos = motor.readPosition()
 			axis = motor._axis + (3*motor._type)
@@ -354,7 +313,7 @@ class patientSupport(QtCore.QObject):
 		# Make a copy so original stays intact.
 		calcVars = np.array(variables)
 		# Iterate over each motor in order.
-		for motor in self.currentMotors:
+		for motor in self.motors:
 			# Get the x y z translation or rotation value.
 			value = calcVars[(motor._axis + (3*motor._type))]
 			# Take as much of this as you can if it fits within the limits of the motor!!

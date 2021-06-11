@@ -1,8 +1,8 @@
-from systems.control.backend import epics as backend
 from PyQt5 import QtCore, QtWidgets
 import logging
 import numpy as np
 from datetime import datetime as dt
+import importlib
 from functools import partial
 
 """
@@ -28,6 +28,7 @@ class detector(QtCore.QObject):
 		self.name = name
 		# Config.
 		self.config = config
+		backend = importlib.import_module(f"systems.control.backend.{self.config.backend}")
 		# Row/Col pixel sizes.
 		self.pixelSize = [1,1]
 		# Isocenter as a pixel location in the image.

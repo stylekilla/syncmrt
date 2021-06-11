@@ -1,7 +1,7 @@
 from tools import math
-from systems.control.backend import epics as backend
 from PyQt5 import QtCore
 import numpy as np
+import importlib
 import logging
 
 """
@@ -21,41 +21,32 @@ class motor(QtCore.QObject):
 	error = QtCore.pyqtSignal()
 
 	def __init__(self,
-				name,axis,order,
-				pv=None,
+				config,
+				backend,
 				backendThread=None,
-				mrange=np.array([-np.inf,np.inf]),
-				direction=1,
-				frame=1,
-				stageLocation=0
 			):
 		super().__init__()
+		self.config = config
+		self.name = self.config.port
+		self.description = self.config.description
+		# Backend Controller.
+		backend = importlib.import_module(f"systems.control.backend.{backend}")
 		# Expecting axis to be between 0 and 5.
 		# Axis can be 0,1,2 to represent x,y,z.
 		# Type is 0 (translation) or 1 (rotation).
-		if axis < 3: 
-			self._axis = axis
+		if self.config.axis < 3: 
+			self._axis = self.config.axis
 			self._type = 0
-		elif axis > 2: 
-			self._axis = axis - 3
+		elif self.config.axis > 2: 
+			self._axis = self.config.axis - 3
 			self._type = 1
 		# Motor order.
-		self._order = order
-		# Motor name.
-		self.name = name
-		# PV Base.
-		self.pv = pv
-		# Direction is +1 (forward) or -1 (reverse) for natural motor movement.
-		self._direction = direction
-		# Frame of reference local (0) or global (1).
-		self._frame = frame
-		# Does it affect the stage location? No (0), Yes (1).
-		self._stage = stageLocation
-		# Upper and lower limits of motor movement.
-		self._range = mrange
+		self._order = self.config.order
+		# Port.
+		self.port = self.config.port
 
 		# Backend Controller.
-		self._controller = backend.motor(self.pv)
+		self._controller = backend.motor(self.port)
 		# Move to thread if specified.
 		if backendThread is not None:
 			self._controller.moveToThread(backendThread)
@@ -67,8 +58,6 @@ class motor(QtCore.QObject):
 		self._controller.moveStarted.connect(self.moveStarted.emit)
 		self._controller.moveFinished.connect(self.moveFinished.emit)
 		
-		logging.info("Loading motor {} on aixs {} with PV {}".format(name,axis,pv))
-
 	def isConnected(self):
 		# Return True or False for the connection state of the motor.
 		return self._controller.isConnected()
@@ -116,10 +105,16 @@ class velocityController(QtCore.QObject):
 	speedChanged = QtCore.pyqtSignal(float,float)
 	error = QtCore.pyqtSignal()
 
-	def __init__(self,ports):
+	def __init__(self,config,backend,backendThread=None):
 		super().__init__()
+		self.config = config
+		# Backend Controller.
+		backend = importlib.import_module(f"systems.control.backend.{backend}")
 		# Send the velocity/acceleration ports through to the controller.
-		self._controller = backend.velocityController(ports)
+		self._controller = backend.velocityController(config)
+		# Move to thread if specified.
+		if backendThread is not None:
+			self._controller.moveToThread(backendThread)
 
 	def setSpeed(self,value):
 		""" Passthrough function: Set the motor speed. """

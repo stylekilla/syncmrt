@@ -1,6 +1,6 @@
-from systems.control.backend import epics as backend
 from PyQt5 import QtCore
 import numpy as np
+import importlib
 import logging
 
 """
@@ -17,14 +17,14 @@ class workpoint(QtCore.QObject):
 	error = QtCore.pyqtSignal()
 
 	def __init__(self,
-				pv,
+				config,
+				backend,
 				backendThread=None,
 			):
 		super().__init__()
-		# PV Base.
-		self.pv = pv
 		# Backend Controller.
-		self._controller = backend.tcp(self.pv)
+		backend = importlib.import_module(f"systems.control.backend.{backend}")
+		self._controller = backend.tcp(config)
 		# Move to thread if specified.
 		if backendThread is not None:
 			self._controller.moveToThread(backendThread)

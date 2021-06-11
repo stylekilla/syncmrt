@@ -1,5 +1,5 @@
 from PyQt5 import QtCore
-from systems.control.backend import epics as backend
+import importlib
 import logging
 
 class source(QtCore.QObject):
@@ -19,6 +19,9 @@ class source(QtCore.QObject):
 		super().__init__()
 		# Set the name.
 		self.name = str(name)
+		self.config = config
+		# Import the backend.
+		backend = importlib.import_module(f"systems.control.backend.{self.config.backend}")
 		self._controller = backend.source(name,config.SOURCE_PVS)
 		# Signals passthrough.
 		self._controller.on.connect(self.on.emit)

@@ -46,18 +46,17 @@ class tcp(QtCore.QObject):
 	workpointSet = QtCore.pyqtSignal()
 	workpointZeroed = QtCore.pyqtSignal()
 
-	def __init__(self,pvName):
+	def __init__(self,config):
 		super().__init__()
 		# Flag for init completion. Without this, callbacks will run before we've finished setting up and it will crash.
 		self._initComplete = False
-		# Save the pv base.
-		self.pvBase = pvName
 		# Initialisation vars.
 		self._connectionStatus = True
+		# Get the config.
+		self.config = config
 		# Add all the pv's.
-		self.pv = {}
-		for pv in TCP_PVS:
-			setattr(self,pv,epics.PV("{}:{}".format(self.pvBase,pv),
+		for name,port in self.config.WORKPOINT_CONTROLLER.items():
+			setattr(self,name,epics.PV(port,
 				auto_monitor=True,
 				connection_callback=self._connectionMonitor
 				)
@@ -80,7 +79,7 @@ class tcp(QtCore.QObject):
 			teststate = [kwargs['conn']]
 			# N.B. Epics hasn't actually updated the pv.connected state of the motor sent to this function yet.
 			# So instead, get status of every motor except the one sent to this function.
-			for pv in [x for x in TCP_PVS if x!=kwargs['pvname'][kwargs['pvname'].rfind(':')+1:]]:
+			for pv in [x for x in self.config.WORKPOINT_CONTROLLER.values() if x!=kwargs['pvname'][kwargs['pvname'].rfind(':')+1:]]:
 				testpv = getattr(self,pv)
 				teststate.append(testpv.connected)
 			self._connectionStatus = all(teststate)
@@ -96,12 +95,12 @@ class tcp(QtCore.QObject):
 		return self._connectionStatus
 
 	def reconnect(self):
-		for pv in TCP_PVS:
-			epicspv = getattr(self,pv)
+		for port in self.config.WORKPOINT_CONTROLLER.values():
+			pv = getattr(self,port)
 			try:
-				epicspv.reconnect()
+				pv.reconnect()
 			except:
-				raise RobotException("Failed to force {} to reconnect.".format(pv))
+				raise RobotException("Failed to force {} to reconnect.".format(port))
 
 	def read(self):
 		""" Read the current TCP settings on the robot. """
@@ -145,16 +144,3 @@ class tcp(QtCore.QObject):
 		# Sleep for a second to allow the robot to process.
 		time.sleep(1)
 		self.workpointZeroed.emit()
-
-# WORKPOINT_PVS = [
-# 	'TCPAXIS1',
-# 	'TCPAXIS2',
-# 	'TCPAXIS3',
-# 	'TOOL_NO',
-# 	'TOOL_NO_RBV',
-# 	'READ_TCP',
-# 	'SET_TCP',
-# 	'ZERO_TOOL',
-# 	'ZERO_BASE',
-# 	'MXA_STATUS',
-# ]

@@ -73,6 +73,8 @@ class imagingBeam:
 
 class imager:
 	""" Settings for the imager configuration. """
+	# Choose a backend.
+	backend = 'epics'
 	# Orientation of detector image.
 	flipud = True
 	fliplr = True
@@ -89,9 +91,7 @@ class imager:
 	# offset = [0,0,0,0,0,0]			# No change (default).
 	offset = [0,0,20,0,0,0]			# Monochromatic beam (+20 mm in Z)
 	# offset = [0,0,0,0,0,-32.7]		# 2B X-Ray Source (-32.7 deg about Z)
-
-	# Choose a backend.
-	backend = 'epics'
+	
 	name = 'PCO3-HCL'
 	# Specify an access port.
 	port = 'SR08ID01DETIOC10'
@@ -131,12 +131,45 @@ class imager:
 		# Need to link imaging shutter...?
 	}
 
+class motor:
+	def __init__(self,axis,order,port,description):
+		self.axis = axis
+		self.order = order
+		self.port = port
+		self.description = description
+
 class patientSupport:
 	""" Settings for the patientSupport system. """
-	# The workpoint is a settable point to tell the patient support to move around (i.e. a Robot TCP).
-	workpoint = True
+	# Choose a backend.
+	backend = 'epics'
+	# Name it.
+	name = 'LAPS'
+	# Motors.
+	MOTOR_CONTROLLERS = [
+		motor(0,0,'SR08ID01ROB01:MOTOR_X',		'X Translation'),
+		motor(1,1,'SR08ID01ROB01:MOTOR_Y',		'Y Translation'),
+		motor(2,2,'SR08ID01ROB01:MOTOR_Z',		'Z Translation'),
+		motor(3,3,'SR08ID01ROB01:MOTOR_XTILT',	'X Rotation'),
+		motor(4,4,'SR08ID01ROB01:MOTOR_YTILT',	'Y Rotation'),
+		motor(5,5,'SR08ID01ROB01:MOTOR_ZTILT',	'Z Rotation')
+	]
 	# Do we need the moves to happen one after the other or can they happen simulatenously?
 	simulatenousCommands = False
+	# The workpoint is a settable point to tell the patient support to move around (i.e. a Robot TCP).
+	workpoint = True
+	WORKPOINT_CONTROLLER = {
+		'TCP_AXIS1': 'SR08ID01ROB01:TCP_AXIS1',
+		'TCP_AXIS2': 'SR08ID01ROB01:TCP_AXIS2',
+		'TCP_AXIS3': 'SR08ID01ROB01:TCP_AXIS3',
+		'TCP_AXIS_RBV1': 'SR08ID01ROB01:TCP_AXIS_RBV1',
+		'TCP_AXIS_RBV2': 'SR08ID01ROB01:TCP_AXIS_RBV2',
+		'TCP_AXIS_RBV3': 'SR08ID01ROB01:TCP_AXIS_RBV3',
+		'TOOL_NO': 'SR08ID01ROB01:TOOL_NO',
+		'TOOL_NO_RBV': 'SR08ID01ROB01:TOOL_NO_RBV',
+		'READ_TCP': 'SR08ID01ROB01:READ_TCP',
+		'SET_TCP': 'SR08ID01ROB01:SET_TCP',
+		'ZERO_TOOL': 'SR08ID01ROB01:ZERO_TOOL'
+	}
 	# How is the speed controlled, per axis or globally? 
 	# Options are: axis/global
 	velocityMode = 'global'
@@ -147,8 +180,9 @@ class patientSupport:
 	velocity = 5
 	velocityRange = [2,50]
 	accelerationRange = [2,500]
-	# Define the vertical translation for imaging and treatment.
-	verticalTranslationMotor = 'SR08ID01ROB01:MOTOR_Z'
+
+	# Define the config for the vertical translation for imaging and treatment.
+	VERTICALMOTION_CONTROLLER = motor(2,0,'SR08ID01ROB01:MOTOR_Z','Vertical Translation Motor')
 
 class machine:
 	""" A configuration for the machine - can be used to preconfigure things for Hutch 2B or Hutch 3B etc. """

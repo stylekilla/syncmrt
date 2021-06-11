@@ -8,17 +8,6 @@ import sched, time
 from threading import Thread, Event
 from datetime import datetime,timedelta
 
-# def sleepFunction(td):
-# 	""" Sleep function to handle synchronization. """
-# 	# Essentiall the scheduler is stupid. It can't deal with datetime objects so we need to do it for it.
-# 	if type(td) is timedelta:
-# 		# If a time delta object is given, wait the amount of seconds required.
-# 	else:
-# 		time.sleep(td.total_seconds())
-# 		# Otherwise, it's an int or a float, so just wait that many seconds.
-# 		logging.critical(f"Sleeping {td} seconds?.")
-# 		time.sleep(td)
-
 class threadFunction(Thread):
 	def __init__(self,func,args=(),kwargs={},synchronizeEvent=None,delay=0):
 		""" A thread function. """
@@ -74,7 +63,7 @@ class Brain(QtCore.QObject):
 	workflowFinished = QtCore.pyqtSignal()
 	displayMessage = QtCore.pyqtSignal(str)
 
-	def __init__(self,patientSupports,detectors,config,**kwargs):
+	def __init__(self,config,**kwargs):
 		super().__init__()
 		# Machine configuration.
 		self.imagingMode = config.machine.imagingMode
@@ -83,11 +72,11 @@ class Brain(QtCore.QObject):
 		self.treatmentBeam = control.hardware.source('Treatment',config.treatmentBeam)
 		# Threading.
 		if 'backendThread' in kwargs:
-			self.patientSupport = control.hardware.patientSupport(patientSupports,config.patientSupport,backendThread=kwargs['backendThread'])
-			self.imager = control.hardware.Imager(detectors,config.imager,backendThread=kwargs['backendThread'])
+			self.patientSupport = control.hardware.patientSupport(config.patientSupport,backendThread=kwargs['backendThread'])
+			self.imager = control.hardware.Imager(config.imager,backendThread=kwargs['backendThread'])
 		else:
-			self.patientSupport = control.hardware.patientSupport(patientSupports,config.patientSupport)
-			self.imager = control.hardware.Imager(detectors,config.imager)
+			self.patientSupport = control.hardware.patientSupport(config.patientSupport)
+			self.imager = control.hardware.Imager(config.imager)
 
 		# Hardware signals.
 		self.patientSupport.connected.connect(self._connectionMonitor)
@@ -161,11 +150,8 @@ class Brain(QtCore.QObject):
 
 	def setPatientSupportMonitor(self,monitor):
 		# The monitor should have functions to connect to singals and update the positions from.
-		self.patientSupport.newSupportSelected.connect(monitor.newMotors)
 		self.patientSupport.moving.connect(monitor.updateMotor)
-		# If a support has already been selected, add that.
-		if self.patientSupport.currentDevice is not None:
-			monitor.newMotors(self.patientSupport.currentDevice,self.patientSupport.currentMotors)
+		monitor.newMotors(self.patientSupport.name,self.patientSupport.motors)
 
 	def setImagingSpeed(self,value):
 		""" Set the velocity for the imaging routines. """

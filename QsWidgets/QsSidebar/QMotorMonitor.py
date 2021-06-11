@@ -22,9 +22,6 @@ class QMotorMonitor(QtWidgets.QWidget):
 		# Add the title and value to the layout.
 		self.layout().addRow("{}:".format(name),self.motor[name])
 		logging.info("Adding motor {}".format(name))
-		# Update the widget.
-		# logging.critical(f"self.nativeParentWidget: {self.nativeParentWidget()}")
-		# logging.critical(f"self.nativeParentWidget: {dir(self.nativeParentWidget())}")
 
 	def removeMotor(self,name=None):
 		if name is None:
@@ -43,11 +40,15 @@ class QMotorMonitor(QtWidgets.QWidget):
 			logging.warning("Motor {} not in list of active motor monitors.".format(name))
 
 	def newMotors(self,name,motors):
+		# Stop the widget from updating until we have all the motors attached.
+		self.setUpdatesEnabled(False)
 		# Remove any existing motors.
 		self.removeMotor()
 		# Add each new motor.
 		for motor in motors:
-			self.addMotor(motor)
+			self.addMotor(motor.description)
+		# Redraw the widget.
+		self.setUpdatesEnabled(True)
 
 	def updateMotor(self,name,value):
 		# Update the value label with the new value.
