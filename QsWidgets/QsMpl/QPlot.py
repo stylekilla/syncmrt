@@ -6,7 +6,7 @@ mpl.rcParams['toolbar'] = 'toolmanager'
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg, FigureManagerQT
 from matplotlib.collections import PatchCollection
-from matplotlib.patches import Rectangle
+from matplotlib.patches import Rectangle, Circle, Polygon
 # Local imports.
 from .QPlotTools import *
 from .QHistogram import QHistogramWindow
@@ -134,8 +134,9 @@ class QPlot(QtWidgets.QWidget):
 
 		# self._radiographMode = 'sum'
 		# self._R = np.identity(3)
-		# self.mask = None
+		self._maskType = 'Square'
 		self.maskSize = 20.0
+		self._customMask = None
 		self.overlay = {}
 		# These are stored as (h1,h2,v) coordinates.
 		self.machineIsocenter = [0,0,0]
@@ -340,6 +341,14 @@ class QPlot(QtWidgets.QWidget):
 		""" Return the patient isocenter. """
 		return self.patientIsocenter
 
+	def setMaskType(self,mode):
+		""" Set the mask type (square/circle/from plan etc.). """
+		if mode not in ['Square','Circle','Plan']:
+			raise TypeError(f"Unknown mask type {mode}.")
+		self._maskType = mode
+		self.toggleOverlay(3,'beamArea' in self.overlay)
+		self.toggleOverlay(3,'beamArea' in self.overlay)
+
 	def toggleOverlay(self,overlayType,state=False):
 		'''
 		Single overlay function with various types.
@@ -420,9 +429,21 @@ class QPlot(QtWidgets.QWidget):
 				self.overlay['beamArea'] = []
 				h1,h2,v = self.patientIsocenter
 				# Create new patches.
-				_beam = Rectangle((-self.maskSize/2,-self.maskSize/2), self.maskSize, self.maskSize,fc=CLR_RED,ec='none',alpha=0.2)
-				_ptv1 = Rectangle((h1-self.maskSize/2,v-self.maskSize/2), self.maskSize, self.maskSize,fc='none',ec=CLR_YELLOW,ls='--',alpha=1.0)
-				_ptv2 = Rectangle((h2-self.maskSize/2,v-self.maskSize/2), self.maskSize, self.maskSize,fc='none',ec=CLR_YELLOW,ls='--',alpha=1.0)
+				if self._maskType == 'Square':
+					_beam = Rectangle((-self.maskSize/2,-self.maskSize/2), self.maskSize, self.maskSize,fc=CLR_RED,ec='none',alpha=0.2)
+					_ptv1 = Rectangle((h1-self.maskSize/2,v-self.maskSize/2), self.maskSize, self.maskSize,fc='none',ec=CLR_YELLOW,ls='--',alpha=1.0)
+					_ptv2 = Rectangle((h2-self.maskSize/2,v-self.maskSize/2), self.maskSize, self.maskSize,fc='none',ec=CLR_YELLOW,ls='--',alpha=1.0)
+				elif self._maskType == 'Circle':
+					_beam = Circle((0,0), self.maskSize/2,fc=CLR_RED,ec='none',alpha=0.2)
+					_ptv1 = Circle((h1,v), self.maskSize/2,fc='none',ec=CLR_YELLOW,ls='--',alpha=1.0)
+					_ptv2 = Circle((h2,v), self.maskSize/2,fc='none',ec=CLR_YELLOW,ls='--',alpha=1.0)
+				else:
+					if self._customMask is not None:
+						_beam = Polygon(self._customMask,fc=CLR_RED,ec='none',alpha=0.2)
+						_ptv1 = Polygon(self._customMask+np.r_[h1,v],fc='none',ec=CLR_YELLOW,ls='--',alpha=1.0)
+						_ptv2 = Polygon(self._customMask+np.r_[h2,v],fc='none',ec=CLR_YELLOW,ls='--',alpha=1.0)
+					else:
+						logging.warning("No custom mask is set.")
 				# Different patch collection for each plot.
 				pc1 = PatchCollection([_beam,_ptv1],match_original=True)
 				pc2 = PatchCollection([_beam,_ptv2],match_original=True)
@@ -438,6 +459,12 @@ class QPlot(QtWidgets.QWidget):
 	def setMaskSize(self,size):
 		""" Set the mask size and toggle the overlay if it is enabled. """
 		self.maskSize = size
+		self.toggleOverlay(3,'beamArea' in self.overlay)
+		self.toggleOverlay(3,'beamArea' in self.overlay)
+
+	def setCustomMask(self,xy):
+		""" Set custom mask. Must be a nx2 array. """
+		self._customMask = np.array(xy)
 		self.toggleOverlay(3,'beamArea' in self.overlay)
 		self.toggleOverlay(3,'beamArea' in self.overlay)
 

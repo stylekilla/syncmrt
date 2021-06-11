@@ -78,16 +78,13 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		Epics.
 		"""
 		if threading:
-			logging.info("Putting EPICS on it's own thread.")
-			# Put epics on it's own thread.
+			logging.info("Putting backend on it's own thread.")
+			# Put backend on it's own thread.
 			self.backendControlThread = QtCore.QThread()
 			self.backendControlThread.start()
 		else:
 			# Run in parallel.
 			self.backendControlThread = None
-		# Create the monitor and move it to the epics thread.
-		# self.epicsMonitor = systems.control.backend.epics.EpicsMonitor()
-		# self.epicsMonitor.moveToThread(self.backendControlThread)
 
 		"""
 		Qt5 Setup
@@ -214,8 +211,6 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		# ================
 		# Create a new system, this has a solver, detector and stage.
 		self.system = systems.theBrain.Brain(
-			resourceFilepath+config.files.patientSupports,
-			resourceFilepath+config.files.detectors,
 			config,
 			deviceMonitor=self.statusMonitor,
 			backendThread=self.backendControlThread
@@ -238,12 +233,8 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		# More GUI linking from System and Patient.
 		# =========================================
 		# Create controls work environment.
-		self.sbSettings.stageChanged.connect(self.system.setStage)
 		self.sbSettings.refreshConnections.connect(self.system.patientSupport.reconnect)
 		self.sbSettings.refreshConnections.connect(self.system.imager.reconnect)
-		self.sbSettings.detectorChanged.connect(self.system.setDetector)
-		self.sbSettings.loadStages(self.system.patientSupport.deviceList)
-		self.sbSettings.loadDetectors(self.system.imager.deviceList)
 		# When an image set is added to the HDF5 file, add it to the sidebar:QImaging:QComboBox.
 		self.system.newImageSet.connect(self.sbImaging.addImageSet)
 		# When the current xray image setlist set is changed, plot it.
@@ -433,6 +424,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 			self.envXray.reset()
 			# Connect the settings mask size to the plot.
 			self.sbSettings.maskSizeChanged.connect(self.envXray.setMaskSize)
+			self.sbSettings.maskSource.connect(self.envXray.setMaskType)
 			# Force marker update for table.
 			self.envXray.set('maxMarkers',config.markers.quantity)
 		else:
@@ -446,6 +438,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		self.sbImaging.addImageSet(_list)
 		# Connect the settings mask size to the plot.
 		self.sbSettings.maskSizeChanged.connect(self.envXray.setMaskSize)
+		self.sbSettings.maskSource.connect(self.envXray.setMaskType)
 		# Force marker update for table.
 		self.envXray.set('maxMarkers',config.markers.quantity)
 		# Finalise import. Set open status to true and open the workspace.
@@ -487,6 +480,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 			self.envXray.reset()
 			# Connect the settings mask size to the plot.
 			self.sbSettings.maskSizeChanged.connect(self.envXray.setMaskSize)
+			self.sbSettings.maskSource.connect(self.envXray.setMaskType)
 			# Force marker update for table.
 			self.envXray.set('maxMarkers',config.markers.quantity)
 			return

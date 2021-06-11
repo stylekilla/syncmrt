@@ -6,9 +6,8 @@ import logging
 
 class QSettings(QtWidgets.QWidget):
 	modeChanged = QtCore.pyqtSignal('QString')
-	stageChanged = QtCore.pyqtSignal('QString')
-	detectorChanged = QtCore.pyqtSignal('QString')
 	maskSizeChanged = QtCore.pyqtSignal(float)
+	maskSource = QtCore.pyqtSignal('QString')
 	refreshConnections = QtCore.pyqtSignal()
 
 	def __init__(self):
@@ -22,34 +21,35 @@ class QSettings(QtWidgets.QWidget):
 		# Group: Hardware
 		self.group['hardware'] = QtWidgets.QGroupBox()
 		self.group['hardware'].setTitle('Hardware Configuration')
-		detectorLabel = QtWidgets.QLabel('Stage')
-		self.hardware['stage'] = QtWidgets.QComboBox()
-		stageLabel = QtWidgets.QLabel('Detector')
 		self.hardware['detector'] = QtWidgets.QComboBox()
 		self.hardware['refresh'] = QtWidgets.QPushButton("Refresh Connections")
 		# Layout
 		hardwareGroupLayout = QtWidgets.QVBoxLayout()
-		hardwareGroupLayout.addWidget(detectorLabel)
-		hardwareGroupLayout.addWidget(self.hardware['stage'])
-		hardwareGroupLayout.addWidget(stageLabel)
-		hardwareGroupLayout.addWidget(self.hardware['detector'])
-		hardwareGroupLayout.addWidget(QsGeneric.QHLine())
 		hardwareGroupLayout.addWidget(self.hardware['refresh'])
 		self.group['hardware'].setLayout(hardwareGroupLayout)
 		# Signals and Slots
-		self.hardware['stage'].currentIndexChanged.connect(self.stageChange)
-		self.hardware['detector'].currentIndexChanged.connect(self.detectorChange)
 		self.hardware['refresh'].clicked.connect(self._refreshConnections)
 
 		# Mask Settings.
 		self.group['mask'] = QtWidgets.QGroupBox()
 		self.group['mask'].setTitle("Mask Settings")
+		self.widget['maskShapeSquare'] = QtWidgets.QRadioButton('Square')
+		self.widget['maskShapeSquare'].setChecked(True)
+		self.widget['maskShapeSquare'].clicked.connect(partial(self.maskSource.emit,'Square'))
+		self.widget['maskShapeCircle'] = QtWidgets.QRadioButton('Circle')
+		self.widget['maskShapeCircle'].clicked.connect(partial(self.maskSource.emit,'Circle'))
+		self.widget['maskShapePlan'] = QtWidgets.QRadioButton('Plan')
+		self.widget['maskShapePlan'].clicked.connect(partial(self.maskSource.emit,'Plan'))
 		self.widget['maskSize'] = QsWidgets.QRangeEdit()
-		self.widget['maskSize'].setRange([0,30.0],20.0)
+		self.widget['maskSize'].setRange([0,50.0],20.0)
 		self.widget['maskSize'].editingFinished.connect(self._emitMaskSizeChanged)
 		# Layout.
 		lyt = QtWidgets.QFormLayout()
 		lyt.addRow(QtWidgets.QLabel("Size (mm):"),self.widget['maskSize'])
+		lyt.addRow(QtWidgets.QLabel("Shape:"))
+		lyt.addRow(self.widget['maskShapeSquare'])
+		lyt.addRow(self.widget['maskShapeCircle'])
+		lyt.addRow(self.widget['maskShapePlan'])
 		self.group['mask'].setLayout(lyt)
 
 		# Add Sections
