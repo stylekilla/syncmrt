@@ -147,6 +147,8 @@ class Imager(QtCore.QObject):
 		
 	def _addImage(self,uid):
 		""" Add an acquired image to the buffer. """
+		# Disconnect the image acquired signal.
+		self.detector.imageAcquired.disconnect(self._addImage)
 		# Get the image index. Note the len() of the buffer will suffice as we haven't added the data to it yet.
 		index = len(self.buffer)
 		# Get the image data: made up of (image,metadata).
@@ -157,7 +159,7 @@ class Imager(QtCore.QObject):
 		self.imageAcquired.emit(index)
 
 	def addImagesToDataset(self):
-		self.detector.imageAcquired.disconnect(self._addImage)
+		""" Add images in the buffer to a dataset. """
 		if self.file != None:
 			_name, _nims = self.file.addImageSet(self.buffer,metadata=self.metadata)
 			logging.debug("Adding {} images to set {}.".format(_nims,_name))

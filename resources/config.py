@@ -1,10 +1,10 @@
 class general:
 	""" General application settings. These should be updateable in GUI... somehow. """
 	# Imaging configs.
-	numberOfXrays = 1
-	defaultImagingAngles = [0,-90]
+	numberOfXrays = 2
+	defaultImagingAngles = [10,-10]
 	imagingThetaRange = [-90,90]
-	imagingZRange = [-30,30]
+	imagingZRange = [-10,10]
 	imagingMaximumZRange = [-200,200]
 
 class markers:

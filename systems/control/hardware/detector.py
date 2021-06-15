@@ -96,7 +96,6 @@ class detector(QtCore.QObject):
 
 	def _acquireFinished(self,uid):
 		""" Return an image. """
-		logging.debug(f"Acquire finished, grabbing image: {uid}")
 		self.controller.imageAcquired.disconnect(self._acquireFinished)
 		# Get the current time.
 		time = dt.now()
