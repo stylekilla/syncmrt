@@ -95,7 +95,6 @@ class detector(QtCore.QObject):
 		if self._connectionStatus:
 			self.connected.emit()
 		else:
-			logging.critical(f"{kwargs['pvname']}: {kwargs['conn']}")
 			self.disconnected.emit()
 
 	def isConnected(self):

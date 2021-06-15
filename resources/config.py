@@ -51,8 +51,8 @@ class imagingBeam:
 	# Choose a backend.
 	backend = 'epics'
 	# Basic properties. If irrelevant, set to 0. Units are in mm.
-	width = 100.0
-	height = 1
+	width = 76.0
+	height = 0.5
 
 	# Connections.
 	# Should be a list: [access, value].
@@ -83,10 +83,10 @@ class imager:
 	# sid = 1.5 
 	# magnification = sad/sid
 	# pixelSize = [0.1*magnification,0.1*magnification]		# Pixel size is 0.1 mm for HamaMama.
-	pixelSize = [0.044,0.044]
+	pixelSize = [0.03,0.03]
 	# Pixel size of image in mm for (col,row) (otherwise known as horiz,vertical; x,y).
 	# Isocenter specified as (col,row) (otherwise known as horiz,vertical; x,y).
-	isocenter = [1130,5]
+	isocenter = [1280,7.5]
 	# Offset between the primary beam and the imager.
 	# offset = [0,0,0,0,0,0]			# No change (default).
 	offset = [0,0,20,0,0,0]			# Monochromatic beam (+20 mm in Z)

@@ -21,7 +21,6 @@ class QMotorMonitor(QtWidgets.QWidget):
 		self.motor[name] = QtWidgets.QLabel(value)
 		# Add the title and value to the layout.
 		self.layout().addRow("{}:".format(name),self.motor[name])
-		logging.info("Adding motor {}".format(name))
 
 	def removeMotor(self,name=None):
 		if name is None:
@@ -46,7 +45,10 @@ class QMotorMonitor(QtWidgets.QWidget):
 		self.removeMotor()
 		# Add each new motor.
 		for motor in motors:
+			logging.info("Adding motor {}".format(name))
 			self.addMotor(motor.description)
+			# Connect it's signals to our updater.
+			motor.position.connect(lambda value, name=motor.description: self.updateMotor(name,value))
 		# Redraw the widget.
 		self.setUpdatesEnabled(True)
 

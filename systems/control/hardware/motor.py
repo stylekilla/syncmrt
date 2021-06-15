@@ -63,14 +63,12 @@ class motor(QtCore.QObject):
 		return self._controller.isConnected()
 
 	def setPosition(self,position):
-		position *= self._direction
 		try:
 			self._controller.write(position,mode='absolute')
 		except:
 			self.error.emit()
 
 	def shiftPosition(self,position):
-		position *= self._direction
 		try:
 			self._controller.write(position,mode='relative')
 		except:

@@ -241,7 +241,7 @@ class patientSupport(QtCore.QObject):
 			func(*args)
 			# If no trigger was provided for the next item... just trigger it automatically.
 			if self._workflowLastTrigger is None:
-				self.runWorkflowQueue()
+				self.runMotorQueue()
 		else:
 			# Disconnect any signals that are being held on to.
 			if self._workflowLastTrigger is not None:

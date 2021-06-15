@@ -54,6 +54,7 @@ class tcp(QtCore.QObject):
 		self._connectionStatus = True
 		# Get the config.
 		self.config = config
+		self.blockSignals(True)
 		# Add all the pv's.
 		for name,port in self.config.WORKPOINT_CONTROLLER.items():
 			setattr(self,name,epics.PV(port,
@@ -63,6 +64,7 @@ class tcp(QtCore.QObject):
 			)
 		# Flag for init completion.
 		self._initComplete = True
+		self.blockSignals(False)
 
 	def _connectionMonitor(self,*args,**kwargs):
 		"""
@@ -79,7 +81,7 @@ class tcp(QtCore.QObject):
 			teststate = [kwargs['conn']]
 			# N.B. Epics hasn't actually updated the pv.connected state of the motor sent to this function yet.
 			# So instead, get status of every motor except the one sent to this function.
-			for pv in [x for x in self.config.WORKPOINT_CONTROLLER.values() if x!=kwargs['pvname'][kwargs['pvname'].rfind(':')+1:]]:
+			for pv in [x for x in self.config.WORKPOINT_CONTROLLER.keys() if x!=kwargs['pvname'][kwargs['pvname'].rfind(':')+1:]]:
 				testpv = getattr(self,pv)
 				teststate.append(testpv.connected)
 			self._connectionStatus = all(teststate)
@@ -95,7 +97,7 @@ class tcp(QtCore.QObject):
 		return self._connectionStatus
 
 	def reconnect(self):
-		for port in self.config.WORKPOINT_CONTROLLER.values():
+		for port in self.config.WORKPOINT_CONTROLLER.keys():
 			pv = getattr(self,port)
 			try:
 				pv.reconnect()

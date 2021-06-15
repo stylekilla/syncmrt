@@ -10,6 +10,7 @@ class ConfigurationManager(QtWidgets.QWidget):
 		super().__init__()
 		# Widget styling.
 		self.setFixedWidth(300)
+		self.setWindowTitle("Configuration Manager")
 		# List of configurations.
 		self.configurations = []
 		# Layout.
@@ -51,21 +52,24 @@ class ConfigurationItem(QtWidgets.QWidget):
 		# Make a title.
 		title = QtWidgets.QLabel(self.name.capitalize())
 		# Make an edit button.
-		edit = QtWidgets.QPushButton("Edit")
+		self.button_edit = QtWidgets.QPushButton("Edit")
 		# Make a go button.
-		go = QtWidgets.QPushButton("Go")
+		self.button_go = QtWidgets.QPushButton("Go")
 		# If go button pressed, execute the script - must be thread blocking... disables the main window with spinny wheel!
-		go.clicked.connect(self.go)
-		edit.clicked.connect(self.edit)
+		self.button_go.clicked.connect(self.go)
+		self.button_edit.clicked.connect(self.edit)
 		# Add widgets.
 		layout.addWidget(title)
-		layout.addWidget(edit)
-		layout.addWidget(go)
+		layout.addWidget(self.button_edit)
+		layout.addWidget(self.button_go)
 		# Set layout.
 		self.setLayout(layout)
 
 	def go(self):
 		""" Move everything in the configuration file. """
+		# Disable gui buttons.
+		self.button_edit.setEnabled(False)
+		self.button_go.setEnabled(False)
 		# Parse the config file.
 		config = parseConfigFile(self.file)
 		for group in config:
@@ -73,8 +77,7 @@ class ConfigurationItem(QtWidgets.QWidget):
 				# Get the PV and the value to write.
 				pv, value = group[0]
 				# Write the value to epics and wait for it to complete.
-				# epics.caput(pv,float(value),wait=True)
-				print("SINGLE {} = {}".format(pv,value))
+				epics.caput(pv,float(value),wait=True)
 			else:
 				# Create a thread tracker.
 				threads = []
@@ -99,6 +102,13 @@ class ConfigurationItem(QtWidgets.QWidget):
 						break
 
 		logging.info("Configuration is set.")
+		# Show a message.
+		message = QtWidgets.QMessageBox()
+		message.setText(f"{self.name} is set.")
+		message.exec()
+		# Enable gui buttons.
+		self.button_go.setEnabled(True)
+		self.button_edit.setEnabled(True)
 
 	def edit(self):
 		""" Edit the file. """
@@ -152,9 +162,9 @@ def parseConfigFile(file):
 def epics_threadsafe(pv,value):
 	""" An epics ca.put() function that will wait until it has finished. """
 	try:
-		logging.info("Setting: {} -> {}".format(pv,value))
-		print("THREAD {} = {}".format(pv,value))
-		# epics.caput(pv,value,wait=True)
+		logging.info(f"Setting: {pv} -> {value}")
+		epics.caput(pv,value,wait=True)
+		logging.info(f"{pv} is {epics.caget(pv)}.")
 	except:
 		logging.warning("Could not set PV {} to {}.".format(pv,value))
 

@@ -73,7 +73,6 @@ class source(QtCore.QObject):
 			for pv in [key for key,val in self.ports.items() if key != callbackPVname]:
 				testpv = getattr(self,pv)
 				teststate.append(testpv.connected)
-			logging.critical(f"{self.name}-{callbackPVname}: {teststate}")
 			self._connectionStatus = all(teststate)
 
 		# Send out an appropriate signal.
