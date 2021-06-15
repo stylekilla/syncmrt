@@ -59,12 +59,14 @@ class detector(QtCore.QObject):
 		self.darkfield = None
 		# Add all the pv's.
 		self.pv = {}
+		self.blockSignals(True)
 		for name,pv in self.pvs.items():
 			setattr(self,name,epics.PV(f"{self.port}:{pv}",
 				auto_monitor=True,
 				connection_callback=self._connectionMonitor
 				)
 			)
+		self.blockSignals(False)
 		# Set up the detector preferences. Should link to config file or settings?
 		# self.setup()
 		# Flag for init completion.
@@ -80,12 +82,12 @@ class detector(QtCore.QObject):
 			# We haven't finished setting up the motor yet, don't do anything.
 			return
 
-		if ('port' in kwargs) and ('conn' in kwargs):
+		if ('pvname' in kwargs) and ('conn' in kwargs):
 			# Update the device connection state (by testing all the devices pv's connection states).
 			teststate = [kwargs['conn']]
 			# N.B. Epics hasn't actually updated the pv.connected state of the motor sent to this function yet.
 			# So instead, get status of every motor except the one sent to this function.
-			for pv in [x for x in DETECTOR_PVS if x not in kwargs['port'][kwargs['port'].rfind(':')+1:]]:
+			for pv in [k for k,v in self.pvs.items() if v not in kwargs['pvname'][kwargs['pvname'].find(':')+1:]]:
 				testpv = getattr(self,pv)
 				teststate.append(testpv.connected)
 			self._connectionStatus = all(teststate)
@@ -93,6 +95,7 @@ class detector(QtCore.QObject):
 		if self._connectionStatus:
 			self.connected.emit()
 		else:
+			logging.critical(f"{kwargs['pvname']}: {kwargs['conn']}")
 			self.disconnected.emit()
 
 	def isConnected(self):
@@ -107,8 +110,6 @@ class detector(QtCore.QObject):
 				epicspv.reconnect()
 			except:
 				raise DetectorException("Failed to force {} to reconnect.".format(pv))
-		# Run the setup again.
-		self.setup()
 
 	def setup(self):
 		# Set up the detector.
