@@ -155,7 +155,7 @@ class Brain(QtCore.QObject):
 
 	def setImagingSpeed(self,value):
 		""" Set the velocity for the imaging routines. """
-		self.patientSupport.setSpeed(float(value))
+		self.patientSupport.setVelocity(float(value))
 
 	def getPatientMove(self,uid):
 		logging.debug("Getting Movement UID: {}".format(uid))
@@ -243,7 +243,7 @@ class Brain(QtCore.QObject):
 			logging.debug("Workflow is empty.")
 			self.workflowFinished.emit()
 
-	def acquireXrays(self,theta,zrange=None,comment=''):
+	def acquireXrays(self,speed,theta,zrange=None,comment=''):
 		""" Theta and translation must be lists of values. """
 		# Check: Are all systems connected?
 		if not self.isConnected():
@@ -264,16 +264,16 @@ class Brain(QtCore.QObject):
 			# Also, as the workpoint is zeroed, we need to overide our home position.
 			homePosition[:3] = [0,0,0]
 		# Move to the imager position.
-		self.workflowQueue.append(
+		self.workflowQueue += [
+			(self.patientSupport.setVelocity, (), {}, None),
 			(self.movePatient, (tuple(self.imager.config.offset),'relative'), {}, self.patientSupport.finishedMove)
-		)
+		]
 
 		# Two very different imaging modes.
 		if self.imagingMode == 'dynamic':
 			# Calculate parameters.
 			start, stop = zrange
 			distance = stop-start
-			speed = self.patientSupport.getSpeed()
 			uid = str(uuid1())
 			time = datetime.now()
 			metadata = {
@@ -303,6 +303,7 @@ class Brain(QtCore.QObject):
 
 				# Append to the workflow queue.
 				self.workflowQueue += [
+					(self.patientSupport.setVelocity, (), {}, None),
 					(self.movePatient, ([0,0,start,0,0,angle],'relative'), {}, self.patientSupport.finishedMove),
 					(self.imager.setupDynamicScan, (distance,speed,imageUid), {}, self.imager.detector.detectorReady),
 					(self.imagingBeam.turnOn,		(), {}, self.imagingBeam.on),
@@ -320,6 +321,7 @@ class Brain(QtCore.QObject):
 					),
 					(self.imagingBeam.closeShutter,	(), {}, self.imagingBeam.shutterClosed),
 					# (self.imagingBeam.turnOff, (), {}, self.imagingBeam.off),
+					(self.patientSupport.setVelocity, (), {}, None),
 					(self.movePatient, ([0,0,-stop,0,0,-angle],'relative'), {}, self.patientSupport.finishedMove),
 				]
 
@@ -362,14 +364,16 @@ class Brain(QtCore.QObject):
 			start,stop = scanRanges[i]
 			# Treatment workflow:
 			self.workflowQueue += [
-				(self.patientSupport.setSpeed, (speeds[i],), {}, None),
+				(self.patientSupport.setVelocity, (), {}, None),
 				(self.movePatient, (ports[i],'relative'), {}, self.patientSupport.finishedMove),
 				(self.movePatient, ([0,0,start,0,0,0],'absolute'), {}, self.patientSupport.finishedMove),
+				(self.patientSupport.setVelocity, (speeds[i],), {}, None),
 				(self.treatmentBeam.turnOn,		(), {}, self.treatmentBeam.on),
 				(self.treatmentBeam.openShutter,	(), {}, self.treatmentBeam.shutterOpen),
 				(self.movePatient, ([0,0,stop,0,0,0],'absolute'), {}, self.patientSupport.finishedMove),
 				(self.treatmentBeam.closeShutter,	(), {}, self.treatmentBeam.shutterClosed),
 				# (self.treatmentBeam.turnOff, (), {}, self.treatmentBeam.off),
+				(self.patientSupport.setVelocity, (), {}, None),
 				(self.movePatient, (homePosition,'absolute'), {}, self.patientSupport.finishedMove)
 			]
 		# What to do when the workflow is finished.

@@ -6,6 +6,7 @@ class general:
 	imagingThetaRange = [-90,90]
 	imagingZRange = [-10,10]
 	imagingMaximumZRange = [-200,200]
+	imagingVelocity = 5
 
 class markers:
 	""" Marker settings for fiducials. """
@@ -177,9 +178,10 @@ class patientSupport:
 		'Velocity': 'SR08ID01ROB01:VELOCITY',
 		'Acceleration': 'SR08ID01ROB01:ACCELERATION',
 	}
-	velocity = 5
 	velocityRange = [2,50]
 	accelerationRange = [2,500]
+	# Specify imaging, treating, and general motion [velocity,acceleration].
+	defaultVelocity = [30,5]
 
 	# Define the config for the vertical translation for imaging and treatment.
 	VERTICALMOTION_CONTROLLER = motor(2,0,'SR08ID01ROB01:MOTOR_Z','Vertical Translation Motor')
@@ -208,5 +210,5 @@ class imagingSidebar:
 	imagingThetaRange = general.imagingThetaRange
 	imagingZRange = general.imagingZRange
 	imagingMaximumZRange = general.imagingMaximumZRange
-	velocity = patientSupport.velocity
+	velocity = general.imagingVelocity
 	velocityRange = patientSupport.velocityRange

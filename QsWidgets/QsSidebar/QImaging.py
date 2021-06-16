@@ -6,7 +6,7 @@ import logging
 
 class QImaging(QtWidgets.QWidget):
 	# Acquire image sends: (theta,zTranslation)
-	acquire = QtCore.pyqtSignal(list,list,str)
+	acquire = QtCore.pyqtSignal(float,list,list,str)
 	numberOfImagesChanged = QtCore.pyqtSignal(int)
 	imageSetChanged = QtCore.pyqtSignal(str)
 	imageModeChanged = QtCore.pyqtSignal(str)
@@ -232,6 +232,8 @@ class QImaging(QtWidgets.QWidget):
 	def acquireImages(self):
 		# Disable the button.
 		self.disableAcquisition()
+		# Get the speed.
+		speed = float(self.widget['speed'].value())
 		# Gather theta values.
 		i = int(self.widget['numImages'].value())
 		if i == 1:
@@ -243,7 +245,7 @@ class QImaging(QtWidgets.QWidget):
 		# Comment.
 		comment = self.widget['comment'].text()
 		# Emit signal.
-		self.acquire.emit(theta, zTranslation, comment)
+		self.acquire.emit(speed,theta,zTranslation,comment)
 
 	def enableAcquisition(self):
 		self.widget['acquire'].setEnabled(True)

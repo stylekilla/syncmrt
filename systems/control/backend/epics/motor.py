@@ -350,6 +350,7 @@ class velocityController(QtCore.QObject):
 
 	def setSpeed(self,value):
 		""" Set the velocity. """
+		logging.debug(f"Setting velocity to {value}.")
 		self.Velocity.put(float(value))
 
 	def getSpeed(self):

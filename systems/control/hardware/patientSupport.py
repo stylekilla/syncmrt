@@ -45,7 +45,7 @@ class patientSupport(QtCore.QObject):
 		# A settable work point for the patient support.
 		self.workpoint = None
 		self.velocityController = None
-		# Load the config.
+		# Load the motor config.
 		self.load()
 
 	def load(self):
@@ -119,13 +119,32 @@ class patientSupport(QtCore.QObject):
 		for motor in self.motors:
 			motor.reconnectControls()
 
-	def setSpeed(self,speed):
+	def setVelocity(self,velocity=[]):
 		""" Set the speed of the patient support. """
+		# Ensure velocity is a list.
+		if type(velocity) != list:
+			try:
+				# Handle tuples.
+				velocity = list(velocity)
+			except:
+				# Handle float/ints etc.
+				velocity = [velocity]
+		if len(velocity) == 0:
+			# If no values are presented, set the default values.
+			speed, acceleration = self.config.defaultVelocity
+		elif len(velocity) == 1:
+			# Make the acceleration 10 times the speed.
+			speed = velocity[0]
+			acceleration = speed*10
+		elif len(velocity) == 2:
+			speed, acceleration = velocity
+		else:
+			raise ValueError(f"Expected 0, 1 or 2 values for velocity, instead got {len(velocity)}.")
+
 		if self.config.velocityMode == 'global':
 			# Set the global speed for the device.
 			self.velocityController.setSpeed(speed)
-			self.velocityController.setAcceleration(speed*4)
-
+			self.velocityController.setAcceleration(acceleration)
 		elif self.config.velocityMode == 'axis':
 			# Set the speed on each motor if it allows it.
 			for motor in self.motors:
@@ -272,12 +291,13 @@ class patientSupport(QtCore.QObject):
 			start = np.NaN
 			stop = scanRange
 		logging.debug(f"Running an {mode} vertical scan between {start:.3f} and {stop:.3f} at speed {speed:.3f}.")
+		self.motionQueue.append((self.setVelocity, (speed), None))
 		# Make the motion queue.
 		if mode == 'absolute':
-			if not np.isnan(start): self.motionQueue.append((self.verticalTranslationMotor,self.verticalTranslationMotor.setPosition,(start)))
+			if not np.isnan(start): self.motionQueue.append((self.verticalTranslationMotor.setPosition,(start),self.verticalTranslationMotor.moveFinished))
 			self.motionQueue.append((self.verticalTranslationMotor.setPosition,(stop),self.verticalTranslationMotor.moveFinished))
 		elif mode == 'relative':
-			if not np.isnan(start): self.motionQueue.append((self.verticalTranslationMotor,self.verticalTranslationMotor.shiftPosition,(start)))
+			if not np.isnan(start): self.motionQueue.append((self.verticalTranslationMotor.shiftPosition,(start),self.verticalTranslationMotor.moveFinished))
 			self.motionQueue.append((self.verticalTranslationMotor.shiftPosition,(stop),self.verticalTranslationMotor.moveFinished))
 		# Run the motion queue.
 		self.runMotorQueue()
