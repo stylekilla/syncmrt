@@ -55,7 +55,7 @@ class detector(QtCore.QObject):
 		self.arraySize = np.array([0,0])
 		self.buffer = {}
 		# Flood fields and dark fields.
-		self.floodfield = None
+		self.floodfield = [None]*10
 		self.darkfield = None
 		# Add all the pv's.
 		self.pv = {}
@@ -147,19 +147,41 @@ class detector(QtCore.QObject):
 
 	def acquireFFC(self,mode):
 		""" Acquire a dark field image. """
-		# Acquire an image.
-		self.Acquire.put(1)
-		time.sleep(0.2)
-		# Get the image.
-		arr = self.RoiData.get().reshape(tuple(self.arraySize[::-1]))
-		# Set the field correction.
 		if mode == 'dark':
-			self.darkfield = arr
+			# Make an empty list of images.
+			arr = []
+			# Set the exposure time.
+			self.AcquireTime.put(0.5)
+			self.AcquirePeriod.put(0.0)
+			# Capture 10 images.
+			for _ in range(10):
+				# Acquire an image.
+				self.Acquire.put(1)
+				time.sleep(1.1*exp)
+				arr.append(self.RoiData.get().reshape(tuple(self.arraySize[::-1])))
+			# Take the average of the 10 images.
+			self.darkfield = np.average(arr,axis=0)
+			# We are done.
 			logging.info("Acquired Dark Field.")
 			self.imageAcquired.emit('darkField')
 		elif mode == 'flood':
-			self.floodfield = arr
-			logging.info("Acquired Flood Field.")
+			# Exposure range:
+			exposure = np.linspace(0.1,1,10)
+			for i,exp in enumerate(exposure):
+				# Make an empty list of images.
+				arr = []
+				# Set the exposure time.
+				self.AcquireTime.put(exp)
+				self.AcquirePeriod.put(0.0)
+				# Capture 10 images.
+				for _ in range(10):
+					# Acquire an image.
+					self.Acquire.put(1)
+					time.sleep(1.1*exp)
+					arr.append(self.RoiData.get().reshape(tuple(self.arraySize[::-1])))
+				# Take the average of the 10 images.
+				self.floodfield[i] = np.average(arr,axis=0)
+			logging.info("Acquired Flood Fields.")
 			self.imageAcquired.emit('floodField')
 
 	def setupDynamicScan(self,distance,speed,uid="temp"):
@@ -295,8 +317,10 @@ class detector(QtCore.QObject):
 		# Apply flat field corrections (if available):
 		for i in range(len(arrData)):
 			# Do FFC before image gymnasticks (they are unadulterated fields).
-			if (self.floodfield is not None) and (self.darkfield is not None):
-				arrData[i] = (arrData[i]-self.darkfield)/(self.floodfield-self.darkfield)
+			# Find which ff we want.
+			ff = np.argmin(np.abs(np.linspace(0.1,1,10)-float(self.AcquireTime.get())))
+			if (self.floodfield[ff] is not None) and (self.darkfield is not None):
+				arrData[i] = (arrData[i]-self.darkfield)/(self.floodfield[ff]-self.darkfield)
 			# Do appropriate image gymnastics.
 			if self.flipud: arrData[i] = np.flipud(arrData[i])
 			if self.fliplr: arrData[i] = np.fliplr(arrData[i])
