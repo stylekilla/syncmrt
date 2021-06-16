@@ -108,8 +108,8 @@ class Brain(QtCore.QObject):
 			self.deviceMonitor = kwargs['deviceMonitor']
 			self.patientSupport.connected.connect(partial(self.deviceMonitor.updateMonitor,'Positioning Support'))
 			self.imager.connected.connect(partial(self.deviceMonitor.updateMonitor,'Imaging Detector'))
-			# self.imagingBeam.connected.connect(partial(self.deviceMonitor.updateMonitor,'Imaging Source'))
-			# self.treatmentBeam.connected.connect(partial(self.deviceMonitor.updateMonitor,'Treatment Source'))
+			self.imagingBeam.connected.connect(partial(self.deviceMonitor.updateMonitor,'Imaging Source'))
+			self.treatmentBeam.connected.connect(partial(self.deviceMonitor.updateMonitor,'Treatment Source'))
 
 	def isConnected(self):
 		# Return the connection status.

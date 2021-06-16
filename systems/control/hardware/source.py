@@ -12,8 +12,7 @@ class source(QtCore.QObject):
 	shutterClosed = QtCore.pyqtSignal()
 	shutterState = QtCore.pyqtSignal(bool)
 	# Connection signals.
-	connected = QtCore.pyqtSignal()
-	disconnected = QtCore.pyqtSignal()
+	connected = QtCore.pyqtSignal(bool)
 
 	def __init__(self,name,config):
 		super().__init__()
@@ -30,8 +29,10 @@ class source(QtCore.QObject):
 		self._controller.shutterOpen.connect(self.shutterOpen.emit)
 		self._controller.shutterClosed.connect(self.shutterClosed.emit)
 		self._controller.shutterState.connect(self.shutterState.emit)
-		self._controller.connected.connect(self.connected.emit)
-		self._controller.disconnected.connect(self.disconnected.emit)
+		self._controller.connected.connect(self._connectionMonitor)
+		self._controller.disconnected.connect(self._connectionMonitor)
+		# Connection status, True = Connected, False = Disconnected.
+		self._connectionStatus = False
 
 	def turnOn(self):
 		""" Turn the beam on. """
@@ -48,3 +49,12 @@ class source(QtCore.QObject):
 	def closeShutter(self):
 		""" Close the shutter. """
 		self._controller.closeShutter()
+
+	def isConnected(self):
+		# Return the connection status.
+		return self._connectionStatus
+
+	def _connectionMonitor(self):
+		# Send out an appropriate signal.
+		self._connectionStatus = self._controller.isConnected()
+		self.connected.emit(self._connectionStatus)

@@ -37,9 +37,9 @@ class source(QtCore.QObject):
 		# Initialisation vars.
 		self._connectionStatus = False
 		# Add all the pv's.
-		for key,val in self.ports.items():
-			if key in SOURCE_PVS:
-				setattr(self,key,epics.PV(val,
+		for name,port in self.ports.items():
+			if name in SOURCE_PVS:
+				setattr(self,name,epics.PV(port,
 					auto_monitor=True,
 					connection_callback=self._connectionMonitor
 					)
@@ -66,9 +66,9 @@ class source(QtCore.QObject):
 			# N.B. Epics hasn't actually updated the pv.connected state of the motor sent to this function yet.
 			# So instead, get status of every motor except the one sent to this function.
 			callbackPV = kwargs['pvname']
-			for key,val in self.ports.items():
-				if val == callbackPV:
-					callbackPVname = key
+			for name,port in self.ports.items():
+				if port == callbackPV:
+					callbackPVname = name
 			# List of PV's that aren't the one sent to this function.
 			for pv in [key for key,val in self.ports.items() if key != callbackPVname]:
 				testpv = getattr(self,pv)
