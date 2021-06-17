@@ -113,6 +113,28 @@ class QPlot(QtWidgets.QWidget):
 		self.toolbar.add_tool('pick',"default")
 		self.toolbar.add_tool('clear',"default")
 
+		# Icons.
+		items = list(self.toolbar._toolitems.values())
+		for item in items:
+			# Unpack.
+			button,_ = item[0]
+			# Get the icon.
+			icon = button.icon()
+			# Get the pixmap.
+			pixmap = icon.pixmap(64,64)
+			# Make a mask.
+			mask = pixmap.createMaskFromColor(QtGui.QColor('#000000'), QtCore.Qt.MaskOutColor)
+			# Change the color and mask (after).
+			pixmap.fill(QtGui.QColor(CLR_BLUE))
+			pixmap.setMask(mask)
+			# Add the pixmap to the icon state.
+			icon.addPixmap(pixmap,QtGui.QIcon.Active,QtGui.QIcon.On)
+			icon.addPixmap(pixmap,QtGui.QIcon.Active,QtGui.QIcon.Off)
+			icon.addPixmap(pixmap,QtGui.QIcon.Selected,QtGui.QIcon.On)
+			icon.addPixmap(pixmap,QtGui.QIcon.Selected,QtGui.QIcon.Off)
+			# Set the icon for the button.
+			button.setIcon(icon)
+
 		# Get the layout.
 		layout = QtWidgets.QVBoxLayout()
 		layout.addWidget(self.toolbar)

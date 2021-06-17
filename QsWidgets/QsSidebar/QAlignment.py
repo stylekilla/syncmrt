@@ -7,6 +7,7 @@ class QAlignment(QtWidgets.QWidget):
 	markersChanged = QtCore.pyqtSignal(int)
 	calculateAlignment = QtCore.pyqtSignal(int)
 	doAlignment = QtCore.pyqtSignal()
+	homePositioningSystem = QtCore.pyqtSignal()
 
 	def __init__(self):
 		super().__init__()
@@ -78,6 +79,20 @@ class QAlignment(QtWidgets.QWidget):
 		# Signals and Slots
 		self.widget['calcAlignment'].clicked.connect(partial(self.calculateAlignment.emit,0))
 		self.widget['doAlignment'].clicked.connect(self.doAlignment.emit)
+
+		# Group 3: Extra functions
+		functionsGroup = QtWidgets.QGroupBox()
+		functionsGroup.setTitle('Positioning System')
+		self.widget['home'] = QtWidgets.QPushButton('Go to Home')
+		self.widget['home'].setToolTip("Send the positioning system to its home (0,0,0,0,0,0) position.")
+		# Layout
+		functionsGroupLayout = QtWidgets.QFormLayout()
+		functionsGroupLayout.addRow(self.widget['home'])
+		functionsGroup.setLayout(functionsGroupLayout)
+		self.layout.addWidget(functionsGroup)
+		# Defaults
+		# Signals and Slots
+		self.widget['home'].clicked.connect(self.homePositioningSystem.emit)
 
 		# Finish page.
 		self.layout.addStretch(1)
