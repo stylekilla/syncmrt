@@ -2,11 +2,11 @@ class general:
 	""" General application settings. These should be updateable in GUI... somehow. """
 	# Imaging configs.
 	numberOfXrays = 2
-	defaultImagingAngles = [10,-10]
+	defaultImagingAngles = [20,-20]
 	imagingThetaRange = [-90,90]
 	imagingZRange = [-10,10]
 	imagingMaximumZRange = [-200,200]
-	imagingVelocity = 5
+	imagingVelocity = 0
 
 class markers:
 	""" Marker settings for fiducials. """
@@ -84,23 +84,23 @@ class imager:
 	# sid = 1.5 
 	# magnification = sad/sid
 	# pixelSize = [0.1*magnification,0.1*magnification]		# Pixel size is 0.1 mm for HamaMama.
-	pixelSize = [0.03,0.03]
+	pixelSize = [0.081,0.081]
 	# Pixel size of image in mm for (col,row) (otherwise known as horiz,vertical; x,y).
 	# Isocenter specified as (col,row) (otherwise known as horiz,vertical; x,y).
-	isocenter = [1280,7.5]
+	isocenter = [575.5,668.5]
 	# Offset between the primary beam and the imager.
-	# offset = [0,0,0,0,0,0]			# No change (default).
-	offset = [0,0,20,0,0,0]			# Monochromatic beam (+20 mm in Z)
-	# offset = [0,0,0,0,0,-32.7]		# 2B X-Ray Source (-32.7 deg about Z)
+	#offset = [0,0,0,0,0,0]			# No change (default).
+	# offset = [0,0,20,0,0,0]			# Monochromatic beam (+20 mm in Z)
+	offset = [0,0,0,0,0,-32.7]		# 2B X-Ray Source (-32.7 deg about Z)
 	
-	name = 'PCO3-HCL'
+	name = 'HamaMamma'
 	# Specify an access port.
-	port = 'SR08ID01DETIOC10'
+	port = 'SR08ID01DETIOC08'
 	# Paths to objects.
-	roiPort = 'pcoEdge.cam.roi1'
-	iocpath = 'D:\\syncmrt\\'
-	localpath = '/mnt/tmp/'
-	attributesfile = 'LAPSPositionTracker.xml'
+	roiPort = 'pcoEdge.cam'
+	iocpath = ''
+	localpath = ''
+	attributesfile = ''
 	# Detector PV's to use.
 	DETECTOR_PVS = {
 		'Acquire': 'CAM:Acquire',
@@ -144,59 +144,40 @@ class patientSupport:
 	# Choose a backend.
 	backend = 'epics'
 	# Name it.
-	name = 'LAPS'
+	name = 'DynMRT'
 	# Motors.
 	MOTOR_CONTROLLERS = [
-		motor(0,0,'SR08ID01ROB01:MOTOR_X',		'X Translation'),
-		motor(1,1,'SR08ID01ROB01:MOTOR_Y',		'Y Translation'),
-		motor(2,2,'SR08ID01ROB01:MOTOR_Z',		'Z Translation'),
-		motor(3,3,'SR08ID01ROB01:MOTOR_XTILT',	'X Rotation'),
-		motor(4,4,'SR08ID01ROB01:MOTOR_YTILT',	'Y Rotation'),
-		motor(5,5,'SR08ID01ROB01:MOTOR_ZTILT',	'Z Rotation')
+		motor(0,3,'SR08ID01SST25:SAMPLEH1',		'X Translation'),
+		motor(1,2,'SR08ID01SST25:SAMPLEH2',		'Y Translation'),
+		motor(2,0,'SR08ID01SST25:SAMPLEV',		'Z Translation'),
+		motor(5,1,'SR08ID01SST25:ROTATION',	'Rotation'),
 	]
 	# Do we need the moves to happen one after the other or can they happen simulatenously?
-	simulatenousCommands = False
+	simulatenousCommands = True
 	# The workpoint is a settable point to tell the patient support to move around (i.e. a Robot TCP).
-	workpoint = True
+	workpoint = False
 	WORKPOINT_CONTROLLER = {
-		'TCP_AXIS1': 'SR08ID01ROB01:TCP_AXIS1',
-		'TCP_AXIS2': 'SR08ID01ROB01:TCP_AXIS2',
-		'TCP_AXIS3': 'SR08ID01ROB01:TCP_AXIS3',
-		'TCP_AXIS_RBV1': 'SR08ID01ROB01:TCP_AXIS_RBV1',
-		'TCP_AXIS_RBV2': 'SR08ID01ROB01:TCP_AXIS_RBV2',
-		'TCP_AXIS_RBV3': 'SR08ID01ROB01:TCP_AXIS_RBV3',
-		'TOOL_NO': 'SR08ID01ROB01:TOOL_NO',
-		'TOOL_NO_RBV': 'SR08ID01ROB01:TOOL_NO_RBV',
-		'READ_TCP': 'SR08ID01ROB01:READ_TCP',
-		'SET_TCP': 'SR08ID01ROB01:SET_TCP',
-		'ZERO_TOOL': 'SR08ID01ROB01:ZERO_TOOL'
 	}
 	# How is the speed controlled, per axis or globally? 
 	# Options are: axis/global
-	velocityMode = 'global'
-	VELOCITY_CONTROLLER = {
-		'Velocity': 'SR08ID01ROB01:VELOCITY',
-		'Acceleration': 'SR08ID01ROB01:ACCELERATION',
-	}
-	velocityRange = [2,50]
-	accelerationRange = [2,500]
+	velocityMode = None
+	VELOCITY_CONTROLLER = None
+	velocityRange = None
+	accelerationRange = None
 	# Specify imaging, treating, and general motion [velocity,acceleration].
-	defaultVelocity = [30,5]
-
+	defaultVelocity = None
 	# Define the config for the vertical translation for imaging and treatment.
-	VERTICALMOTION_CONTROLLER = motor(2,0,'SR08ID01ROB01:MOTOR_Z','Vertical Translation Motor')
+	VERTICALMOTION_CONTROLLER = None
 
 class machine:
 	""" A configuration for the machine - can be used to preconfigure things for Hutch 2B or Hutch 3B etc. """
 	# Imaging mode: (dynamic/static/step).
-	imagingMode = 'dynamic'
+	imagingMode = 'static'
 	# The following can be set as strings, as long as they have a configuration file stored in the database folder.
-	imager = 'hamamama'
-	imagingBeam = 'monochromatic'
-	treatmentBeam = 'polychromatic'
-	patientSupport = 'laps'
-
-
+	imager = 'HamaMama'
+	imagingBeam = None
+	treatmentBeam = None
+	patientSupport = 'DynMRT'
 
 """
 Automated Class Configs
@@ -210,5 +191,6 @@ class imagingSidebar:
 	imagingThetaRange = general.imagingThetaRange
 	imagingZRange = general.imagingZRange
 	imagingMaximumZRange = general.imagingMaximumZRange
+	velocityMode = patientSupport.velocityMode
 	velocity = general.imagingVelocity
 	velocityRange = patientSupport.velocityRange

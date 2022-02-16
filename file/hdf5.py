@@ -56,6 +56,7 @@ class file(h5.File):
 			return []
 
 	def addImageSet(self,images,metadata={}):
+		logging.info(f"Image metadata: {metadata}")
 		setName = str(len(self['Image'])+1).zfill(2)
 		numImages = len(images)
 		logging.debug(f"Writing {setName} containing {numImages} images to HDF5 file {self}.")
@@ -63,6 +64,7 @@ class file(h5.File):
 		newSet = self['Image'].create_group(setName)
 		# Write the metadata for the image set (if any).
 		for key,val in metadata.items():
+			print(key,val)
 			newSet.attrs[key] = val
 		# Add the images to the set one by one.
 		for i in range(numImages):

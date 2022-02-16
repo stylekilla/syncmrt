@@ -121,6 +121,12 @@ class Imager(QtCore.QObject):
 		# Add the metadata for the image set.
 		self.metadata = metadata
 
+	def acquireStaticImageDirect(self,uid,wait,metadata={}):
+		""" Passthrough function: Set the detector up for a dynamic scan. """
+		# Set the scan up.
+		self.detector.imageAcquired.connect(self._addImage)
+		self.detector.acquireStaticImageDirect(uid,wait,metadata)	
+
 	def acquire(self,mode,uid='temp',metadata={}):
 		""" Acquire an image. Can supply some metadata if desired. """
 		if self.file is None:

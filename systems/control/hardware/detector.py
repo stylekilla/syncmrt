@@ -82,6 +82,14 @@ class detector(QtCore.QObject):
 		# Set the scan up.
 		self.controller.setupDynamicScan(distance,speed,uid)
 
+	def acquireStaticImageDirect(self,uid,wait,metadata):
+		""" Passthrough function: Set the detector up for a dynamic scan. """
+		# Create an entry into the buffer.
+		self.buffer[uid] = None
+		# Set the scan up.
+		self.controller.imageAcquired.connect(self._acquireFinished)
+		self.controller.acquireStaticImageDirect(uid,wait,metadata)
+
 	def acquire(self,mode,uid,metadata):
 		""" Passthrough function: Acquire an image. """
 		# Get the acquire mode.

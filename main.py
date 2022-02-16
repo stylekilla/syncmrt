@@ -315,6 +315,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		if modality == 'xray':
 			fileFormat = 'HDF5 (*.hdf5)'
 			fileDialogue = QtWidgets.QFileDialog()
+			fileDialogue.setDirectory("/home/imbl/Documents/Data/220215_OlgaMartin")
 			file, dtype = fileDialogue.getSaveFileName(self, "Create new x-ray dataset", "", fileFormat)
 			# Create the new xray file.
 			if file.endswith('.hdf5') is False:

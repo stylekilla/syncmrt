@@ -326,7 +326,37 @@ class Brain(QtCore.QObject):
 				]
 
 		elif self.imagingMode == 'static':
-			pass
+			# Calculate parameters.
+			uid = str(uuid1())
+			time = datetime.now()
+			metadata = {
+				'Patient Support Position': homePosition[:3],
+				'Patient Support Angle': homePosition[3:],
+				'Imaging Mode': self.imagingMode,
+				'Image Angles': theta,
+				'Image Offset': tuple(self.imager.config.offset),
+				'UUID': uid,
+				'Time': time.strftime("%H:%M:%S"),
+				'Date': time.strftime("%d/%m/%Y"),
+			}
+
+			# For each angle, take an image.
+			for index,angle in enumerate(theta):
+				# Imaging UUID.
+				imageUid = str(uuid1())
+				imageMetadata = {
+					'Image Angle': angle,
+					'Imaging Mode': self.imagingMode,
+					'Image Offset': tuple(self.imager.config.offset),
+					'UUID': imageUid,
+				}
+
+				# Append to the workflow queue.
+				self.workflowQueue += [
+					(self.movePatient, ([0,0,0,0,0,angle],'relative'), {}, self.patientSupport.finishedMove),
+					(self.imager.acquireStaticImageDirect, (imageUid,True,imageMetadata), {}, self.imager.imageAcquired),
+					(self.movePatient, ([0,0,0,0,0,-angle],'relative'), {}, self.patientSupport.finishedMove),
+				]
 
 		else:
 			logging.warning(f"Unknown imaging mode {self.imagingMode}.")

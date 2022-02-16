@@ -116,16 +116,19 @@ class QImaging(QtWidgets.QWidget):
 		imagingSequence_layout.addRow(self.widget['translation2_label'],self.widget['translation2'])
 
 		# Speed for imaging.
-		lblSpeed = QtWidgets.QLabel("Scan Velocity (mm/s):")
-		self.widget['speed'] = QtWidgets.QDoubleSpinBox()
-		self.widget['speed'].setMinimumSize(55,20)
-		self.widget['speed'].setDecimals(1)
-		self.widget['speed'].setMinimum(config.velocityRange[0])
-		self.widget['speed'].setMaximum(config.velocityRange[1])
-		self.widget['speed'].setValue(config.velocity)
-		self.widget['speed'].setToolTip("Velocity for dynamic imaging.")
-		imagingSequence_layout.addRow(lblSpeed)
-		imagingSequence_layout.addRow(self.widget['speed'])
+		if config.velocityMode is not None:
+			lblSpeed = QtWidgets.QLabel("Scan Velocity (mm/s):")
+			self.widget['speed'] = QtWidgets.QDoubleSpinBox()
+			self.widget['speed'].setMinimumSize(55,20)
+			self.widget['speed'].setDecimals(1)
+			self.widget['speed'].setMinimum(config.velocityRange[0])
+			self.widget['speed'].setMaximum(config.velocityRange[1])
+			self.widget['speed'].setValue(config.velocity)
+			self.widget['speed'].setToolTip("Velocity for dynamic imaging.")
+			imagingSequence_layout.addRow(lblSpeed)
+			imagingSequence_layout.addRow(self.widget['speed'])
+		else:
+			self.widget['speed'] = None
 
 		# Flat field corrections.
 		lblFFC = QtWidgets.QLabel("Flat Field Correction:")
@@ -166,7 +169,8 @@ class QImaging(QtWidgets.QWidget):
 
 		# Signals.
 		self.widget['imageList'].currentTextChanged.connect(self.imageSetChanged)
-		self.widget['speed'].valueChanged.connect(self.speedChanged.emit)
+		if config.velocityMode is not None:
+			self.widget['speed'].valueChanged.connect(self.speedChanged.emit)
 
 	def _imageModeChanged(self,mode,state):
 		if state is True:
@@ -233,7 +237,10 @@ class QImaging(QtWidgets.QWidget):
 		# Disable the button.
 		self.disableAcquisition()
 		# Get the speed.
-		speed = float(self.widget['speed'].value())
+		if self.widget['speed'] is None:
+			speed = 0
+		else:
+			speed = float(self.widget['speed'].value())
 		# Gather theta values.
 		i = int(self.widget['numImages'].value())
 		if i == 1:

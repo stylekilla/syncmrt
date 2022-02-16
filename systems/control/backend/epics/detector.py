@@ -3,7 +3,7 @@ import numpy as np
 import logging
 import time
 import h5py as hdf
-from PyQt5 import QtCore
+from PyQt5 import QtCore, QtWidgets
 import os
 
 """
@@ -68,7 +68,9 @@ class detector(QtCore.QObject):
 			)
 		self.blockSignals(False)
 		# Set up the detector preferences. Should link to config file or settings?
-		# self.setup()
+		#self.setup()
+		#temp setup bypass due to disconnected pvs
+		#print("X: {}, Y: {}".format(self.arraySize[0],self.arraySize[1]))
 		# Flag for init completion.
 		self._initComplete = True
 
@@ -90,6 +92,7 @@ class detector(QtCore.QObject):
 			for pv in [k for k,v in self.pvs.items() if v not in kwargs['pvname'][kwargs['pvname'].find(':')+1:]]:
 				testpv = getattr(self,pv)
 				teststate.append(testpv.connected)
+				#print("PV {} is status:{}".format(testpv.pvname,testpv.connected))
 			self._connectionStatus = all(teststate)
 		# Send out an appropriate signal.
 		if self._connectionStatus:
@@ -126,8 +129,8 @@ class detector(QtCore.QObject):
 		self.Acquire.put(1)
 		time.sleep(1)
 		# Get the array size.
-		self.arraySize[0] = self.RoiSizeX.get()
-		self.arraySize[1] = self.RoiSizeY.get()
+		self.arraySize[0] = self.ArraySizeX.get()
+		self.arraySize[1] = self.ArraySizeY.get()
 
 	def setupFFC(self):
 		# Stop any existing imaging.
@@ -185,10 +188,7 @@ class detector(QtCore.QObject):
 			self.imageAcquired.emit('floodField')
 
 	def setupDynamicScan(self,distance,speed,uid="temp"):
-		""" Setup a dynamic image in Area Detector using HDF. """
-		logging.warning("This requires a ROI to be setup on the detector.")
-		# Total imaging time.
-		time = distance/speed
+		""" Setup a static image in Area Detector using HDF. """
 		# Number of pixels to read out.
 		self.arraySize[0] = self.RoiSizeX.get()
 		self.arraySize[1] = self.RoiSizeY.get()
@@ -240,6 +240,48 @@ class detector(QtCore.QObject):
 			return True
 		else:
 			raise DetectorException("Could not set unknown parameter {} on device {}.".format(parameter,self.port))
+
+	def acquireStaticImageDirect(self,uid,wait=False,metadata={}):
+		""" Acquires an image. Really it just activates the camera acquire button. """
+		# Sanity checks.
+		if not self._connectionStatus:
+			raise DetectorException("Detector not connected. Cannot acquire image.")
+
+		if wait:
+			QtWidgets.QMessageBox.warning(None,"Image Acquisition","Press OK to start image acquisition.")
+		# Tell the detector to acquire.
+		self.Acquire.put(1)
+		# Wait 2 seconds before grabbing the frame.
+		time.sleep(1)
+		time.sleep(1)
+		# Grab the image data.
+		arrData = self.ArrayData.get()
+		x = self.ArraySizeX.get()
+		y = self.ArraySizeY.get()
+		self.arraySize = [x,y]
+		arrData = arrData.reshape(y,x)
+		# Do appropriate image gymnastics.
+		if self.flipud: arrData = np.flipud(arrData)
+		if self.fliplr: arrData = np.fliplr(arrData)
+		# Calculate the extent of the image.
+		l,t = self.pixelSize*self.isocenter
+		r,b = np.r_[l,t] - self.arraySize*self.pixelSize
+		extent = [l,r,b,t]
+		# Create metadata.
+		metadata.update({
+			'Pixel Size': self.pixelSize,
+			'Image Isocenter': self.isocenter,
+			'Extent': extent,
+			#'Mode': mode,
+			'UUID': uid,
+		})
+		# We can't send the image + metadata over pyqt signals unfortunately.
+		# We will have to come back and manually get it.
+		logging.debug(f"Adding image to buffer: {uid}")
+		# Save everything in the buffer.
+		self.buffer[uid] = (arrData,metadata)
+		# Let the world know we've finished the image capture.
+		self.imageAcquired.emit(uid)
 
 	def acquire(self,mode,uid,metadata={}):
 		""" Acquires an image (or series of image). Really it just activates the camera acquire button. """

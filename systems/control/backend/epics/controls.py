@@ -172,7 +172,7 @@ class motor:
 		newPosition = self.read()
 		retryCounter = 0
 		maxRetrties = 3
-		BDST=self.pv['BDST'].get()
+		BDST=abs(self.pv['BDST'].get())
 
 		while (abs(newPosition-predictedPosition) > BDST) and (retryCounter < maxRetrties): 
 			logging.error("Motor {} did not move to {}. Retry #{} of {}.".format(self.pv['DESC'].get(), predictedPosition,retryCounter + 1, maxRetrties))

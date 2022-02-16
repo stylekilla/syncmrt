@@ -71,17 +71,18 @@ class patientSupport(QtCore.QObject):
 			self.motors.append(newMotor)
 
 		# Define the vertical translation motor.
-		self.verticalTranslationMotor = hardware.motor(
-				self.config.VERTICALMOTION_CONTROLLER,
-				backend=self.config.backend,
-				backendThread=self.backendThread
-			)
-		# Signals and slots.
-		self.verticalTranslationMotor.connected.connect(self._connectionMonitor)
-		self.verticalTranslationMotor.disconnected.connect(self._connectionMonitor)
-		self.verticalTranslationMotor.position.connect(partial(self.moving.emit,self.verticalTranslationMotor.port))
-		self.verticalTranslationMotor.moveFinished.connect(partial(self.finishedMove.emit,None))
-		self.verticalTranslationMotor.error.connect(self.error.emit)
+		if self.config.VERTICALMOTION_CONTROLLER is not None:
+			self.verticalTranslationMotor = hardware.motor(
+					self.config.VERTICALMOTION_CONTROLLER,
+					backend=self.config.backend,
+					backendThread=self.backendThread
+				)
+			# Signals and slots.
+			self.verticalTranslationMotor.connected.connect(self._connectionMonitor)
+			self.verticalTranslationMotor.disconnected.connect(self._connectionMonitor)
+			self.verticalTranslationMotor.position.connect(partial(self.moving.emit,self.verticalTranslationMotor.port))
+			self.verticalTranslationMotor.moveFinished.connect(partial(self.finishedMove.emit,None))
+			self.verticalTranslationMotor.error.connect(self.error.emit)
 
 		# Define a workpoint.
 		if self.config.workpoint:
@@ -96,6 +97,8 @@ class patientSupport(QtCore.QObject):
 		# Set the speed controller for the device.
 		if self.config.velocityMode == 'global':
 			self.velocityController = hardware.velocityController(self.config.VELOCITY_CONTROLLER,self.config.backend)
+		elif self.config.velocityMode is None:
+			pass
 		else:
 			raise TypeError(f"Velocity mode {self.config.velocityMode} not implemented yet.")
 
@@ -108,7 +111,8 @@ class patientSupport(QtCore.QObject):
 		teststate = []
 		for motor in self.motors:
 			teststate.append(motor.isConnected())
-		teststate.append(self.verticalTranslationMotor.isConnected())
+		if self.verticalTranslationMotor is not None:
+			teststate.append(self.verticalTranslationMotor.isConnected())
 		self._connectionStatus = all(teststate)
 
 		# Send out an appropriate signal.
@@ -131,7 +135,8 @@ class patientSupport(QtCore.QObject):
 				velocity = [velocity]
 		if len(velocity) == 0:
 			# If no values are presented, set the default values.
-			speed, acceleration = self.config.defaultVelocity
+			#speed, acceleration = self.config.defaultVelocity
+			return
 		elif len(velocity) == 1:
 			# Make the acceleration 10 times the speed.
 			speed = velocity[0]
