@@ -7,6 +7,7 @@ from uuid import uuid1
 import sched, time
 from threading import Thread, Event
 from datetime import datetime,timedelta
+import epics
 
 class threadFunction(Thread):
 	def __init__(self,func,args=(),kwargs={},synchronizeEvent=None,delay=0):
@@ -253,7 +254,12 @@ class Brain(QtCore.QObject):
 		if self.imager.file is None:
 			logging.critical("Cannot save images to dataset, no HDF5 file loaded.")
 			return
-
+		
+		####### Matt is setting dynMRT rotation stage to 0 for this beamtime #######
+		logging.critical('putting rotation stage to 0')
+		epics.caput("SR08ID01SST25:ROTATION",0.00,wait=True)
+		####### Goddammit Matt!!! ######
+		
 		# Take note of the home position prior to imaging.
 		homePosition = self.patientSupport.position()
 		# Set the workpoint (if required).

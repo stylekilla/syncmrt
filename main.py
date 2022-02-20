@@ -361,6 +361,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		elif modality == 'xray':
 			fileFormat = 'HDF5 (*.hdf *.hdf5)'
 			fileDialogue = QtWidgets.QFileDialog()
+			fileDialogue.setDirectory("/home/imbl/Documents/Data/220215_OlgaMartin")
 			fileDialogue.setFileMode(QtWidgets.QFileDialog.ExistingFiles)
 			file, dtype = fileDialogue.getOpenFileNames(self, "Open Xray dataset", "", fileFormat)
 			if len(file) > 0: self.openXray(file[0])
@@ -777,6 +778,15 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		self.patientCalculateAlignment(index=index)
 		# Do the alignment.
 		self.system.applyAlignment()
+		#resetIsocentre
+
+		##  Matt is doing an anti-Daniel idiot check this beamtime
+		#self.envXray.updateIsocenter(0.0,0.0,0.0)
+		self.envXray.newIsocenter.emit(0.0,0.0,0.0)
+		doneskee = QtWidgets.QMessageBox()
+		doneskee.setText("The Alignment Has Completed!")
+		doneskee.exec()
+		### Goddammit Matt
 
 	def displayMessage(self,messageText):
 		""" Display a message in the GUI. """

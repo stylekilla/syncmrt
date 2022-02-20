@@ -135,7 +135,7 @@ class QPlot(QtWidgets.QWidget):
 		# self._radiographMode = 'sum'
 		# self._R = np.identity(3)
 		self._maskType = 'Square'
-		self.maskSize = 20.0
+		self.maskSize = 10.0
 		self._customMask = None
 		self.overlay = {}
 		# These are stored as (h1,h2,v) coordinates.
