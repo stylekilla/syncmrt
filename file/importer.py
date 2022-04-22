@@ -232,7 +232,7 @@ class ct(QtCore.QObject):
 		# Set the default.
 		self.calculateView('AP')
 
-	def calculateView(self,view,roi=None,flatteningMethod='sum'):
+	def calculateView(self,view,roi=None,flatteningMethod='sum',dimensions=2):
 		""" Rotate the CT array for a new view of the dataset. """
 		logging.critical(f"Calculating view {view} with method {flatteningMethod} and roi {roi}.")
 		# Make the View Coordinate System (VCS) for each view.
@@ -335,6 +335,8 @@ class ct(QtCore.QObject):
 		else:
 			image_extent = self.viewExtent
 
+		# Create a 2d image list for plotting.
+		self.image = [Image2d()]
 		# Split up into x, y and z extents for 2D image.
 		x,y,z = [image_extent[i:i+2] for i in range(0,len(image_extent),2)]
 		# Get the first flattened image.
@@ -344,11 +346,13 @@ class ct(QtCore.QObject):
 		self.image[0].view = { 'title':t1 }
 		self.image[0].imagingAngle = 0
 		# Get the second flattened image.
-		if flatteningMethod == 'sum': self.image[1].pixelArray = np.sum(pixelArray,axis=1)
-		elif flatteningMethod == 'max': self.image[1].pixelArray = np.amax(pixelArray,axis=1)
-		self.image[1].extent = np.array(list(z)+list(y))
-		self.image[1].view = { 'title':t2 }
-		self.image[1].imagingAngle = -90
+		if dimensions == 3:
+			self.image.append(Image2d)
+			if flatteningMethod == 'sum': self.image[1].pixelArray = np.sum(pixelArray,axis=1)
+			elif flatteningMethod == 'max': self.image[1].pixelArray = np.amax(pixelArray,axis=1)
+			self.image[1].extent = np.array(list(z)+list(y))
+			self.image[1].view = { 'title':t2 }
+			self.image[1].imagingAngle = -90
 
 		# Emit a signal to say a new view has been loaded.
 		self.newCtView.emit()

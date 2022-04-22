@@ -9,7 +9,7 @@ class QCtProperties(QtWidgets.QWidget):
 	pickIsocenter = QtCore.pyqtSignal()
 	isocenterUpdated = QtCore.pyqtSignal(float,float,float)
 	toggleOverlay = QtCore.pyqtSignal(int,bool)
-	updateCtView = QtCore.pyqtSignal(str,tuple,str)
+	updateCtView = QtCore.pyqtSignal(str,tuple,str,int)
 
 	"""
 	The structure of information held in this class is as follows:
@@ -100,6 +100,13 @@ class QCtProperties(QtWidgets.QWidget):
 		view = QtWidgets.QLabel('Primary View:')
 		# Combo box selection.
 		self.widget['view'] = {}
+		self.widget['view']['2D'] = QtWidgets.QRadioButton('2D')
+		self.widget['view']['3D'] = QtWidgets.QRadioButton('3D')
+		viewOptions = QtWidgets.QWidget()
+		viewOptionsLayout = QtWidgets.QHBoxLayout()
+		viewOptionsLayout.addWidget(self.widget['view']['2D'])
+		viewOptionsLayout.addWidget(self.widget['view']['3D'])
+		viewOptions.setLayout(viewOptionsLayout)
 		self.widget['view']['select'] = QtWidgets.QComboBox()
 		self.widget['view']['select'].addItem("Coronal (AP)")
 		self.widget['view']['select'].addItem("Coronal (PA)")
@@ -116,12 +123,14 @@ class QCtProperties(QtWidgets.QWidget):
 		flatteningOptionsLayout.addWidget(self.widget['view']['max'])
 		flatteningOptions.setLayout(flatteningOptionsLayout)
 		self.widget['view']['sum'].setChecked(True)
+		self.widget['view']['2D'].setChecked(True)
 		self.widget['view']['apply'] = QtWidgets.QPushButton('Apply')
 		self.widget['view']['apply'].clicked.connect(self._emitUpdateCtView)
 		# Layout
 		viewGroupLayout = QtWidgets.QVBoxLayout()
 		viewGroupLayout.addWidget(view)
 		viewGroupLayout.addWidget(self.widget['view']['select'])
+		viewGroupLayout.addWidget(viewOptions)
 		viewGroupLayout.addWidget(QtWidgets.QLabel("CT ROI (DICOM):"))
 		viewGroupLayout.addWidget(self.widget['view']['xrange'])
 		viewGroupLayout.addWidget(self.widget['view']['yrange'])
@@ -199,8 +208,11 @@ class QCtProperties(QtWidgets.QWidget):
 		# Get the mode.
 		if self.widget['view']['sum'].isChecked(): mode = 'sum'
 		elif self.widget['view']['max'].isChecked(): mode = 'max'
+		# Get the mode.
+		if self.widget['view']['2D'].isChecked(): dimensions = 2
+		elif self.widget['view']['3D'].isChecked(): dimensions = 3
 		# Send the signal.
-		self.updateCtView.emit(view,roi,mode)
+		self.updateCtView.emit(view,roi,mode,dimensions)
 
 	def _emitToggleOverlay(self,button,state):
 		setState = False
