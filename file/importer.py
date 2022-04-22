@@ -272,86 +272,41 @@ class ct(QtCore.QObject):
 			t2 = 'LR'
 
 		# Calculate a transform, R, that takes us from the original CT RCS to the new VCS.
-		R = wcs2wcs(self.RCS,self.VCS,method='passive')
+		R = wcs2wcs(self.RCS,self.VCS,method='active')
 		# Rotate the CT if required.
 		if np.array_equal(R,np.identity(3)):
 			pixelArray = self.pixelArray
 		else:
 			pixelArray = self.gpu.rotate(R)
 
-		print(R)
 
-		# Centre extent on array centre...
-		x1,x2,y1,y2,z1,z2 = self.extent
-		offset = np.array([(x1+x2)/2,(y1+y2)/2,(z1+z2)/2])
-		# Vertices.
-		points = []
-		points.append( np.array([x1,y1,z1]) )
-		points.append( np.array([x2,y1,z1]) )
-		points.append( np.array([x1,y2,z1]) )
-		points.append( np.array([x2,y2,z1]) )
-		points.append( np.array([x1,y1,z2]) )
-		points.append( np.array([x2,y1,z2]) )
-		points.append( np.array([x1,y2,z2]) )
-		points.append( np.array([x2,y2,z2]) )
-		# Rotate points.
-		for i in range(len(points)):
-			points[i] -= offset
-			points[i] = R@points[i]
-			points[i] += offset
-			print(points[i])
-		# Find new top left.
-		exit()
-
-		# Calculate the new extent.
-		# Find CT origin. Origin is a single column vector, thus the matrix transform must be multiplied onto the vector.
-		origin = (np.linalg.inv(self.M)@np.array([0,0,0,1]))[:3]
-		# Rotate the Origin.
-		R_origin = R@origin
+		# Rotate the new centre tlf into the original array frame of reference and add the half the array shape and half a pixel for the extent.
+		# Find the centre of the rotated array, then find the index of the first pixel relative to the centre (this is just the negative centre value).
+		new_centre_tlf = -(self.PCS@pixelArray.shape)/2
+		# Rotate the first pixel of the new array back into the frame of reference of the old array, then find it's rotated position relative to the first pixel of the old array.
+		# Add half a pixel to it so we don't have to do it in the next line for the extent/true tlf.
+		old_centre = np.linalg.inv(R)@new_centre_tlf + (self.PCS@np.array(self.pixelArray.shape))/2  - np.r_[0.5,0.5,0.5]
+		# Rotate the index position (in real units) back into the new image space.
+		TLF = np.abs(R)@(self.M@np.r_[old_centre,1])[:3]
 
 		# Rotate the pixel size.
 		R_pixelSize = R@self.pixelSize
 
 		# Array shape (as col,row,depth).
 		# Python produces (row major, we need column major).
-		inputShape = self.PCS@self.pixelArray.shape
 		outputShape = self.PCS@pixelArray.shape
-		R_shape = R@inputShape
-
-		# print(R)
-		# print()
-		# print(inputShape)
-		# print(outputShape)
-		# print(R_shape)
-		# exit()
-
-		# Calculate the TopLeftFront position.
-		offset = np.zeros((3,))
-		for i in range(len(offset)):
-			if R_origin[i] > R_shape[i]:
-				# The origin exists outside of the array.
-				offset[i] = R_shape[i]
-			else:
-				# There is no offset required.
-				offset[i] = 0
-		TLF = (offset-R_origin)*R_pixelSize
-
-		print(R_origin)
-		print(R_pixelSize)
-		print(offset)
-		print(TLF)
-		exit()
 
 		# Calculate the view matrix - operates on column major indices.
 		self.viewM = np.zeros((4,4))
-		self.viewM[:3,:3] = np.absolute(self.VCS)
+		# self.viewM[:3,:3] = np.absolute(self.VCS)
+		self.viewM[:3,:3] = np.identity(3)
 		self.viewM[:3,:3] *= np.vstack([R_pixelSize,R_pixelSize,R_pixelSize]).T
 		self.viewM[:3,3] = TLF
 		self.viewM[3,3] = 1
 
 		# Get the top left front and bottom right back indices for caclualting extent.
 		voxelIndex1 = np.array([0,0,0,1])
-		voxelIndex2 = np.r_[inputShape,1]
+		voxelIndex2 = np.r_[outputShape,1]
 		# Compute the voxel indices in mm.
 		voxelPosition1 = self.viewM@voxelIndex1
 		voxelPosition2 = self.viewM@voxelIndex2
@@ -361,67 +316,27 @@ class ct(QtCore.QObject):
 		_z = [voxelPosition1[2],voxelPosition2[2]]
 		self.viewExtent = np.array(_x+_y+_z).reshape((6,))
 
-		print(voxelIndex1)
-		print(voxelIndex2)
-		print(voxelPosition1)
-		print(voxelPosition2)
-		print(_x)
-		print(_y)
-		print(_z)
-		exit()
-		# self.viewExtent += np.sign(self.viewExtent)*(np.repeat(np.absolute(R_pixelSize),2)/2)
-
-		# if np.array_equal(roi,self.viewExtent):
-			# temporary_extent = np.array(self.viewExtent)
-		# elif type(roi) is not type(None):
-			# # Set the view extent to the ROI.
-			# temporary_extent = roi
-			# # Get the array indices that match the roi.
-			# indices = self.calculateIndices(temporary_extent)
-
-			# x1,x2,y1,y2,z1,z2 = indices
-			# # Calculate new extent based of approximate indices of input ROI.
-			# p1 = self.viewM@np.array([x1,y1,z1,1])
-			# p2 = self.viewM@np.array([x2,y2,z2,1])
-			# temporary_extent = np.zeros(6)
-			# temporary_extent[::2] = p1[:3]
-			# temporary_extent[1::2] = p2[:3]
-			# # Order the indices
-			# x1,x2 = sorted([x1,x2])
-			# y1,y2 = sorted([y1,y2])
-			# z1,z2 = sorted([z1,z2])
-			# # Slice the array.
-			# pixelArray = pixelArray[y1:y2,x1:x2,z1:z2]
-		# else:
-			# temporary_extent = np.array(self.viewExtent)
-
-		if roi is None:
-			temporary_extent = np.array(self.viewExtent)
+		if roi is not None:
+			# Get the array indices that match the roi.
+			indices = self.calculateIndices(roi)
+			x1,x2,y1,y2,z1,z2 = indices
+			# Calculate new extent based of approximate indices of input ROI.
+			p1 = self.viewM@np.array([x1,y1,z1,1])
+			p2 = self.viewM@np.array([x2,y2,z2,1])
+			image_extent = np.zeros(6)
+			image_extent[::2] = p1[:3]
+			image_extent[1::2] = p2[:3]
+			# Order the indices
+			x1,x2 = sorted([x1,x2])
+			y1,y2 = sorted([y1,y2])
+			z1,z2 = sorted([z1,z2])
+			# Slice the array.
+			pixelArray = pixelArray[y1:y2,x1:x2,z1:z2]
 		else:
-			temporary_extent = roi
-		# Get the array indices that match the roi.
-		indices = self.calculateIndices(temporary_extent)
-		x1,x2,y1,y2,z1,z2 = indices
-
-		print(self.viewExtent)
-		print(temporary_extent)
-		print(indices)
-
-		# Calculate new extent based of approximate indices of input ROI.
-		p1 = self.viewM@np.array([x1,y1,z1,1])
-		p2 = self.viewM@np.array([x2,y2,z2,1])
-		temporary_extent = np.zeros(6)
-		temporary_extent[::2] = p1[:3]
-		temporary_extent[1::2] = p2[:3]
-		# Order the indices
-		x1,x2 = sorted([x1,x2])
-		y1,y2 = sorted([y1,y2])
-		z1,z2 = sorted([z1,z2])
-		# Slice the array.
-		pixelArray = pixelArray[y1:y2,x1:x2,z1:z2]
+			image_extent = self.viewExtent
 
 		# Split up into x, y and z extents for 2D image.
-		x,y,z = [temporary_extent[i:i+2] for i in range(0,len(temporary_extent),2)]
+		x,y,z = [image_extent[i:i+2] for i in range(0,len(image_extent),2)]
 		# Get the first flattened image.
 		if flatteningMethod == 'sum': self.image[0].pixelArray = np.sum(pixelArray,axis=2)
 		elif flatteningMethod == 'max': self.image[0].pixelArray = np.amax(pixelArray,axis=2)
