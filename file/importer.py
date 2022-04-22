@@ -336,7 +336,7 @@ class ct(QtCore.QObject):
 			# Calculate new extent based of approximate indices of input ROI.
 			p1 = self.viewM@np.array([x1,y1,z1,1])
 			p2 = self.viewM@np.array([x2,y2,z2,1])
-			temporary_extent = np.zeros(extent.shape)
+			temporary_extent = np.zeros(6)
 			temporary_extent[::2] = p1[:3]
 			temporary_extent[1::2] = p2[:3]
 			# Order the indices
