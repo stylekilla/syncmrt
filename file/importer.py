@@ -234,6 +234,7 @@ class ct(QtCore.QObject):
 
 	def calculateView(self,view,roi=None,flatteningMethod='sum'):
 		""" Rotate the CT array for a new view of the dataset. """
+		logging.critical(f"Calculating view {view} with method {flatteningMethod} and roi {roi}.")
 		# Make the View Coordinate System (VCS) for each view.
 		# These PASSIVELY transform DICOM coordinates into the VIEW coordinates.
 		# They do not ACTIVELY rotate data into them from the DICOM base coordiante system.
@@ -271,17 +272,41 @@ class ct(QtCore.QObject):
 			t2 = 'LR'
 
 		# Calculate a transform, R, that takes us from the original CT RCS to the new VCS.
-		R = wcs2wcs(self.RCS,self.VCS,method='active')
+		R = wcs2wcs(self.RCS,self.VCS,method='passive')
 		# Rotate the CT if required.
 		if np.array_equal(R,np.identity(3)):
 			pixelArray = self.pixelArray
 		else:
 			pixelArray = self.gpu.rotate(R)
 
+		print(R)
+
+		# Centre extent on array centre...
+		x1,x2,y1,y2,z1,z2 = self.extent
+		offset = np.array([(x1+x2)/2,(y1+y2)/2,(z1+z2)/2])
+		# Vertices.
+		points = []
+		points.append( np.array([x1,y1,z1]) )
+		points.append( np.array([x2,y1,z1]) )
+		points.append( np.array([x1,y2,z1]) )
+		points.append( np.array([x2,y2,z1]) )
+		points.append( np.array([x1,y1,z2]) )
+		points.append( np.array([x2,y1,z2]) )
+		points.append( np.array([x1,y2,z2]) )
+		points.append( np.array([x2,y2,z2]) )
+		# Rotate points.
+		for i in range(len(points)):
+			points[i] -= offset
+			points[i] = R@points[i]
+			points[i] += offset
+			print(points[i])
+		# Find new top left.
+		exit()
+
 		# Calculate the new extent.
 		# Find CT origin. Origin is a single column vector, thus the matrix transform must be multiplied onto the vector.
 		origin = (np.linalg.inv(self.M)@np.array([0,0,0,1]))[:3]
-		# Rotate the Origin. 
+		# Rotate the Origin.
 		R_origin = R@origin
 
 		# Rotate the pixel size.
@@ -293,6 +318,13 @@ class ct(QtCore.QObject):
 		outputShape = self.PCS@pixelArray.shape
 		R_shape = R@inputShape
 
+		# print(R)
+		# print()
+		# print(inputShape)
+		# print(outputShape)
+		# print(R_shape)
+		# exit()
+
 		# Calculate the TopLeftFront position.
 		offset = np.zeros((3,))
 		for i in range(len(offset)):
@@ -303,6 +335,12 @@ class ct(QtCore.QObject):
 				# There is no offset required.
 				offset[i] = 0
 		TLF = (offset-R_origin)*R_pixelSize
+
+		print(R_origin)
+		print(R_pixelSize)
+		print(offset)
+		print(TLF)
+		exit()
 
 		# Calculate the view matrix - operates on column major indices.
 		self.viewM = np.zeros((4,4))
@@ -322,31 +360,65 @@ class ct(QtCore.QObject):
 		_y = [voxelPosition2[1],voxelPosition1[1]]
 		_z = [voxelPosition1[2],voxelPosition2[2]]
 		self.viewExtent = np.array(_x+_y+_z).reshape((6,))
-		self.viewExtent += np.sign(self.viewExtent)*(np.repeat(np.absolute(R_pixelSize),2)/2)
 
-		if np.array_equal(roi,self.viewExtent):
+		print(voxelIndex1)
+		print(voxelIndex2)
+		print(voxelPosition1)
+		print(voxelPosition2)
+		print(_x)
+		print(_y)
+		print(_z)
+		exit()
+		# self.viewExtent += np.sign(self.viewExtent)*(np.repeat(np.absolute(R_pixelSize),2)/2)
+
+		# if np.array_equal(roi,self.viewExtent):
+			# temporary_extent = np.array(self.viewExtent)
+		# elif type(roi) is not type(None):
+			# # Set the view extent to the ROI.
+			# temporary_extent = roi
+			# # Get the array indices that match the roi.
+			# indices = self.calculateIndices(temporary_extent)
+
+			# x1,x2,y1,y2,z1,z2 = indices
+			# # Calculate new extent based of approximate indices of input ROI.
+			# p1 = self.viewM@np.array([x1,y1,z1,1])
+			# p2 = self.viewM@np.array([x2,y2,z2,1])
+			# temporary_extent = np.zeros(6)
+			# temporary_extent[::2] = p1[:3]
+			# temporary_extent[1::2] = p2[:3]
+			# # Order the indices
+			# x1,x2 = sorted([x1,x2])
+			# y1,y2 = sorted([y1,y2])
+			# z1,z2 = sorted([z1,z2])
+			# # Slice the array.
+			# pixelArray = pixelArray[y1:y2,x1:x2,z1:z2]
+		# else:
+			# temporary_extent = np.array(self.viewExtent)
+
+		if roi is None:
 			temporary_extent = np.array(self.viewExtent)
-		elif type(roi) is not type(None):
-			# Set the view extent to the ROI.
-			temporary_extent = roi
-			# Get the array indices that match the roi.
-			indices = self.calculateIndices(temporary_extent)
-
-			x1,x2,y1,y2,z1,z2 = indices
-			# Calculate new extent based of approximate indices of input ROI.
-			p1 = self.viewM@np.array([x1,y1,z1,1])
-			p2 = self.viewM@np.array([x2,y2,z2,1])
-			temporary_extent = np.zeros(6)
-			temporary_extent[::2] = p1[:3]
-			temporary_extent[1::2] = p2[:3]
-			# Order the indices
-			x1,x2 = sorted([x1,x2])
-			y1,y2 = sorted([y1,y2])
-			z1,z2 = sorted([z1,z2])
-			# Slice the array.
-			pixelArray = pixelArray[y1:y2,x1:x2,z1:z2]
 		else:
-			temporary_extent = np.array(self.viewExtent)
+			temporary_extent = roi
+		# Get the array indices that match the roi.
+		indices = self.calculateIndices(temporary_extent)
+		x1,x2,y1,y2,z1,z2 = indices
+
+		print(self.viewExtent)
+		print(temporary_extent)
+		print(indices)
+
+		# Calculate new extent based of approximate indices of input ROI.
+		p1 = self.viewM@np.array([x1,y1,z1,1])
+		p2 = self.viewM@np.array([x2,y2,z2,1])
+		temporary_extent = np.zeros(6)
+		temporary_extent[::2] = p1[:3]
+		temporary_extent[1::2] = p2[:3]
+		# Order the indices
+		x1,x2 = sorted([x1,x2])
+		y1,y2 = sorted([y1,y2])
+		z1,z2 = sorted([z1,z2])
+		# Slice the array.
+		pixelArray = pixelArray[y1:y2,x1:x2,z1:z2]
 
 		# Split up into x, y and z extents for 2D image.
 		x,y,z = [temporary_extent[i:i+2] for i in range(0,len(temporary_extent),2)]

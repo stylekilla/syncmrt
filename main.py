@@ -253,40 +253,19 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		logging.warning("Temporarily connecting single treatment.")
 		self.sbTreatment.deliverSingle.connect(self.system.deliverTreatment)
 
-		# self.test()
+		self.test()
 
 	def test(self):
 		logging.critical("Running test function.")
 
-		self.openXray('/home/barnesm/OneDrive/Scratch/20200304-MicahAlignmentTests/HiddenTargetTest1/OrthoTest.hdf5')
-
-		folder = '/home/barnesm/OneDrive/Scratch/20200304-MicahAlignmentTests/CT_HTT1/'
 		dataset = []
-		modality = 'CT'
-		for root, subdir, fp in os.walk(folder):
+		for root, subdir, fp in os.walk("/home/imbl/Documents/Data/290421_UoWMoeava_Rats/IGRT-Test/TestCT/"):
 			for fn in fp:
-				if (fn.endswith(tuple('.dcm'))) & (fn[:len(modality)] == modality):
+				if fn.endswith(tuple('.dcm')):
 					dataset.append(os.path.join(root,fn))
+
 		if len(dataset) > 0:
 			self.openCT(dataset)
-
-		ax = self.envXray.plot.ax
-		self.envXray.plot.addMarker(ax[0],-25.4,25.4)
-		self.envXray.plot.addMarker(ax[0],-4.6,4.6)
-		self.envXray.plot.addMarker(ax[0],25.5,-5.2)
-		self.envXray.plot.addMarker(ax[1],37.5,25.4)
-		self.envXray.plot.addMarker(ax[1],17.4,4.6)
-		self.envXray.plot.addMarker(ax[1],-11.8,-5.2)
-		ax = self.envCt.plot.ax
-		self.envCt.plot.addMarker(ax[0],-27.7,85.2)
-		self.envCt.plot.addMarker(ax[0],-8.1,64.7)
-		self.envCt.plot.addMarker(ax[0],21.8,53.9)
-		self.envCt.plot.addMarker(ax[1],139.4,85.2)
-		self.envCt.plot.addMarker(ax[1],159.8,64.7)
-		self.envCt.plot.addMarker(ax[1],190.1,53.9)
-		self.envCt.updateIsocenter(23.0,189.8,85.7)
-
-		self.patientCalculateAlignment(0)
 
 	def setupConfigurationManager(self):
 		# Populate the manager with our config files.
