@@ -315,7 +315,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		if modality == 'xray':
 			fileFormat = 'HDF5 (*.hdf5)'
 			fileDialogue = QtWidgets.QFileDialog()
-			fileDialogue.setDirectory("/home/imbl/Documents/Data/220215_OlgaMartin")
+			fileDialogue.setDirectory("/home/imbl/Documents/Data/220422_Moeava_Rats")
 			file, dtype = fileDialogue.getSaveFileName(self, "Create new x-ray dataset", "", fileFormat)
 			# Create the new xray file.
 			if file.endswith('.hdf5') is False:
@@ -353,7 +353,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 			dataset = []
 			for root, subdir, fp in os.walk(folder):
 				for fn in fp:
-					if (fn.endswith(tuple('.dcm'))) & (fn[:len(modality)] == 'CT'):
+					if fn.endswith(tuple('.dcm')):
 						dataset.append(os.path.join(root,fn))
 			if len(dataset) > 0:
 				self.openCT(dataset)
@@ -361,7 +361,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		elif modality == 'xray':
 			fileFormat = 'HDF5 (*.hdf *.hdf5)'
 			fileDialogue = QtWidgets.QFileDialog()
-			fileDialogue.setDirectory("/home/imbl/Documents/Data/220215_OlgaMartin")
+			fileDialogue.setDirectory("/home/imbl/Documents/Data/220422_Moeava_Rats")
 			fileDialogue.setFileMode(QtWidgets.QFileDialog.ExistingFiles)
 			file, dtype = fileDialogue.getOpenFileNames(self, "Open Xray dataset", "", fileFormat)
 			if len(file) > 0: self.openXray(file[0])

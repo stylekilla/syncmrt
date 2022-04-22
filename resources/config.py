@@ -2,7 +2,7 @@ class general:
 	""" General application settings. These should be updateable in GUI... somehow. """
 	# Imaging configs.
 	numberOfXrays = 1
-	defaultImagingAngles = [-15,20]
+	defaultImagingAngles = [0,0]
 	imagingThetaRange = [-90,90]
 	imagingZRange = [-10,10]
 	imagingMaximumZRange = [-200,200]
@@ -10,7 +10,7 @@ class general:
 
 class markers:
 	""" Marker settings for fiducials. """
-	quantity = 3
+	quantity = 5
 	size = 2.00
  
 class files:
@@ -87,10 +87,10 @@ class imager:
 	pixelSize = [0.081,0.081]
 	# Pixel size of image in mm for (col,row) (otherwise known as horiz,vertical; x,y).
 	# Isocenter specified as (col,row) (otherwise known as horiz,vertical; x,y).
-	isocenter = [575.5,668.5]
+	isocenter = [602.719,668.438] # Updated at 11am on 22/04/22 by Micah.
 	# Offset between the primary beam and the imager.
 	#offset = [0,0,0,0,0,0]			# No change (default).
-	# offset = [0,0,20,0,0,0]			# Monochromatic beam (+20 mm in Z)
+	#offset = [0,0,20,0,0,0]			# Monochromatic beam (+20 mm in Z)
 	offset = [0,0,0,0,0,-32.7]		# 2B X-Ray Source (-32.7 deg about Z)
 	
 	name = 'HamaMamma'
