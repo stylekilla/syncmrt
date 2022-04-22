@@ -22,22 +22,22 @@ Assumes:
 SAVE = False
 PLOT = True
 
+# Ruby HCL IOC.
+DET_PV = "SR08ID01DET01"
+
 # This is the left bottom top right of the field in RUBY in pixels.
 l = 0
-r = 2560
-b = 769
-t = 544
-
-# Ruby HCL IOC.
-DET_PV = "SR08ID01DETIOC10"
+r = epics.caget('{}:ROI1:IMAGE:ArraySize0_RBV'.format(DET_PV))
+b = epics.caget('{}:ROI1:IMAGE:ArraySize1_RBV'.format(DET_PV))
+t = 0
 
 def getImage(save=False,fname=''):
 	logging.info("Acquiring an image.")
 	epics.caput('{}:CAM:Acquire.VAL'.format(DET_PV),1,wait=True)
 	time.sleep(0.5)
-	arr = epics.caget('{}:IMAGE:ArrayData'.format(DET_PV))
-	_x = epics.caget('{}:IMAGE:ArraySize1_RBV'.format(DET_PV))
-	_y = epics.caget('{}:IMAGE:ArraySize0_RBV'.format(DET_PV))
+	arr = epics.caget('{}:ROI1:IMAGE:ArrayData'.format(DET_PV))
+	_x = epics.caget('{}:ROI1:IMAGE:ArraySize1_RBV'.format(DET_PV))
+	_y = epics.caget('{}:ROI1:IMAGE:ArraySize0_RBV'.format(DET_PV))
 	time.sleep(0.1)
 	arr = np.flipud(np.array(arr,dtype=np.uint16).reshape(_x,_y))[t:b,l:r]
 	# Remove any weird values.
@@ -66,7 +66,7 @@ epics.caput('SR08ID01SST25:ROTATION.VAL',0,wait=True)
 ########################
 # START RUBY ACQUISITION
 ########################
-exposureTime = 0.1
+exposureTime = 0.01
 logging.info("Setting up RUBY acquisition parameters.")
 epics.caput('{}:CAM:Acquire.VAL'.format(DET_PV),0,wait=True)
 epics.caput('{}:CAM:AcquireTime.VAL'.format(DET_PV),exposureTime)
