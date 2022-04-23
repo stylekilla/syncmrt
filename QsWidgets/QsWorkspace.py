@@ -99,15 +99,27 @@ class QPlotEnvironment(QtWidgets.QSplitter):
 		self.tableModel[0].clearPoints()
 		self.tableModel[1].clearPoints()
 
-	def getMarkers(self):
+	def getMode(self):
+		""" Get the current image mode (2D or 3D). """
+		_,t2 = self.plot.imagingAngles
+		if t2 == None:
+			return '2D'
+		else:
+			return '3D'
+
+	def getMarkers(self,mode='3D'):
 		""" Get the marker values from each plot, adjusted for the view of each plot. """
 		if self.coordinateSystem is None:
 			raise Exception("Must set coordinate system before QPlotEnvironment.getMarkers() can be used.")
 		# Get the markers in each image as (col-x,row-y) positions (in mm).
 		markers0 = np.array(self.tableModel[0].getMarkers())
 		markers1 = np.array(self.tableModel[1].getMarkers())
+		# We present a mode as 2D/3D so that if we have a 3D ct view open, we can still do 2D alignment.
 		# Get the image angles (as deltas from the BEV) for each image.
 		theta0, theta1 = self.plot.imagingAngles
+		# Force theta1 to be None if we want '2D' mode.
+		if mode == '2D':
+			theta1 = None
 
 		logging.debug(f"\nMarker points for {theta0}deg:\n{markers0}\nMarker points for {theta1}deg:\n{markers1}")
 

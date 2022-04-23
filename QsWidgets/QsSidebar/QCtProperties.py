@@ -123,7 +123,7 @@ class QCtProperties(QtWidgets.QWidget):
 		flatteningOptionsLayout.addWidget(self.widget['view']['max'])
 		flatteningOptions.setLayout(flatteningOptionsLayout)
 		self.widget['view']['sum'].setChecked(True)
-		self.widget['view']['2D'].setChecked(True)
+		self.widget['view']['3D'].setChecked(True)
 		self.widget['view']['apply'] = QtWidgets.QPushButton('Apply')
 		self.widget['view']['apply'].clicked.connect(self._emitUpdateCtView)
 		# Layout
@@ -209,10 +209,10 @@ class QCtProperties(QtWidgets.QWidget):
 		if self.widget['view']['sum'].isChecked(): mode = 'sum'
 		elif self.widget['view']['max'].isChecked(): mode = 'max'
 		# Get the mode.
-		if self.widget['view']['2D'].isChecked(): dimensions = 2
-		elif self.widget['view']['3D'].isChecked(): dimensions = 3
+		if self.widget['view']['2D'].isChecked(): projections = 1
+		elif self.widget['view']['3D'].isChecked(): projections = 2
 		# Send the signal.
-		self.updateCtView.emit(view,roi,mode,dimensions)
+		self.updateCtView.emit(view,roi,mode,projections)
 
 	def _emitToggleOverlay(self,button,state):
 		setState = False

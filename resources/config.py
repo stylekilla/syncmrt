@@ -10,7 +10,7 @@ class general:
 
 class markers:
 	""" Marker settings for fiducials. """
-	quantity = 5
+	quantity = 6
 	size = 2.00
  
 class files:
@@ -87,7 +87,7 @@ class imager:
 	pixelSize = [0.081,0.081]
 	# Pixel size of image in mm for (col,row) (otherwise known as horiz,vertical; x,y).
 	# Isocenter specified as (col,row) (otherwise known as horiz,vertical; x,y).
-	isocenter = [602.719,668.438] # Updated at 11am on 22/04/22 by Micah.
+	isocenter = [602.719-4.45,668.438] # Updated at 11am on 22/04/22 by Micah.
 	# Offset between the primary beam and the imager.
 	#offset = [0,0,0,0,0,0]			# No change (default).
 	#offset = [0,0,20,0,0,0]			# Monochromatic beam (+20 mm in Z)
