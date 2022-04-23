@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg, FigureManagerQT
 from matplotlib.collections import PatchCollection
 from matplotlib.patches import Rectangle, Circle, Polygon
+from matplotlib.widgets import RectangleSelector
 # Local imports.
 from .QPlotTools import *
 from .QHistogram import QHistogramWindow
@@ -65,7 +66,6 @@ class QPlot(QtWidgets.QWidget):
 		self.ctd = [None,None]
 		# Set up histograms dict for axes.
 		self.histograms = {}
-		self._roiSelector = None
 
 		# Create 2 axes.
 		self.ax = self.fig.subplots(1,2,gridspec_kw={'hspace':0,'wspace':0,'left':0,'right':1,'bottom':0,'top':1},sharey=False)
@@ -132,8 +132,6 @@ class QPlot(QtWidgets.QWidget):
 		# Refresh the canvas.
 		self.canvas.draw()
 
-		# self._radiographMode = 'sum'
-		# self._R = np.identity(3)
 		self._maskType = 'Square'
 		self.maskSize = 10.0
 		self._customMask = None

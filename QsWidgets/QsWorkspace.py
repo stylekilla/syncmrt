@@ -109,8 +109,7 @@ class QPlotEnvironment(QtWidgets.QSplitter):
 		# Get the image angles (as deltas from the BEV) for each image.
 		theta0, theta1 = self.plot.imagingAngles
 
-		message = f"\nMarker points for {theta0}deg:\n{markers0}\nMarker points for {theta1}deg:\n{markers1}"
-		logging.debug(message)
+		logging.debug(f"\nMarker points for {theta0}deg:\n{markers0}\nMarker points for {theta1}deg:\n{markers1}")
 
 		# If theta1 is None, there is no data for the second image frame (i.e. it's only a 2D dataset).
 		if theta1 == None:

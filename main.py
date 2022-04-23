@@ -253,7 +253,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		logging.warning("Temporarily connecting single treatment.")
 		self.sbTreatment.deliverSingle.connect(self.system.deliverTreatment)
 
-		self.test()
+		# self.test()
 
 	def test(self):
 		logging.critical("Running test function.")
@@ -266,6 +266,8 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 
 		if len(dataset) > 0:
 			self.openCT(dataset)
+
+		# self.openXray("/home/imbl/Documents/Data/220422_Moeava_Rats/IGRT-QA/HiddenTargetTest.hdf5")
 
 	def setupConfigurationManager(self):
 		# Populate the manager with our config files.
@@ -328,6 +330,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 			fileFormat = 'DICOM (*.dcm)'
 			fileDialogue = QtWidgets.QFileDialog()
 			fileDialogue.setFileMode(QtWidgets.QFileDialog.Directory)
+			fileDialogue.setDirectory("/home/imbl/Documents/Data/220422_Moeava_Rats")
 			folder = fileDialogue.getExistingDirectory(self, "Open CT dataset", "")
 			dataset = []
 			for root, subdir, fp in os.walk(folder):
@@ -740,7 +743,8 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 
 		# Update the x-ray isocentre to match if desired.
 		if index >= 0:
-			x,y,z = self.system.solver._syncPatientIsocenter
+			# x,y,z = self.system.solver._syncPatientIsocenter
+			y,x,z = self.system.solver._syncPatientIsocenter
 			self.envXray.updateIsocenter(x,y,z)
 
 		# If table already exists, update information...

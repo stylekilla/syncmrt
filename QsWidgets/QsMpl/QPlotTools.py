@@ -124,64 +124,72 @@ class ToolSelectROI(ToolToggleBase,QObject):
 		ToolToggleBase.__init__(self, *args)
 		QObject.__init__(self)
 		self._idPress = None
-		self._roiSelector = None
+		# Create the selectors.
+		self.selectors = []
+		# Cannot create RectangleSelectors here because figure is currently None.
+		# for ax in self.figure.axes:
+		# 	self.selectors.append(RectangleSelector(ax,self.select,
+		# 		drawtype='box', useblit=True, #button=[1, 3],
+		# 		minspanx=5, minspany=5, spancoords='pixels', interactive=True,
+		# 		rectprops=dict(facecolor='None',edgecolor='red',fill=False)
+		# 	))
 
 	def enable(self, event):
 		"""Connect press/release events and lock the canvas"""
-		logging.debug("Starting ROI tool.")
-		self.figure.canvas.widgetlock(self)
-		# Start the ROI selector.
-		self.enableROISelector()
-		# Add marker on button release.
-		# self._idPress = self.figure.canvas.mpl_connect('button_release_event', self.newROI)
+		# We cannot use the widget lock because this stops the selectors from working.
+		# self.figure.canvas.widgetlock(self._roiSelector)
+		# Create selectors.
+		for ax in self.figure.axes:
+			self.selectors.append(RectangleSelector(ax,self.select,
+				drawtype='box', useblit=True, #button=[1, 3],
+				minspanx=5, minspany=5, spancoords='pixels', interactive=True,
+				rectprops=dict(facecolor='None',edgecolor='red',fill=False)
+			))
+		# Make them active.
+		for selector in self.selectors:
+			selector.set_active(True)
+		# New ROI signal on button release.
+		self._idPress = self.figure.canvas.mpl_connect('button_release_event', self.newROI)
 
 	def disable(self,*args):
 		"""Release the canvas and disconnect press/release events"""
-		logging.debug("Stopping ROI tool.")
-		self.figure.canvas.widgetlock.release(self)
-		# self.figure.canvas.mpl_disconnect(self._idPress)
-		self.disableROISelector()
+		# We cannot use the widget lock because this stops the selectors from working.
+		# self.figure.canvas.widgetlock.release(self._roiSelector)
+		# Make them inactive and remove them from the plot.
+		for selector in self.selectors:
+			# Set to invisible.
+			selector.set_visible(False)
+			# Must re-draw to remove rectangle from plot.
+			self.figure.canvas.draw_idle()
+			selector.set_active(False)
+		# Delete them.
+		self.selectors = []
+		# Disconnect the trigger.
+		self.figure.canvas.mpl_disconnect(self._idPress)
+
+	def select(self,eclick,erelease):
+		x1, y1 = eclick.xdata, eclick.ydata
+		x2, y2 = erelease.xdata, erelease.ydata
+		# eclick.inaxes
+		print(x1,y1,x2,y2)
 
 	def trigger(self, sender, event, data=None):
 		# What happens when it is triggered?
 		ToolToggleBase.trigger(self, sender, event, data)
 
-	def newROI(self,event):
+	def newROI(self,eclick,erelease):
 		# Need to emit axis plus location.
-		# x1, y1 = eclick.xdata, eclick.ydata
-		# x2, y2 = erelease.xdata, erelease.ydata
+		x1, y1 = eclick.xdata, eclick.ydata
+		x2, y2 = erelease.xdata, erelease.ydata
 		# Store the data.
-		# if (event.button == 1):
-			# self.newROI.emit(event.inaxes,x1,x2,y1,y2)
-		pass
+		print(x1,y1,x2,y2)
+		if (event.button == 1):
+			self.newROI.emit(eclick.inaxes,x1,x2,y1,y2)
 
 	def enableROISelector(self):
 		""" Create an ROI selector in each axis. """
-		logging.debug("Enabling selector rectangles.")
-		self._roiSelector = [
-			RectangleSelector(self.figure.axes[0],self._roi1,
-				drawtype='box', useblit=True,button=[1, 3],
-				minspanx=5, minspany=5,spancoords='pixels',interactive=True,
-				rectprops = dict(facecolor='None',edgecolor='red',alpha=5,fill=False)
-			),
-			RectangleSelector(self.figure.axes[1],self._roi2,
-				drawtype='box', useblit=True,button=[1, 3],
-				minspanx=5, minspany=5,spancoords='pixels',interactive=True,
-				rectprops = dict(facecolor='None',edgecolor='red',alpha=5,fill=False)
-			)
-		]
-
-	def _roi1(self,eclick,erelease):
-		x1, y1 = eclick.xdata, eclick.ydata
-		x2, y2 = erelease.xdata, erelease.ydata
-
-	def _roi2(self,eclick,erelease):
-		x1, y1 = eclick.xdata, eclick.ydata
-		x2, y2 = erelease.xdata, erelease.ydata
+		self._roiSelector.enable()
 
 	def disableROISelector(self):
 		""" Disable the tool. """
-		logging.debug("Disabling selector rectangles.")
-		self._roiSelector[0].set_active(False)
-		self._roiSelector[1].set_active(False)
-		self._roiSelector = None
+		self._roiSelector.disable()

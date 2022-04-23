@@ -6,7 +6,7 @@ import logging
 class QAlignment(QtWidgets.QWidget):
 	markersChanged = QtCore.pyqtSignal(int)
 	calculateAlignment = QtCore.pyqtSignal(int)
-	doAlignment = QtCore.pyqtSignal()
+	doAlignment = QtCore.pyqtSignal(int)
 
 	def __init__(self):
 		super().__init__()
@@ -77,7 +77,7 @@ class QAlignment(QtWidgets.QWidget):
 		# self.widget['doAlignment'].setEnabled(False)
 		# Signals and Slots
 		self.widget['calcAlignment'].clicked.connect(partial(self.calculateAlignment.emit,0))
-		self.widget['doAlignment'].clicked.connect(self.doAlignment.emit)
+		self.widget['doAlignment'].clicked.connect(partial(self.doAlignment.emit,0))
 
 		# Finish page.
 		self.layout.addStretch(1)

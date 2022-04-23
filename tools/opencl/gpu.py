@@ -84,6 +84,7 @@ class gpu:
 		We must enforce datatypes as we are dealing with c and memory access/copies.
 		Rotations happen about a pre-defined world coordinate system (x,y,z) axes (as according to HFS patient position in DICOM standard).
 		"""
+		logging.info("Rotating dataset on GPU.")
 		# OpenCL Coordinate System w.r.t WCS.
 		OCS = np.array([[0,-1,0],[-1,0,0],[0,0,-1]])
 		# Put the rotation matrix in the context of the OCL CS, then take it back into the frame of reference of the origin RCS.
