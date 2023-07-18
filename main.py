@@ -259,7 +259,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		logging.critical("Running test function.")
 
 		dataset = []
-		for root, subdir, fp in os.walk("/home/imbl/Documents/Data/290421_UoWMoeava_Rats/IGRT-Test/TestCT/"):
+		for root, subdir, fp in os.walk("/home/imbl/Documents/Data/230720_19843_Martin_Mice"):
 			for fn in fp:
 				if fn.endswith(tuple('.dcm')):
 					dataset.append(os.path.join(root,fn))
@@ -267,7 +267,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		if len(dataset) > 0:
 			self.openCT(dataset)
 
-		# self.openXray("/home/imbl/Documents/Data/220422_Moeava_Rats/IGRT-QA/HiddenTargetTest.hdf5")
+		# self.openXray("/home/imbl/Documents/Data/2023-07-20-olga-mice/IGRT-QA/HiddenTargetTest.hdf5")
 
 	def setupConfigurationManager(self):
 		# Populate the manager with our config files.
@@ -296,7 +296,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		if modality == 'xray':
 			fileFormat = 'HDF5 (*.hdf5)'
 			fileDialogue = QtWidgets.QFileDialog()
-			fileDialogue.setDirectory("/home/imbl/Documents/Data/220422_Moeava_Rats")
+			fileDialogue.setDirectory("/home/imbl/Documents/Data/230720_19843_Martin_Mice/")
 			file, dtype = fileDialogue.getSaveFileName(self, "Create new x-ray dataset", "", fileFormat)
 			# Create the new xray file.
 			if file.endswith('.hdf5') is False:
@@ -330,7 +330,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 			fileFormat = 'DICOM (*.dcm)'
 			fileDialogue = QtWidgets.QFileDialog()
 			fileDialogue.setFileMode(QtWidgets.QFileDialog.Directory)
-			fileDialogue.setDirectory("/home/imbl/Documents/Data/220422_Moeava_Rats")
+			fileDialogue.setDirectory("/home/imbl/Documents/Data/230720_19843_Martin_Mice/")
 			folder = fileDialogue.getExistingDirectory(self, "Open CT dataset", "")
 			dataset = []
 			for root, subdir, fp in os.walk(folder):
@@ -343,7 +343,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		elif modality == 'xray':
 			fileFormat = 'HDF5 (*.hdf *.hdf5)'
 			fileDialogue = QtWidgets.QFileDialog()
-			fileDialogue.setDirectory("/home/imbl/Documents/Data/220422_Moeava_Rats")
+			fileDialogue.setDirectory("/home/imbl/Documents/Data/230720_19843_Martin_Mice/")
 			fileDialogue.setFileMode(QtWidgets.QFileDialog.ExistingFiles)
 			file, dtype = fileDialogue.getOpenFileNames(self, "Open Xray dataset", "", fileFormat)
 			if len(file) > 0: self.openXray(file[0])
@@ -678,7 +678,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		Right points : Local coordinate system
 		"""
 		# Treatment index will tell the method where the call was made from.
-		logging.info('Calulating patient alignment with condition '+str(index))
+		logging.info(f"Calulating patient alignment with condition {index}")
 
 		if index == -1:
 			# First check we have an x-ray environment.
@@ -704,10 +704,6 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 
 		# Get the number of points that each plot environment should have.
 		numberOfPoints = self.sbAlignment.widget['maxMarkers'].value()
-
-		# error = QtWidgets.QErrorMessage()
-		# error.showMessage("Please ensure {} markers are selected in the CT images.".format(numberOfPoints))
-		# return
 
 		if index == 0:
 			# Align to a CT.
@@ -761,15 +757,12 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		self.patientCalculateAlignment(index=index)
 		# Do the alignment.
 		self.system.applyAlignment()
-		#resetIsocentre
-
-		##  Matt is doing an anti-Daniel idiot check this beamtime
-		#self.envXray.updateIsocenter(0.0,0.0,0.0)
-		self.envXray.newIsocenter.emit(0.0,0.0,0.0)
-		doneskee = QtWidgets.QMessageBox()
-		doneskee.setText("The Alignment Has Completed!")
-		doneskee.exec()
-		### Goddammit Matt
+		# Set the x-ray isocenter to (0,0,0) so the visuals are nice and clean.
+		self.envXray.updateIsocenter(0.0,0.0,0.0)
+		# Let the user know the alignment has completed.
+		msg = QtWidgets.QMessageBox()
+		msg.setText("The Alignment Has Completed!")
+		msg.exec()
 
 	def displayMessage(self,messageText):
 		""" Display a message in the GUI. """
