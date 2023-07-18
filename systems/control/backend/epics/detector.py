@@ -247,22 +247,20 @@ class detector(QtCore.QObject):
 		if not self._connectionStatus:
 			raise DetectorException("Detector not connected. Cannot acquire image.")
 
-		### Matt is refreshing the image first in this beamtime
-		logging.critical('refreshing the image')
+		# MC: Added to refresh the hamamama frame a few times before we use it. Mostly to wake the IOC.
+		logging.warning("Flushing IOC buffer")
 		self.Acquire.put(0)
 		time.sleep(0.5)
 		self.ImageMode.put('Single')
 		time.sleep(0.5)
 		self.Acquire.put(1)
 		time.sleep(0.5)
-		### Goddammit Matt
+		self.Acquire.put(0)
+		time.sleep(0.5)
+
 		if wait:
-			QtWidgets.QMessageBox.warning(None,"Image Acquisition","Press OK to start image acquisition.")
-		# Tell the detector to acquire.
-		self.Acquire.put(1)
-		# Wait 2 seconds before grabbing the frame.
-		time.sleep(1)
-		time.sleep(1)
+			QtWidgets.QMessageBox.warning(None,"Image Acquisition","Press OK after you have taken an image.")
+
 		# Grab the image data.
 		arrData = self.ArrayData.get()
 		x = self.ArraySizeX.get()
