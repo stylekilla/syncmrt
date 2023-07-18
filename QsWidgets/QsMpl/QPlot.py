@@ -177,7 +177,7 @@ class QPlot(QtWidgets.QWidget):
 			self.histograms[self.ax[i]].setData(image.pixelArray)
 			self.histograms[self.ax[i]].setTitle('View: '+image.view['title'])
 
-		if i == 0:
+		if len(images) == 1:
 			# Only one image.
 			self.ax[0].set_position([0,0,1,1])
 			self.ax[1].set_position([0.9999,0.9999,0.0001,0.0001])
