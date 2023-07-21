@@ -118,7 +118,7 @@ class QXrayProperties(QtWidgets.QWidget):
 		""" Toggles the manual setting of the isocenter on and off. """
 		self.widget['isocenter']['editIso'].setEnabled(bool(state))
 		self.widget['isocenter']['editIso'].setVisible(bool(state))
-		self.widget['isocenter']['align'].setEnabled(bool(state))
+		# self.widget['isocenter']['align'].setEnabled(bool(state))
 		self.widget['isocenter']['align'].setVisible(bool(state))
 
 	def setIsocenter(self,h1,h2,v):
@@ -128,6 +128,11 @@ class QXrayProperties(QtWidgets.QWidget):
 		self.widget['isocenter']['editIsoH2'].setText("{:.2f}".format(h2))
 		self.widget['isocenter']['editIsoV'].setText("{:.2f}".format(v))
 		self.blockSignals(False)
+		# If isocenter is (0,0,0), grey out the align button.
+		if (h1==0.0) & (h2==0.0) & (v==0.0):
+			self.widget['isocenter']['align'].setEnabled(False)
+		else:
+			self.widget['isocenter']['align'].setEnabled(True)
 		# Turn the overlays on.
 		self.widget['cbBeamOverlay'].setChecked(True)
 		self.widget['cbPatIsoc'].setChecked(True)
