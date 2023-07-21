@@ -126,8 +126,9 @@ class Brain(QtCore.QObject):
 		# Send out an appropriate signal.
 		self.connected.emit(self._connectionStatus)
 
-	def _resetFromError(self):
+	def _resetFromError(self,str=""):
 		""" reset from an error. """
+		if len(str) > 0: self.displayMessage.emit(str)
 		logging.warning("Received an error. Reset from an error not incorporated yet...")
 
 	def loadPatient(self,patient):
@@ -189,6 +190,7 @@ class Brain(QtCore.QObject):
 		""" All patient movement must be done through this function, as it sets a UUID for the motion. """
 		if not self.isConnected():
 			logging.warning("Cannot move as not all systems are connected.")
+			self.displayMessage.emit("Cannot move as not all systems are connected.")
 			return
 
 		# Create a new uuid and add it to the queue..

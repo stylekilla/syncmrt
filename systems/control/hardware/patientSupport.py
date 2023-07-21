@@ -15,7 +15,7 @@ class patientSupport(QtCore.QObject):
 	workpointSet = QtCore.pyqtSignal()
 	workpointZeroed = QtCore.pyqtSignal()
 	moving = QtCore.pyqtSignal(str,float)
-	error = QtCore.pyqtSignal()
+	error = QtCore.pyqtSignal(str)
 
 	def __init__(self,config,backendThread=None):
 		super().__init__()
@@ -385,7 +385,6 @@ class patientSupport(QtCore.QObject):
 		# If no motion is passed, then apply the stored motion.
 		if variables == None:
 			variables = self._motion
-			logging.info(f'Inside apply motion, vars are now motion: {variables}')
 
 		# Carry out a shift movement.
 		if self.config.workpoint:

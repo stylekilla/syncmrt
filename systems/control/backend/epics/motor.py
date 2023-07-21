@@ -3,6 +3,7 @@ import numpy as np
 import logging
 from PyQt5 import QtCore
 import time
+from systems.control.hardware.motor import MotorException, MotorLimitException
 
 """
 We don't use the device classes due to a lack of callback functionality and you can't check things like
@@ -19,26 +20,6 @@ MOTOR_PVS = [
 	'VELO',
 	'LLM', 'HLM', 'HLS', 'LLS','LVIO'
 ]
-
-class MotorException(Exception):
-	""" Raised to indicate a problem with a motor """
-	def __init__(self, msg, *args):
-		Exception.__init__(self, *args)
-		self.msg = msg
-	def __str__(self):
-		# Debugging logs included.
-		logging.debug(self.msg)
-		return str(self.msg)
-
-class MotorLimitException(Exception):
-	""" Raised to indicate a problem with a motor """
-	def __init__(self, msg, *args):
-		Exception.__init__(self, *args)
-		self.msg = msg
-	def __str__(self):
-		# Debugging logs included.
-		logging.debug(self.msg)
-		return str(self.msg)
 
 class motor(QtCore.QObject):
 	"""

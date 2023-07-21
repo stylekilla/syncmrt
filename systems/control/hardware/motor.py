@@ -12,13 +12,33 @@ Should only use motor.read() and motor.write() methods.
 
 __all__ = ['motor','velocityController']
 
+class MotorException(Exception):
+	""" Raised to indicate a problem with a motor """
+	def __init__(self, msg, *args):
+		Exception.__init__(self, *args)
+		self.msg = msg
+	def __str__(self):
+		# Debugging logs included.
+		logging.debug(self.msg)
+		return str(self.msg)
+
+class MotorLimitException(Exception):
+	""" Raised to indicate a problem with a motor """
+	def __init__(self, msg, *args):
+		Exception.__init__(self, *args)
+		self.msg = msg
+	def __str__(self):
+		# Debugging logs included.
+		logging.debug(self.msg)
+		return str(self.msg)
+
 class motor(QtCore.QObject):
 	connected = QtCore.pyqtSignal()
 	disconnected = QtCore.pyqtSignal()
 	position = QtCore.pyqtSignal(float)
 	moveStarted = QtCore.pyqtSignal(float,float)
 	moveFinished = QtCore.pyqtSignal()
-	error = QtCore.pyqtSignal()
+	error = QtCore.pyqtSignal(str)
 
 	def __init__(self,
 				config,
@@ -65,14 +85,14 @@ class motor(QtCore.QObject):
 	def setPosition(self,position):
 		try:
 			self._controller.write(position,mode='absolute')
-		except:
-			self.error.emit()
+		except MotorLimitException as e:
+			self.error.emit(str(e))
 
 	def shiftPosition(self,position):
 		try:
 			self._controller.write(position,mode='relative')
-		except:
-			self.error.emit()
+		except MotorLimitException as e:
+			self.error.emit(str(e))
 
 	def readPosition(self):
 		try:
