@@ -418,6 +418,7 @@ class QPlot(QtWidgets.QWidget):
 				pass
 		elif overlayType == 3:
 			# Overlay of the beam field.
+			# https://en.wikipedia.org/wiki/Blend_modes [could give option for different blend modes]
 			# Remove it first if it already exists.
 			if 'beamArea' in self.overlay:
 				for obj in reversed(self.overlay['beamArea']):
@@ -428,16 +429,16 @@ class QPlot(QtWidgets.QWidget):
 				h1,h2,v = self.patientIsocenter
 				# Create new patches.
 				if self._maskType == 'Square':
-					_beam = Rectangle((-self.maskSize/2,-self.maskSize/2), self.maskSize, self.maskSize,fc=CLR_RED,ec='none',alpha=0.2)
+					_beam = Rectangle((-self.maskSize/2,-self.maskSize/2), self.maskSize, self.maskSize,fc=None,ec=CLR_RED,ls="-",alpha=0.2)
 					_ptv1 = Rectangle((h1-self.maskSize/2,v-self.maskSize/2), self.maskSize, self.maskSize,fc='none',ec=CLR_YELLOW,ls='--',alpha=1.0)
 					_ptv2 = Rectangle((h2-self.maskSize/2,v-self.maskSize/2), self.maskSize, self.maskSize,fc='none',ec=CLR_YELLOW,ls='--',alpha=1.0)
 				elif self._maskType == 'Circle':
-					_beam = Circle((0,0), self.maskSize/2,fc=CLR_RED,ec='none',alpha=0.2)
+					_beam = Circle((0,0), self.maskSize/2,fc=None,ec=CLR_RED,ls="-",alpha=0.2)
 					_ptv1 = Circle((h1,v), self.maskSize/2,fc='none',ec=CLR_YELLOW,ls='--',alpha=1.0)
 					_ptv2 = Circle((h2,v), self.maskSize/2,fc='none',ec=CLR_YELLOW,ls='--',alpha=1.0)
 				else:
 					if self._customMask is not None:
-						_beam = Polygon(self._customMask,fc=CLR_RED,ec='none',alpha=0.2)
+						_beam = Polygon(self._customMask,fc=None,ec=CLR_RED,ls="-",alpha=0.2)
 						_ptv1 = Polygon(self._customMask+np.r_[h1,v],fc='none',ec=CLR_YELLOW,ls='--',alpha=1.0)
 						_ptv2 = Polygon(self._customMask+np.r_[h2,v],fc='none',ec=CLR_YELLOW,ls='--',alpha=1.0)
 					else:
