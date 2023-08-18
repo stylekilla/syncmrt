@@ -124,7 +124,10 @@ class QPlotEnvironment(QtWidgets.QSplitter):
 		logging.debug(f"\nMarker points for {theta0}deg:\n{markers0}\nMarker points for {theta1}deg:\n{markers1}")
 
 		# If theta1 is None, there is no data for the second image frame (i.e. it's only a 2D dataset).
-		if theta1 == None:
+		# Now also overrides the second marker set if the number of markers do not match between views.
+		# This is because the UOW crew like to use the CT in 3D mode but only select 1 set of points in the first view.
+		# Bastards...
+		if (theta1 == None) or (len(markers0) != len(markers1)):
 			# Copy all the marker0 positions.
 			markers1 = np.array(markers0)
 			# Assign the horizontal component to be 0.0 (i.e. we have no depth data).
