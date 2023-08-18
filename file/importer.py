@@ -232,9 +232,9 @@ class ct(QtCore.QObject):
 		# Set the default.
 		self.calculateView('AP')
 
-	def calculateView(self,view,roi=None,flatteningMethod='sum',dimensions=2):
+	def calculateView(self,view,roi=None,flatteningMethod='sum',projections=2):
 		""" Rotate the CT array for a new view of the dataset. """
-		logging.critical(f"Calculating view {view} with method {flatteningMethod} and roi {roi}.")
+		logging.critical(f"Calculating view {view} with method {flatteningMethod} and roi {roi} (projections = {projections}).")
 		# Make the View Coordinate System (VCS) for each view.
 		# These PASSIVELY transform DICOM coordinates into the VIEW coordinates.
 		# They do not ACTIVELY rotate data into them from the DICOM base coordiante system.
@@ -245,6 +245,10 @@ class ct(QtCore.QObject):
 		lr = np.array([[0,0,-1],[1,0,0],[0,-1,0]])
 		rl = np.array([[0,0,1],[-1,0,0],[0,-1,0]])
 		si = np.array([[-1,0,0],[0,1,0],[0,0,-1]])
+
+		# Keep track of previous view.
+		_previous_view = self.VCS
+
 		# Assign matrix, m, to the view matrix and axis titles.
 		if view == 'SI':
 			self.VCS = si
@@ -316,9 +320,14 @@ class ct(QtCore.QObject):
 		_z = [voxelPosition1[2],voxelPosition2[2]]
 		self.viewExtent = np.array(_x+_y+_z).reshape((6,))
 
+		# If the view has changed, don't accept a new ROI.
+		#if np.array_equal(self.VCS,_previous_view):
+		#	roi = None
+
 		if roi is not None:
 			# Get the array indices that match the roi.
 			indices = self.calculateIndices(roi)
+
 			x1,x2,y1,y2,z1,z2 = indices
 			# Calculate new extent based of approximate indices of input ROI.
 			p1 = self.viewM@np.array([x1,y1,z1,1])
@@ -346,7 +355,7 @@ class ct(QtCore.QObject):
 		self.image[0].view = { 'title':t1 }
 		self.image[0].imagingAngle = 0
 		# Get the second flattened image.
-		if dimensions == 3:
+		if projections == 2:
 			self.image.append(Image2d)
 			if flatteningMethod == 'sum': self.image[1].pixelArray = np.sum(pixelArray,axis=1)
 			elif flatteningMethod == 'max': self.image[1].pixelArray = np.amax(pixelArray,axis=1)
