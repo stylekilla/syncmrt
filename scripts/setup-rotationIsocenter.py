@@ -81,7 +81,7 @@ epics.caput('{}:CAM:Acquire.VAL'.format(DET_PV),1,wait=True)
 ######################
 
 # Distance to travel in mm.
-_distance = 9
+_distance = 3
 # Ball bearing sizes.
 _bb = 2.0
 

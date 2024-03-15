@@ -296,7 +296,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		if modality == 'xray':
 			fileFormat = 'HDF5 (*.hdf5)'
 			fileDialogue = QtWidgets.QFileDialog()
-			fileDialogue.setDirectory("/home/imbl/Documents/Data/230720_19843_Martin_Mice/")
+			fileDialogue.setDirectory("/home/imbl/work/olga-mice/day11/")
 			file, dtype = fileDialogue.getSaveFileName(self, "Create new x-ray dataset", "", fileFormat)
 			# Create the new xray file.
 			if file.endswith('.hdf5') is False:
@@ -343,7 +343,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		elif modality == 'xray':
 			fileFormat = 'HDF5 (*.hdf *.hdf5)'
 			fileDialogue = QtWidgets.QFileDialog()
-			fileDialogue.setDirectory("/home/imbl/Documents/Data/230720_19843_Martin_Mice/")
+			fileDialogue.setDirectory("/home/imbl/work/olga-mice/day11")
 			fileDialogue.setFileMode(QtWidgets.QFileDialog.ExistingFiles)
 			file, dtype = fileDialogue.getOpenFileNames(self, "Open Xray dataset", "", fileFormat)
 			if len(file) > 0: self.openXray(file[0])
@@ -760,9 +760,10 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		# Set the x-ray isocenter to (0,0,0) so the visuals are nice and clean.
 		self.envXray.updateIsocenter(0.0,0.0,0.0)
 		# Let the user know the alignment has completed.
-		msg = QtWidgets.QMessageBox()
-		msg.setText("The Alignment Has Completed!")
-		msg.exec()
+		#msg = QtWidgets.QMessageBox()
+		#msg.setText
+		self.displayMessage("The command to apply alignment has been sent - observe the right hand widget to confirm motor motion.")
+		#msg.exec()
 
 	def displayMessage(self,messageText):
 		""" Display a message in the GUI. """

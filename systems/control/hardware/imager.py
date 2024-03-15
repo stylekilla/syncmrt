@@ -124,6 +124,7 @@ class Imager(QtCore.QObject):
 	def acquireStaticImageDirect(self,uid,wait,metadata={}):
 		""" Passthrough function: Set the detector up for a dynamic scan. """
 		# Set the scan up.
+		logging.debug(f"imager acquireStaticImageDirect method")
 		self.detector.imageAcquired.connect(self._addImage)
 		self.detector.acquireStaticImageDirect(uid,wait,metadata)	
 
@@ -154,13 +155,18 @@ class Imager(QtCore.QObject):
 	def _addImage(self,uid):
 		""" Add an acquired image to the buffer. """
 		# Disconnect the image acquired signal.
+		logging.debug(f"imager _addimage method begins")
 		self.detector.imageAcquired.disconnect(self._addImage)
+		logging.debug(f"signal disconnected from detector")
 		# Get the image index. Note the len() of the buffer will suffice as we haven't added the data to it yet.
 		index = len(self.buffer)
+		logging.debug(f"buffer length found {index}. getting data...")
 		# Get the image data: made up of (image,metadata).
 		data = self.detector.getImage(uid)
+		logging.debug(f"data recieved, appending to buffer")
 		# Append the image and metada to to the buffer.
 		self.buffer.append(data)
+		logging.debug(f"appended, emitting imager.imageAcquired signal")
 		# Emit a signal saying we have acquired an image.
 		self.imageAcquired.emit(index)
 

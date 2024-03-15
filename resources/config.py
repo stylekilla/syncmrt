@@ -87,7 +87,7 @@ class imager:
 	pixelSize = [0.081,0.081]
 	# Pixel size of image in mm for (col,row) (otherwise known as horiz,vertical; x,y).
 	# Isocenter specified as (col,row) (otherwise known as horiz,vertical; x,y).
-	isocenter = [602.719-4.45,668.438] # Updated at 11am on 22/04/22 by Micah.
+	isocenter = [606.812,663.812]#[616.406,664.438] # Updated at 11am on 22/04/22 by Micah.
 	# Offset between the primary beam and the imager.
 	#offset = [0,0,0,0,0,0]			# No change (default).
 	#offset = [0,0,20,0,0,0]			# Monochromatic beam (+20 mm in Z)
@@ -129,6 +129,7 @@ class imager:
 		'TIFFautosave': 'TIFF:AutoSave',
 		'RoiSizeX': 'HDF:ArraySize0_RBV',
 		'RoiSizeY': 'HDF:ArraySize1_RBV',
+		'ArrayCounterRBV': 'CAM:ArrayCounter_RBV',
 		# Need to link imaging shutter...?
 	}
 

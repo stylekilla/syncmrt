@@ -249,6 +249,7 @@ class detector(QtCore.QObject):
 
 		# MC: Added to refresh the hamamama frame a few times before we use it. Mostly to wake the IOC.
 		logging.warning("Flushing IOC buffer")
+		thecounter = self.ArrayCounterRBV.get()
 		self.Acquire.put(0)
 		time.sleep(0.5)
 		self.ImageMode.put('Single')
@@ -257,23 +258,46 @@ class detector(QtCore.QObject):
 		time.sleep(0.5)
 		self.Acquire.put(0)
 		time.sleep(0.5)
-
+		logging.debug(f"setting arraycounter to zero.")
+		self.ArrayCounter.put(0)
+		time.sleep(2)
+		logging.debug(f"checking that arraycounter is zero.")
+		while thecounter != 0:
+				self.ArrayCounter.put(0)
+				time.sleep(1)
+				thecounter = self.ArrayCounterRBV.get()
+				logging.warning(f"IN THE SETUP CHECK LOOP\nArraycounter is {thecounter} - waiting for this to be set to zero. If this message continues to repeat, open another terminal and type:\ncaput SR08ID01DETIOC08:CAM:ArrayCounter 0\nor check the Hama IOC for errors.")
 		if wait:
-			QtWidgets.QMessageBox.warning(None,"Image Acquisition","Press OK after you have taken an image.")
+			logging.critical(f"Now waiting for image counter to increment.\nDescending into while loop - you can cancel this loop by acquiring an image on Hama manually.")
+			while thecounter == 0:
+				time.sleep(1)
+				thecounter = self.ArrayCounterRBV.get()
+		
+		#if wait:
+		#	logging.debug(f"making QMessageBox now")
+		#	QtWidgets.QMessageBox.warning(None,"Image Acquisition","Press OK after you have taken an image.")
 
 		# Grab the image data.
+		logging.debug(f"getting arraydata now")
 		arrData = self.ArrayData.get()
+		logging.debug(f"got arraydata {arrData}")
 		x = self.ArraySizeX.get()
+		logging.debug(f"ArraysizeX got {x}")
 		y = self.ArraySizeY.get()
+		logging.debug(f"ArraysizeY got {y}")
 		self.arraySize = [x,y]
+		logging.debug(f"Arraysize list got {self.arraySize}")
 		arrData = arrData.reshape(y,x)
+		logging.debug(f"reshaping done")
 		# Do appropriate image gymnastics.
 		if self.flipud: arrData = np.flipud(arrData)
 		if self.fliplr: arrData = np.fliplr(arrData)
+		logging.debug(f"Flipping done")
 		# Calculate the extent of the image.
 		l,t = self.pixelSize*self.isocenter
 		r,b = np.r_[l,t] - self.arraySize*self.pixelSize
 		extent = [l,r,b,t]
+		logging.debug(f"extents done, creating metadata")
 		# Create metadata.
 		metadata.update({
 			'Pixel Size': self.pixelSize,
@@ -287,6 +311,7 @@ class detector(QtCore.QObject):
 		logging.debug(f"Adding image to buffer: {uid}")
 		# Save everything in the buffer.
 		self.buffer[uid] = (arrData,metadata)
+		logging.debug(f"finished adding to buffer, emitting imageAcquired signal")
 		# Let the world know we've finished the image capture.
 		self.imageAcquired.emit(uid)
 

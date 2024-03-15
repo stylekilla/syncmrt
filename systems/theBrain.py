@@ -187,6 +187,7 @@ class Brain(QtCore.QObject):
 
 	def movePatient(self,amount,motionType):
 		""" All patient movement must be done through this function, as it sets a UUID for the motion. """
+		logging.debug(f"movepatient method begins")
 		if not self.isConnected():
 			logging.warning("Cannot move as not all systems are connected.")
 			return
@@ -209,14 +210,14 @@ class Brain(QtCore.QObject):
 		""" Run all the items in the queue, one at a time. Uses FIFO approach. """
 		# Workflow items: (func, (args), {kwargs}, trigger).
 		# Trigger: connect a signal to trigger the next workflow item.
-
+		logging.debug(f"runWorkflowQueue begin")
 		# If we had a trigger before, disconnect it.
 		if self._workflowLastTrigger is not None: 
 			self._workflowLastTrigger.disconnect(self.runWorkflowQueue)
 			self._workflowLastTrigger = None
 		# If there is something in the queue, process it.
 		if len(self.workflowQueue) > 0:
-			logging.info(f"Processing worfklow item. {len(self.workflowQueue)} items remaining.")
+			logging.info(f"Processing workflow item. {len(self.workflowQueue)} items remaining.")
 			# Take the first item and pop it.
 			item = self.workflowQueue.pop(0)
 			# Put a small sleep in to help make things slower.
@@ -231,7 +232,9 @@ class Brain(QtCore.QObject):
 				# Connect it to the the run workflow function.
 				self._workflowLastTrigger.connect(self.runWorkflowQueue)
 			# Finally, run the function with the arguments.
+			logging.debug(f"execute workflow function")
 			func(*args,**kwargs)
+			logging.debug(f"workflow function complete")
 			# If no trigger was provided for the next item... just trigger it automatically.
 			if self._workflowLastTrigger is None:
 				self.runWorkflowQueue()
@@ -333,6 +336,7 @@ class Brain(QtCore.QObject):
 
 		elif self.imagingMode == 'static':
 			# Calculate parameters.
+			logging.debug(f"theBrain - static imagingmode, setting metadata")
 			uid = str(uuid1())
 			time = datetime.now()
 			metadata = {
@@ -358,6 +362,8 @@ class Brain(QtCore.QObject):
 				}
 
 				# Append to the workflow queue.
+				logging.debug(f"appending to workflow queue the move and acquire for this angle {angle}")
+				#func, args, kwargs, trigger
 				self.workflowQueue += [
 					(self.movePatient, ([0,0,0,0,0,angle],'relative'), {}, self.patientSupport.finishedMove),
 					(self.imager.acquireStaticImageDirect, (imageUid,True,imageMetadata), {}, self.imager.imageAcquired),
