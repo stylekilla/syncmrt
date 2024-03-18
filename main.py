@@ -64,6 +64,7 @@ MAIN CLASS: Application starts here.
 """
 
 class main(QtWidgets.QMainWindow, Ui_MainWindow):
+	interactiveMessageComplete=QtCore.pyqtSignal()
 	def __init__(self,threading=None):
 		# Inititate UI.
 		QtWidgets.QMainWindow.__init__(self)
@@ -252,7 +253,9 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		# Connect treatment button.
 		logging.warning("Temporarily connecting single treatment.")
 		self.sbTreatment.deliverSingle.connect(self.system.deliverTreatment)
-
+		#interactive popup passing
+		self.system.imager.detector.controller.waitForInteraction.connect(self.interactiveMessage)
+		self.interactiveMessageComplete.connect(self.system.imager.detector.controller.resumeStaticImageDirect)
 		# self.test()
 
 	def test(self):
@@ -772,6 +775,13 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		message = QtWidgets.QMessageBox()
 		message.setText(messageText)
 		message.exec()
+
+	def interactiveMessage(self):
+		message = QtWidgets.QMessageBox()
+		message.setText(messageText)
+		message.exec()
+		self.interactiveMessageComplete.emit()
+
 
 if __name__ == "__main__":
 	# QApp 

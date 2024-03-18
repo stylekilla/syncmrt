@@ -32,6 +32,7 @@ class detector(QtCore.QObject):
 	disconnected = QtCore.pyqtSignal()
 	detectorReady = QtCore.pyqtSignal()
 	imageAcquired = QtCore.pyqtSignal(str)
+	waitForInteraction = QtCore.pyqtSignal()
 
 	def __init__(self,config):
 		super().__init__()
@@ -72,6 +73,7 @@ class detector(QtCore.QObject):
 		#temp setup bypass due to disconnected pvs
 		#print("X: {}, Y: {}".format(self.arraySize[0],self.arraySize[1]))
 		# Flag for init completion.
+		self.happyWithImage = False
 		self._initComplete = True
 
 	def _connectionMonitor(self,*args,**kwargs):
@@ -258,6 +260,7 @@ class detector(QtCore.QObject):
 		time.sleep(0.5)
 		self.Acquire.put(0)
 		time.sleep(0.5)
+		'''
 		logging.debug(f"setting arraycounter to zero.")
 		self.ArrayCounter.put(0)
 		time.sleep(2)
@@ -272,10 +275,20 @@ class detector(QtCore.QObject):
 			while thecounter == 0:
 				time.sleep(1)
 				thecounter = self.ArrayCounterRBV.get()
-		
+		'''
 		#if wait:
 		#	logging.debug(f"making QMessageBox now")
 		#	QtWidgets.QMessageBox.warning(None,"Image Acquisition","Press OK after you have taken an image.")
+
+		if wait:
+			self.happyWithImage = False
+			if self.happyWithImage == False:
+				self.waitForInteraction.emit()
+				logging.debug(f" descending into while loop, happy is {self.happyWithImage}")
+				while self.happyWithImage == False:
+					time.sleep(1)
+					QtWidgets.QApplication.instance().processEvents()
+					logging.debug(f"inside while loop, happy is {self.happyWithImage}")
 
 		# Grab the image data.
 		logging.debug(f"getting arraydata now")
@@ -453,3 +466,6 @@ class detector(QtCore.QObject):
 		del self.buffer[uid]
 		# Return the data from the buffer.
 		return data
+
+	def resumeStaticImageDirect(self):
+		self.happyWithImage = True
