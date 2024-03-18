@@ -777,9 +777,10 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		message.exec()
 
 	def interactiveMessage(self):
-		message = QtWidgets.QMessageBox()
-		message.setText(messageText)
-		message.exec()
+		QtWidgets.QMessageBox.warning(None,"Image Acquisition","Press OK after you have taken an image.")
+		#message = QtWidgets.QMessageBox()
+		#message.setText()
+		#message.exec()
 		self.interactiveMessageComplete.emit()
 
 
