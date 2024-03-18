@@ -1,7 +1,7 @@
 # Sitepackages imports.
 from PyQt5 import QtCore, QtGui, QtWidgets, uic
 import csv
-
+from resources import config
 __all__ = ['QsAdHocTreatmentPlan']
 
 class QsAdHocTreatmentPlan(QtWidgets.QWidget):
@@ -108,7 +108,7 @@ class TreatmentTableModel(QtGui.QStandardItemModel):
 		fieldId = QtGui.QStandardItem()
 		fieldId.setData("01",QtCore.Qt.DisplayRole)
 		maskSize = QtGui.QStandardItem()
-		maskSize.setData(10,QtCore.Qt.DisplayRole)
+		maskSize.setData(config.general.defaultMaskSize,QtCore.Qt.DisplayRole)
 		speed = QtGui.QStandardItem()
 		speed.setData(10.0,QtCore.Qt.DisplayRole)
 		position = QtGui.QStandardItem()

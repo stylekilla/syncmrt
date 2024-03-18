@@ -3,6 +3,7 @@ from functools import partial
 import QsWidgets
 from .. import QsGeneric
 import logging
+from resources import config
 
 class QSettings(QtWidgets.QWidget):
 	modeChanged = QtCore.pyqtSignal('QString')
@@ -41,7 +42,7 @@ class QSettings(QtWidgets.QWidget):
 		self.widget['maskShapePlan'] = QtWidgets.QRadioButton('Plan')
 		self.widget['maskShapePlan'].clicked.connect(partial(self.maskSource.emit,'Plan'))
 		self.widget['maskSize'] = QsWidgets.QRangeEdit()
-		self.widget['maskSize'].setRange([0,50.0],10.0)
+		self.widget['maskSize'].setRange([0,50.0],config.general.defaultMaskSize)
 		self.widget['maskSize'].editingFinished.connect(self._emitMaskSizeChanged)
 		# Layout.
 		lyt = QtWidgets.QFormLayout()

@@ -18,6 +18,7 @@ import numpy as np
 from PyQt5 import QtGui, QtCore, QtWidgets
 from functools import partial
 import logging
+from resources import config
 
 __all__ = ['QPlot']
 
@@ -133,7 +134,7 @@ class QPlot(QtWidgets.QWidget):
 		self.canvas.draw()
 
 		self._maskType = 'Square'
-		self.maskSize = 10.0
+		self.maskSize = config.general.defaultMaskSize
 		self._customMask = None
 		self.overlay = {}
 		# These are stored as (h1,h2,v) coordinates.

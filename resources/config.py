@@ -7,6 +7,7 @@ class general:
 	imagingZRange = [-10,10]
 	imagingMaximumZRange = [-200,200]
 	imagingVelocity = 0
+	defaultMaskSize = 10.0
 
 class markers:
 	""" Marker settings for fiducials. """
@@ -17,6 +18,8 @@ class files:
 	""" Relative file locations. """
 	patientSupports = '/database/patientSupports.csv'
 	detectors = '/database/detectors.csv'
+	outputFolder = '/home/imbl/work/olga-mice/day15/'
+	ctInputFolder = "/home/imbl/Documents/Data/230720_19843_Martin_Mice/"
 
 class treatmentBeam:
 	""" Treatment beam properties. """
