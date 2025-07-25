@@ -22,13 +22,14 @@ Assumes:
 logging.critical("These input params are probably wrong. Should be read out of a cfg file.")
 # Save images?
 SAVE = False
+DET_PV = "SR08ID01DET01"
 # This is the left bottom top right of the field in RUBY in pixels.
 l = 0
-r = 2560
-b = 1181
-t = 944
+r = epics.caget('{}:ROI1:IMAGE:ArraySize0_RBV'.format(DET_PV))
+b = epics.caget('{}:ROI1:IMAGE:ArraySize1_RBV'.format(DET_PV))
+t = 0
 # Pixel size (in mm) as calculated from COR script.
-pixelSize = 0.008
+pixelSize = 0.012244897959183673
 
 
 #######################
@@ -40,10 +41,10 @@ _row = int((b-t)/2)
 
 def getImage(save=False,fname=''):
 	logging.info("Acquiring an image.")
-	epics.caput('SR08ID01DET01:CAM:Acquire.VAL',1,wait=True)
-	arr = epics.caget('SR08ID01DET01:IMAGE:ArrayData')
-	_x = epics.caget('SR08ID01DET01:IMAGE:ArraySize1_RBV')
-	_y = epics.caget('SR08ID01DET01:IMAGE:ArraySize0_RBV')
+	epics.caput(f'{DET_PV}:CAM:Acquire.VAL',1,wait=True)
+	arr = epics.caget(f'{DET_PV}:IMAGE:ArrayData')
+	_x = epics.caget(f'{DET_PV}:IMAGE:ArraySize1_RBV')
+	_y = epics.caget(f'{DET_PV}:IMAGE:ArraySize0_RBV')
 	time.sleep(0.1)
 	arr = np.flipud(np.array(arr,dtype=np.uint16).reshape(_x,_y))[t:b,l:r]
 	# Remove any weird values.
@@ -66,14 +67,14 @@ def openShutter():
 ###################################
 # START RUBY ACQUISITION PARAMETERS
 ###################################
-exposureTime = 0.1
+exposureTime = 0.01
 logging.info("Setting up RUBY acquisition parameters.")
-epics.caput('SR08ID01DET01:CAM:Acquire.VAL',0,wait=True)
-epics.caput('SR08ID01DET01:CAM:AcquireTime.VAL',exposureTime)
-epics.caput('SR08ID01DET01:CAM:AcquirePeriod.VAL',0.00)
-epics.caput('SR08ID01DET01:CAM:ImageMode.VAL','Single',wait=True)
-epics.caput('SR08ID01DET01:TIFF:AutoSave.VAL','No',wait=True)
-epics.caput('SR08ID01DET01:CAM:Acquire.VAL',1,wait=True)
+epics.caput(f'{DET_PV}:CAM:Acquire.VAL',0,wait=True)
+epics.caput(f'{DET_PV}:CAM:AcquireTime.VAL',exposureTime)
+epics.caput(f'{DET_PV}:CAM:AcquirePeriod.VAL',0.00)
+epics.caput(f'{DET_PV}:CAM:ImageMode.VAL','Single',wait=True)
+epics.caput(f'{DET_PV}:TIFF:AutoSave.VAL','No',wait=True)
+epics.caput(f'{DET_PV}:CAM:Acquire.VAL',1,wait=True)
 
 ##########################
 # GET BALLBEARING POSITION => MIGHT NOT BE NEEDED...???

@@ -411,6 +411,8 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 			self.envXray.reset()
 			# Connect the settings mask size to the plot.
 			self.sbSettings.maskSizeChanged.connect(self.envXray.setMaskSize)
+			self.sbSettings.maskSizeXChanged.connect(self.envXray.setMaskSizeX)
+			self.sbSettings.maskSizeYChanged.connect(self.envXray.setMaskSizeY)
 			self.sbSettings.maskSource.connect(self.envXray.setMaskType)
 			# Force marker update for table.
 			self.envXray.set('maxMarkers',config.markers.quantity)
@@ -425,6 +427,8 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		self.sbImaging.addImageSet(_list)
 		# Connect the settings mask size to the plot.
 		self.sbSettings.maskSizeChanged.connect(self.envXray.setMaskSize)
+		self.sbSettings.maskSizeXChanged.connect(self.envXray.setMaskXSize)
+		self.sbSettings.maskSizeYChanged.connect(self.envXray.setMaskYSize)
 		self.sbSettings.maskSource.connect(self.envXray.setMaskType)
 		# Force marker update for table.
 		self.envXray.set('maxMarkers',config.markers.quantity)
@@ -467,6 +471,8 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 			self.envXray.reset()
 			# Connect the settings mask size to the plot.
 			self.sbSettings.maskSizeChanged.connect(self.envXray.setMaskSize)
+			self.sbSettings.maskSizeXChanged.connect(self.envXray.setMaskXSize)
+			self.sbSettings.maskSizeYChanged.connect(self.envXray.setMaskYSize)
 			self.sbSettings.maskSource.connect(self.envXray.setMaskType)
 			# Force marker update for table.
 			self.envXray.set('maxMarkers',config.markers.quantity)
@@ -742,7 +748,7 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 
 		# Update the x-ray isocentre to match if desired.
 		if index >= 0:
-			# x,y,z = self.system.solver._syncPatientIsocenter
+			#x,y,z = self.system.solver._syncPatientIsocenter
 			y,x,z = self.system.solver._syncPatientIsocenter
 			self.envXray.updateIsocenter(x,y,z)
 

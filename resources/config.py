@@ -2,12 +2,17 @@ class general:
 	""" General application settings. These should be updateable in GUI... somehow. """
 	# Imaging configs.
 	numberOfXrays = 1
-	defaultImagingAngles = [0,0]
+	defaultImagingAngles = [0,90]
 	imagingThetaRange = [-90,90]
 	imagingZRange = [-10,10]
 	imagingMaximumZRange = [-200,200]
 	imagingVelocity = 0
-	defaultMaskSize = 10.0
+	defaultMaskSize = 5.0
+	defaultMaskType = 'Rectangle'
+	#['Square','Circle','Plan','Rectangle']
+	defaultMaskSizeX = 5.0
+	defaultMaskSizeY = 15.0
+
 
 class markers:
 	""" Marker settings for fiducials. """
@@ -18,7 +23,7 @@ class files:
 	""" Relative file locations. """
 	patientSupports = '/database/patientSupports.csv'
 	detectors = '/database/detectors.csv'
-	outputFolder = '/home/imbl/work/olga-mice/day15/'
+	outputFolder = '/home/imbl/work/palomo/day3/'
 	ctInputFolder = "/home/imbl/Documents/Data/230720_19843_Martin_Mice/"
 
 class treatmentBeam:
@@ -90,7 +95,20 @@ class imager:
 	pixelSize = [0.081,0.081]
 	# Pixel size of image in mm for (col,row) (otherwise known as horiz,vertical; x,y).
 	# Isocenter specified as (col,row) (otherwise known as horiz,vertical; x,y).
-	isocenter = [606.812,663.812]#[616.406,664.438] # Updated at 11am on 22/04/22 by Micah.
+	
+	#prior
+	#isocenter = [598,663] #New for Raph Rats 2024-12-06
+	#isocenter = [596.25,663.417] #New for Olga Mice 2025-03-05
+	#isocenter = [596.25,657.717] #Redone to move ball bearing up in field for Olga Mice 2025-03-05
+	#isocenter = [601.156,659.969] #Redone For candice 15/03/2025
+	#isocenter = [604,660.75] #Redone For zippo 17/06/2025
+	#isocenter = [593.375,658.938] #Redone For KRAUS 27/06/2025
+	#isocenter = [593.5,658.5] #Redone For Zippo split 2 22/07/2025
+	isocenter = [591,657] #Redone For Zippo split 2 22/07/2025
+
+	#idiotcheck
+	#isocenter = [617,663]#New for Raph Rats 2024-12-06
+	#isocenter = [607.667,663.667] #[616.406,664.438] # Updated at 11am on 22/04/22 by Micah.#first olga 606.812,663.812
 	# Offset between the primary beam and the imager.
 	#offset = [0,0,0,0,0,0]			# No change (default).
 	#offset = [0,0,20,0,0,0]			# Monochromatic beam (+20 mm in Z)

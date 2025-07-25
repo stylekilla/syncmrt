@@ -133,8 +133,10 @@ class QPlot(QtWidgets.QWidget):
 		# Refresh the canvas.
 		self.canvas.draw()
 
-		self._maskType = 'Square'
+		self._maskType = config.general.defaultMaskType
 		self.maskSize = config.general.defaultMaskSize
+		self.maskSizeX = config.general.defaultMaskSizeX
+		self.maskSizeY = config.general.defaultMaskSizeY
 		self._customMask = None
 		self.overlay = {}
 		# These are stored as (h1,h2,v) coordinates.
@@ -342,7 +344,7 @@ class QPlot(QtWidgets.QWidget):
 
 	def setMaskType(self,mode):
 		""" Set the mask type (square/circle/from plan etc.). """
-		if mode not in ['Square','Circle','Plan']:
+		if mode not in ['Square','Circle','Plan','Rectangle']:
 			raise TypeError(f"Unknown mask type {mode}.")
 		self._maskType = mode
 		self.toggleOverlay(3,'beamArea' in self.overlay)
@@ -432,6 +434,10 @@ class QPlot(QtWidgets.QWidget):
 					_beam = Rectangle((-self.maskSize/2,-self.maskSize/2), self.maskSize, self.maskSize,fc=CLR_RED,ec='none',alpha=0.2)
 					_ptv1 = Rectangle((h1-self.maskSize/2,v-self.maskSize/2), self.maskSize, self.maskSize,fc='none',ec=CLR_YELLOW,ls='--',alpha=1.0)
 					_ptv2 = Rectangle((h2-self.maskSize/2,v-self.maskSize/2), self.maskSize, self.maskSize,fc='none',ec=CLR_YELLOW,ls='--',alpha=1.0)
+				if self._maskType == 'Rectangle':
+					_beam = Rectangle((-self.maskSizeX/2,-self.maskSizeY/2), self.maskSizeX, self.maskSizeY,fc=CLR_RED,ec='none',alpha=0.2)
+					_ptv1 = Rectangle((h1-self.maskSizeX/2,v-self.maskSizeY/2), self.maskSizeX, self.maskSizeY,fc='none',ec=CLR_YELLOW,ls='--',alpha=1.0)
+					_ptv2 = Rectangle((h2-self.maskSizeX/2,v-self.maskSizeY/2), self.maskSizeX, self.maskSizeY,fc='none',ec=CLR_YELLOW,ls='--',alpha=1.0)
 				elif self._maskType == 'Circle':
 					_beam = Circle((0,0), self.maskSize/2,fc=CLR_RED,ec='none',alpha=0.2)
 					_ptv1 = Circle((h1,v), self.maskSize/2,fc='none',ec=CLR_YELLOW,ls='--',alpha=1.0)
@@ -460,6 +466,19 @@ class QPlot(QtWidgets.QWidget):
 		self.maskSize = size
 		self.toggleOverlay(3,'beamArea' in self.overlay)
 		self.toggleOverlay(3,'beamArea' in self.overlay)
+
+	def setMaskSizeX(self,size):
+		""" Set the mask size and toggle the overlay if it is enabled. """
+		self.maskSizeX = size
+		self.toggleOverlay(3,'beamArea' in self.overlay)
+		self.toggleOverlay(3,'beamArea' in self.overlay)
+
+	def setMaskSizeY(self,size):
+		""" Set the mask size and toggle the overlay if it is enabled. """
+		self.maskSizeY = size
+		self.toggleOverlay(3,'beamArea' in self.overlay)
+		self.toggleOverlay(3,'beamArea' in self.overlay)		
+
 
 	def setCustomMask(self,xy):
 		""" Set custom mask. Must be a nx2 array. """

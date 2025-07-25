@@ -318,6 +318,14 @@ class QPlotEnvironment(QtWidgets.QSplitter):
 		""" Set each plot's mask size. """
 		self.plot.setMaskSize(size)
 
+	def setMaskXSize(self,size):
+		""" Set each plot's mask size. """
+		self.plot.setMaskSizeX(size)
+		
+	def setMaskYSize(self,size):
+		""" Set each plot's mask size. """
+		self.plot.setMaskSizeY(size)		
+
 	def setCustomMask(self,xy):
 		""" Set custom mask. """
 		self.plot.setMaskSize(xy)
