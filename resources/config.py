@@ -12,6 +12,11 @@ class general:
 	#['Square','Circle','Plan','Rectangle']
 	defaultMaskSizeX = 5.0
 	defaultMaskSizeY = 15.0
+	defaultBeamIsocenterOverlayON = True
+	defaultPatientIsocenterOverlayON = True
+	defaultBeamOverlayON = True
+	defaultCentroidOverlayON = True
+	defaultSetCustomIsocenterBoxChecked = True
 
 
 class markers:

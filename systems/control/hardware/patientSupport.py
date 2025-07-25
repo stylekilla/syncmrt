@@ -325,10 +325,16 @@ class patientSupport(QtCore.QObject):
 		else: 
 			return pos
 
+	def resetCalculateMotionRecursiveCounter(self):
+		logging.debug(f"resetting patentSupport _i counter to 0 from {self._i}")
+		self._i = 0
+
 	def calculateMotion(self,G,variables):
 		# We take in the 4x4 transformation matrix G, and a list of 6 parameters (3x translations, 3x rotations).
 		self._i += 1
+		logging.debug(f"in patientSupport caclculateMotion, self._i recursive counter is {self._i}")
 		if self._i > 10: 
+			logging.critical("recursive counter in patientsupport calculateMotion has exceeded 10 - return without updating _motion")
 			return
 		# Create a transform for this stage, S.
 		S = np.identity(4)

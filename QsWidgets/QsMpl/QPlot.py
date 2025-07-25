@@ -346,7 +346,9 @@ class QPlot(QtWidgets.QWidget):
 		""" Set the mask type (square/circle/from plan etc.). """
 		if mode not in ['Square','Circle','Plan','Rectangle']:
 			raise TypeError(f"Unknown mask type {mode}.")
+		logging.debug(f"request to set mask type to {mode}. Currently _maskType{self._maskType}")
 		self._maskType = mode
+		logging.debug(f"_masktype is now {self._maskType}. Changing overlay. beam area in overlay: {'beamArea' in self.overlay}")
 		self.toggleOverlay(3,'beamArea' in self.overlay)
 		self.toggleOverlay(3,'beamArea' in self.overlay)
 

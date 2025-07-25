@@ -174,6 +174,7 @@ class Brain(QtCore.QObject):
 	def calculateAlignment(self):
 		""" This is where the calculation magic happens. """
 		# Decomposition routine.
+		self.patientSupport.resetCalculateMotionRecursiveCounter()
 		self.patientSupport.calculateMotion(self.solver.transform,self.solver.solution)
 
 	def applyAlignment(self):

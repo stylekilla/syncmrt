@@ -411,8 +411,8 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 			self.envXray.reset()
 			# Connect the settings mask size to the plot.
 			self.sbSettings.maskSizeChanged.connect(self.envXray.setMaskSize)
-			self.sbSettings.maskSizeXChanged.connect(self.envXray.setMaskSizeX)
-			self.sbSettings.maskSizeYChanged.connect(self.envXray.setMaskSizeY)
+			self.sbSettings.maskSizeXChanged.connect(self.envXray.setMaskXSize)
+			self.sbSettings.maskSizeYChanged.connect(self.envXray.setMaskYSize)
 			self.sbSettings.maskSource.connect(self.envXray.setMaskType)
 			# Force marker update for table.
 			self.envXray.set('maxMarkers',config.markers.quantity)

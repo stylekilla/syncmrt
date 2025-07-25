@@ -46,3 +46,47 @@ Open Fiji, transform flip image horizontally and vertically according to same pa
 find pixel value of ballbearing X and Y - edit config.imager.isocenter  [X,Y]
 
 Move H1, H2, and SampleV a little, then do test alignment and irradiate to determine ballbearing placement in field.
+
+
+---------------------------------------------
+QsWidgets/QSidebar/QImaging - spinny camera tab
+QsWidgets/QSidebar/QSettings - contents of Gear settings tab
+
+main - self.envXray is in QsWorkspace
+QsWidgets/QsWorkspace - contains QPlot instance
+QsWidgets/QsMpl/QPlot - the displayed HDF5 file
+	when image clicked with pickiso tool - calls '\_updateiso' funciton. 
+	self.patientIsocenter list is updated, then emitted via self.newIsocenter.emit()
+then in QsWorkspace
+	self.plot.newIsocenter.connect(self.\_updateIsocenterFromPlot)
+	.....
+	self.patientIsocenter = np.array(isocenter)
+	# Emit the signal telling the world we have a new isocenter.
+	# This signal is designed to send out the (h1,h2,v) coordinate.
+	h1,h2,v = self.plot.patientIsocenter
+	self.newIsocenter.emit(h1,h2,v)
+then in main
+	self.envXray.newIsocenter.connect(widget.setIsocenter)
+	widget is QXRayProperties instance
+QsWidgets/QSidebar/QXRayProperties - slidy dial tab (ImageProperties)
+	can updat isocentre and emit to update position elsewhere via self.isocenterUpdated.emit(h1,h2,v)
+	[in main createworkenvironmentxray: widget.isocenterUpdated.connect(self.envXray.updateIsocenter), passes back down to plot]
+
+	self.widget['isocenter']['align'].clicked.connect(partial(self.align.emit,-1)) align button signal
+	passed back to main: widget.align.connect(self.patientApplyAlignment)
+
+in main patientApplyAlignment. PatientCalculateAlignment(-1).
+isocenter = self.envXray.getIsocenter() [gets position from envXray, which is QXrayProperties]
+self.system.solver.setInputs(PatientIsoc) -> system.solver.solve 
+system = systems.thebrain
+	system.solver = systems.imageGuidance.solver
+	self.\_patientIsocenter = np.array(patientIsoc)
+	translation = -patientisocentre
+	solution = hstack of translation and rotation matrices
+system calculate alignment -> self.patientSupport.calculateMotion i <10????????????? WTF
+patientSupport = control.hardware.patientSupport
+
+system.applyalignment
+uses patientSupport.\_motion, which is not updated if calls to calculate motion are >10??????
+
+properties = QsWidgets.QsSidebar.QPropertyManager()

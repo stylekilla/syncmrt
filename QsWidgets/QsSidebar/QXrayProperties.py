@@ -1,6 +1,7 @@
 from PyQt5 import QtWidgets, QtCore, QtGui
 from functools import partial
 import logging
+from resources import config
 
 class QXrayProperties(QtWidgets.QWidget):
 	toggleOverlay = QtCore.pyqtSignal(int,bool)
@@ -14,6 +15,9 @@ class QXrayProperties(QtWidgets.QWidget):
 		self.widget = {}
 		self.group = {}
 		self.layout = QtWidgets.QVBoxLayout()
+
+
+
 
 		# Group 2: Overlays.
 		overlayGroup = QtWidgets.QGroupBox()
@@ -113,6 +117,13 @@ class QXrayProperties(QtWidgets.QWidget):
 		# Finish page.
 		self.layout.addStretch(1)
 		self.setLayout(self.layout)
+
+		#set defaults
+		if config.general.defaultBeamIsocenterOverlayON : self.widget['cbBeamIsoc'].setChecked(True)
+		if config.general.defaultPatientIsocenterOverlayON : self.widget['cbPatIsoc'].setChecked(True)
+		if config.general.defaultBeamOverlayON : self.widget['cbBeamOverlay'].setChecked(True)
+		if config.general.defaultCentroidOverlayON : self.widget['cbCentroid'].setChecked(True)
+		if config.general.defaultSetCustomIsocenterBoxChecked : self.widget['isocenter']['cbCustomIsoc'].setChecked(True)
 
 	def _toggleCustomIsocenter(self,state):
 		""" Toggles the manual setting of the isocenter on and off. """
