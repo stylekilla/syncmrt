@@ -328,6 +328,7 @@ class patientSupport(QtCore.QObject):
 	def resetCalculateMotionRecursiveCounter(self):
 		logging.debug(f"resetting patentSupport _i counter to 0 from {self._i}")
 		self._i = 0
+		self._motion = None
 
 	def calculateMotion(self,G,variables):
 		# We take in the 4x4 transformation matrix G, and a list of 6 parameters (3x translations, 3x rotations).

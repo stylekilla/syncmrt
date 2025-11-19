@@ -7,11 +7,11 @@ class general:
 	imagingZRange = [-10,10]
 	imagingMaximumZRange = [-200,200]
 	imagingVelocity = 0
-	defaultMaskSize = 5.0
-	defaultMaskType = 'Rectangle'
+	defaultMaskSize = 20.0
+	defaultMaskType = 'Square'
 	#['Square','Circle','Plan','Rectangle']
-	defaultMaskSizeX = 5.0
-	defaultMaskSizeY = 15.0
+	defaultMaskSizeX = 15.0
+	defaultMaskSizeY = 5.0
 	defaultBeamIsocenterOverlayON = True
 	defaultPatientIsocenterOverlayON = True
 	defaultBeamOverlayON = True
@@ -28,7 +28,7 @@ class files:
 	""" Relative file locations. """
 	patientSupports = '/database/patientSupports.csv'
 	detectors = '/database/detectors.csv'
-	outputFolder = '/home/imbl/work/palomo/day3/'
+	outputFolder = '/home/imbl/work/palomo2/day2/'
 	ctInputFolder = "/home/imbl/Documents/Data/230720_19843_Martin_Mice/"
 
 class treatmentBeam:
@@ -99,7 +99,7 @@ class imager:
 	# pixelSize = [0.1*magnification,0.1*magnification]		# Pixel size is 0.1 mm for HamaMama.
 	pixelSize = [0.081,0.081]
 	# Pixel size of image in mm for (col,row) (otherwise known as horiz,vertical; x,y).
-	# Isocenter specified as (col,row) (otherwise known as horiz,vertical; x,y).
+	# Isocenter specified as (col,row) (otherwise known as horiz,vertical; x,y). Lower row is higher on the flipped image, lower column is left on the flipped image
 	
 	#prior
 	#isocenter = [598,663] #New for Raph Rats 2024-12-06
@@ -109,7 +109,11 @@ class imager:
 	#isocenter = [604,660.75] #Redone For zippo 17/06/2025
 	#isocenter = [593.375,658.938] #Redone For KRAUS 27/06/2025
 	#isocenter = [593.5,658.5] #Redone For Zippo split 2 22/07/2025
-	isocenter = [591,657] #Redone For Zippo split 2 22/07/2025
+	#isocenter = [591,657] #Redone For Zippo split 2 22/07/2025
+	#isocenter = [593.167,659.333] #Redone For Zippo split 2 22/07/2025
+	#isocenter = [598,657] #Redone For palomo 4/11/2025
+	#isocenter = [599.5,663.56] #Redone For palomo split 2 14/11/2025 - Too field is too high on 15 Nov
+	isocenter = [599.5,657] #Redone For palomo split 2 15/11/2025 - this one is good now
 
 	#idiotcheck
 	#isocenter = [617,663]#New for Raph Rats 2024-12-06
