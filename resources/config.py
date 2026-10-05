@@ -7,11 +7,11 @@ class general:
 	imagingZRange = [-10,10]
 	imagingMaximumZRange = [-200,200]
 	imagingVelocity = 0
-	defaultMaskSize = 20.0
-	defaultMaskType = 'Square'
+	defaultMaskSize = 5.0
+	defaultMaskType = 'Rectangle'
 	#['Square','Circle','Plan','Rectangle']
-	defaultMaskSizeX = 15.0
-	defaultMaskSizeY = 5.0
+	defaultMaskSizeX = 5.0
+	defaultMaskSizeY = 15.0
 	defaultBeamIsocenterOverlayON = True
 	defaultPatientIsocenterOverlayON = True
 	defaultBeamOverlayON = True
@@ -28,8 +28,8 @@ class files:
 	""" Relative file locations. """
 	patientSupports = '/database/patientSupports.csv'
 	detectors = '/database/detectors.csv'
-	outputFolder = '/home/imbl/work/palomo2/day2/'
-	ctInputFolder = "/home/imbl/Documents/Data/230720_19843_Martin_Mice/"
+	outputFolder = '/home/imbl/work/palomo-2026-08-04/day3/'
+	ctInputFolder = "/home/imbl/work/"
 
 class treatmentBeam:
 	""" Treatment beam properties. """
@@ -101,7 +101,10 @@ class imager:
 	# Pixel size of image in mm for (col,row) (otherwise known as horiz,vertical; x,y).
 	# Isocenter specified as (col,row) (otherwise known as horiz,vertical; x,y). Lower row is higher on the flipped image, lower column is left on the flipped image
 	
-	#prior
+	#prior 
+	######
+	#[column number, row number]
+	#########
 	#isocenter = [598,663] #New for Raph Rats 2024-12-06
 	#isocenter = [596.25,663.417] #New for Olga Mice 2025-03-05
 	#isocenter = [596.25,657.717] #Redone to move ball bearing up in field for Olga Mice 2025-03-05
@@ -113,7 +116,15 @@ class imager:
 	#isocenter = [593.167,659.333] #Redone For Zippo split 2 22/07/2025
 	#isocenter = [598,657] #Redone For palomo 4/11/2025
 	#isocenter = [599.5,663.56] #Redone For palomo split 2 14/11/2025 - Too field is too high on 15 Nov
-	isocenter = [599.5,657] #Redone For palomo split 2 15/11/2025 - this one is good now
+	#isocenter = [599.5,657] #Redone For palomo split 2 15/11/2025 - this one is good now
+	#isocenter = [605,655] #Redone For Abass rats 19/11/2025
+	#isocenter = [594.5,658.5] #Redone For Breslin 01/03/2026
+	#isocenter = [601.5,656.5 ] #Redone For Palomo 13/03/2026
+	#isocenter = [603,658] #Redone For Olga 30/05/2026
+	#isocenter = [594,658] #Redone For Olga 2/06/2026
+	#isocenter = [600.5,658.5] #Redone For Olga 2/06/2026 (Colum seems higher when pushed against -y side of bar)
+	#isocenter = [603,659]   #Redone For Palomo August 2024 - field size 15x5
+	isocenter = [603,664] #Redone For Palomo August 2024 - field size 5x5
 
 	#idiotcheck
 	#isocenter = [617,663]#New for Raph Rats 2024-12-06

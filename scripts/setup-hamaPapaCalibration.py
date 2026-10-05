@@ -24,4 +24,4 @@ image = getImage()
 
 import imageio
 
-imageio.imsave('./DetectorCalib.tif',image.astype('float32'))
+imageio.imsave('~/work/syncmrt/scripts/cache/DetectorCalib.tif',image.astype('float32'))

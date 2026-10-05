@@ -409,13 +409,6 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		if self._isXrayOpen:
 			# Re-initialise the environment.
 			self.envXray.reset()
-			# Connect the settings mask size to the plot.
-			self.sbSettings.maskSizeChanged.connect(self.envXray.setMaskSize)
-			self.sbSettings.maskSizeXChanged.connect(self.envXray.setMaskXSize)
-			self.sbSettings.maskSizeYChanged.connect(self.envXray.setMaskYSize)
-			self.sbSettings.maskSource.connect(self.envXray.setMaskType)
-			# Force marker update for table.
-			self.envXray.set('maxMarkers',config.markers.quantity)
 		else:
 			self.createWorkEnvironmentXray()
 		# Open the x-ray file.
@@ -444,10 +437,17 @@ class main(QtWidgets.QMainWindow, Ui_MainWindow):
 		self.envXray = self.environment.addPage('X-RAY',QsWidgets.QPlotEnvironment())
 		self.envXray.setCoordinateSystem(np.identity(3))
 		self.envXray.setAxisAlignment(np.identity(3))
+		# Connect the settings mask size to the plot.
+		self.sbSettings.maskSizeChanged.connect(self.envXray.setMaskSize)
+		self.sbSettings.maskSizeXChanged.connect(self.envXray.setMaskXSize)
+		self.sbSettings.maskSizeYChanged.connect(self.envXray.setMaskYSize)
+		self.sbSettings.maskSource.connect(self.envXray.setMaskType)
 		# Connect signal for number of markers.
 		self.sbAlignment.markersChanged.connect(partial(self.envXray.set,'maxMarkers'))
 		# Connect image properties page.
 		self.envXray.toggleSettings.connect(partial(self.sidebar.showStack,'ImageProperties'))
+		# Force marker update for table.
+		self.envXray.set('maxMarkers',config.markers.quantity)
 		# Sidebar page for x-ray image properties.
 		widget = self.sidebar.addPage('xrayImageProperties',QsWidgets.QsSidebar.QXrayProperties(),addList=False)
 		widget.toggleOverlay.connect(partial(self.envXray.toggleOverlay))

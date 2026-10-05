@@ -48,14 +48,22 @@ def getImage(save=False,fname=''):
 	return arr
 
 def closeShutter():
-	logging.info("Closing 1A shutter.")
-	epics.caput("SR08ID01PSS01:HU01A_BL_SHUTTER_CLOSE_CMD", 1, wait=True)
-	time.sleep(2)
+	#logging.info("Closing 1A shutter.")
+	#epics.caput("SR08ID01PSS01:HU01A_BL_SHUTTER_CLOSE_CMD", 1, wait=True)
+	#time.sleep(2)
+	logging.info("Closing in air pink shutter.")
+	epics.caput("SR08ID01ZEB02:SOFT_IN:B0", 0, wait=False)
+	time.sleep(0.2)
+	epics.caput("SR08ID01ZEB02:SOFT_IN:B1", 1, wait=False)
 
 def openShutter():
-	logging.info("Opening 1A shutter.")
-	epics.caput("SR08ID01PSS01:HU01A_BL_SHUTTER_OPEN_CMD", 1, wait=True)
-	time.sleep(2)
+	#logging.info("Opening 1A shutter.")
+	#epics.caput("SR08ID01PSS01:HU01A_BL_SHUTTER_OPEN_CMD", 1, wait=True)
+	#time.sleep(2)
+	logging.info("Opening in air pink shutter.")
+	epics.caput("SR08ID01ZEB02:SOFT_IN:B1", 0, wait=False)
+	time.sleep(0.2)
+	epics.caput("SR08ID01ZEB02:SOFT_IN:B0", 1, wait=False)
 
 # Set home.
 logging.info("Moving DynMRT stages to home positions.")
